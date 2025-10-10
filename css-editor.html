@@ -1013,21 +1013,49 @@
         });
     });
 
-    // Add event listeners for buttons
-    document.getElementById('load-btn').addEventListener('click', loadCSS);
-    document.getElementById('save-btn').addEventListener('click', saveCSS);
-    document.getElementById('reload-btn').addEventListener('click', () => location.reload());
-    document.getElementById('export-active-btn').addEventListener('click', exportActiveEditors);
+    // Function to attach event listeners (called after DOM is ready)
+    function attachEventListeners() {
+        console.log('[attachEventListeners] Attaching event listeners to buttons');
 
-    // Add toggle button listeners
-    document.querySelectorAll('.toggle-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const role = btn.getAttribute('data-role');
-            toggleEditor(role);
+        const loadBtn = document.getElementById('load-btn');
+        const saveBtn = document.getElementById('save-btn');
+        const reloadBtn = document.getElementById('reload-btn');
+        const exportActiveBtn = document.getElementById('export-active-btn');
+
+        if (loadBtn) {
+            loadBtn.addEventListener('click', loadCSS);
+            console.log('[attachEventListeners] Load button listener attached');
+        } else {
+            console.error('[attachEventListeners] load-btn not found!');
+        }
+
+        if (saveBtn) {
+            saveBtn.addEventListener('click', saveCSS);
+            console.log('[attachEventListeners] Save button listener attached');
+        }
+
+        if (reloadBtn) {
+            reloadBtn.addEventListener('click', () => location.reload());
+            console.log('[attachEventListeners] Reload button listener attached');
+        }
+
+        if (exportActiveBtn) {
+            exportActiveBtn.addEventListener('click', exportActiveEditors);
+            console.log('[attachEventListeners] Export active button listener attached');
+        }
+
+        // Add toggle button listeners
+        const toggleBtns = document.querySelectorAll('.toggle-btn');
+        console.log(`[attachEventListeners] Found ${toggleBtns.length} toggle buttons`);
+        toggleBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const role = btn.getAttribute('data-role');
+                toggleEditor(role);
+            });
         });
-    });
 
-    console.log('[CSS Editor] All event listeners registered');
+        console.log('[CSS Editor] All event listeners registered');
+    }
 
     // Initialize Monaco Editor on page load
     window.addEventListener('DOMContentLoaded', () => {
@@ -1040,6 +1068,8 @@
                 console.log('[DOMContentLoaded] Monaco loader ready, initializing');
                 initializeMonaco(() => {
                     console.log('[DOMContentLoaded] Monaco initialization complete');
+                    // Attach event listeners after Monaco is ready
+                    attachEventListeners();
                 });
             }
         }, 50);
