@@ -1,777 +1,1047 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CXone Expert CSS Editor</title>
-</head>
-<body>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: #f5f5f5;
-            color: #333;
-        }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        background: #f5f5f5;
+        color: #333;
+    }
 
-        .header {
-            background: #2c3e50;
-            color: white;
-            padding: 1.5rem 2rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
+    .header {
+        background: #2c3e50;
+        color: white;
+        padding: 1.5rem 2rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
 
-        .header h1 {
-            font-size: 1.8rem;
-            font-weight: 400;
-        }
+    .header h1 {
+        font-size: 1.8rem;
+        font-weight: 400;
+    }
 
-        .config-section {
-            background: white;
-            padding: 2rem;
-            border-bottom: 2px solid #e0e0e0;
-        }
+    .config-section {
+        background: white;
+        padding: 2rem;
+        border-bottom: 2px solid #e0e0e0;
+    }
 
-        .config-section h2 {
-            font-size: 1.2rem;
-            margin-bottom: 1.5rem;
-            color: #2c3e50;
-            font-weight: 500;
-        }
+    .config-section h2 {
+        font-size: 1.2rem;
+        margin-bottom: 1.5rem;
+        color: #2c3e50;
+        font-weight: 500;
+    }
 
-        .config-grid {
-            display: grid;
-            grid-template-columns: 150px 1fr;
-            gap: 1.5rem;
-            align-items: center;
-            margin-bottom: 1.5rem;
-        }
+    .config-grid {
+        display: grid;
+        grid-template-columns: 150px 1fr;
+        gap: 1.5rem;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
 
-        .config-grid label {
-            font-weight: 500;
-            color: #555;
-        }
+    .config-grid label {
+        font-weight: 500;
+        color: #555;
+    }
 
-        .config-grid input {
-            padding: 0.75rem;
-            border: 2px solid #e0e0e0;
-            border-radius: 4px;
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-            font-size: 0.9rem;
-            transition: border-color 0.2s;
-        }
+    .config-grid input {
+        padding: 0.75rem;
+        border: 2px solid #e0e0e0;
+        border-radius: 4px;
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        font-size: 0.9rem;
+        transition: border-color 0.2s;
+    }
 
-        .config-grid input:focus {
-            outline: none;
-            border-color: #3498db;
-        }
+    .config-grid input:focus {
+        outline: none;
+        border-color: #3498db;
+    }
 
-        .container {
-            max-width: 1600px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
+    .container {
+        max-width: 1600px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
 
-        .loading {
-            text-align: center;
-            padding: 4rem;
-            font-size: 1.3rem;
-            color: #666;
-        }
+    .loading {
+        text-align: center;
+        padding: 4rem;
+        font-size: 1.3rem;
+        color: #666;
+    }
 
-        .message {
-            padding: 1rem 1.5rem;
-            border-radius: 4px;
-            margin-bottom: 1.5rem;
-            font-size: 0.95rem;
-        }
+    .message {
+        padding: 1rem 1.5rem;
+        border-radius: 4px;
+        margin-bottom: 1.5rem;
+        font-size: 0.95rem;
+    }
 
-        .error {
-            background: #ffebee;
-            border-left: 4px solid #e74c3c;
-            color: #c62828;
-        }
+    .error {
+        background: #ffebee;
+        border-left: 4px solid #e74c3c;
+        color: #c62828;
+    }
 
-        .success {
-            background: #e8f5e9;
-            border-left: 4px solid #27ae60;
-            color: #2e7d32;
-        }
+    .success {
+        background: #e8f5e9;
+        border-left: 4px solid #27ae60;
+        color: #2e7d32;
+    }
 
-        .editor-section {
-            background: white;
-            border-radius: 6px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            margin-bottom: 2rem;
-            overflow: hidden;
-        }
+    .toggle-bar {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 8px 8px 0 0;
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        border-bottom: 2px solid #e0e0e0;
+    }
 
-        .editor-header {
-            background: #34495e;
-            color: white;
-            padding: 1rem 1.5rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+    .toggle-btn {
+        padding: 0.6rem 1.25rem;
+        border: 2px solid #e0e0e0;
+        background: white;
+        color: #666;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
 
-        .editor-header h2 {
-            font-size: 1.1rem;
-            font-weight: 400;
-            color: white;
-        }
+    .toggle-btn:hover {
+        border-color: #3498db;
+        color: #3498db;
+    }
 
-        .export-btn {
-            background: transparent;
-            border: 2px solid white;
-            color: white;
-            padding: 0.5rem 1.25rem;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: all 0.2s;
-            font-weight: 500;
-        }
+    .toggle-btn.active {
+        background: #3498db;
+        border-color: #3498db;
+        color: white;
+    }
 
-        .export-btn:hover {
-            background: white;
-            color: #34495e;
-        }
+    .toggle-btn.disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        border-color: #ccc;
+        color: #999;
+    }
 
-        .editor-wrapper {
-            height: 450px;
-            width: 100%;
-        }
+    .toggle-btn.disabled:hover {
+        border-color: #ccc;
+        color: #999;
+    }
 
-        .actions {
-            position: sticky;
-            bottom: 0;
-            background: white;
-            padding: 1.5rem 2rem;
-            box-shadow: 0 -2px 12px rgba(0,0,0,0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 100;
-        }
+    .editor-actions-bar {
+        background: white;
+        padding: 0.75rem 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #e0e0e0;
+    }
 
-        .btn {
-            border: none;
-            padding: 0.9rem 2.5rem;
-            border-radius: 4px;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-weight: 500;
-        }
+    .export-btn-small {
+        background: transparent;
+        border: 1px solid #3498db;
+        color: #3498db;
+        padding: 0.4rem 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+    }
 
-        .btn-primary {
-            background: #3498db;
-            color: white;
-        }
+    .export-btn-small:hover {
+        background: #3498db;
+        color: white;
+    }
 
-        .btn-primary:hover {
-            background: #2980b9;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
-        }
+    .active-count {
+        font-size: 0.9rem;
+        color: #666;
+    }
 
-        .btn-primary:disabled {
-            background: #bdc3c7;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
+    .editors-grid {
+        display: grid;
+        gap: 0;
+        min-height: 600px;
+        background: #1e1e1e;
+    }
 
-        .btn-secondary {
-            background: #95a5a6;
-            color: white;
-        }
+    .editors-grid.cols-1 {
+        grid-template-columns: 1fr;
+    }
 
-        .btn-secondary:hover {
-            background: #7f8c8d;
-        }
+    .editors-grid.cols-2 {
+        grid-template-columns: 1fr 1fr;
+    }
 
-        #message-area {
-            margin-bottom: 1rem;
-        }
-    </style>
+    .editors-grid.cols-3 {
+        grid-template-columns: repeat(3, 1fr);
+    }
 
-    <div class="header">
-        <h1>CXone Expert CSS Editor</h1>
+    .editors-grid.cols-4 {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .editor-pane {
+        position: relative;
+        min-height: 600px;
+        border-right: 1px solid #444;
+    }
+
+    .editor-pane:last-child {
+        border-right: none;
+    }
+
+    .editor-pane-header {
+        background: #2d2d30;
+        color: #ccc;
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #444;
+    }
+
+    .editor-pane-title {
+        font-weight: 500;
+    }
+
+    .editor-pane-export {
+        background: transparent;
+        border: 1px solid #555;
+        color: #ccc;
+        padding: 0.25rem 0.75rem;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 0.75rem;
+        transition: all 0.2s;
+    }
+
+    .editor-pane-export:hover {
+        border-color: #3498db;
+        color: #3498db;
+    }
+
+    .editor-instance {
+        height: calc(100% - 32px);
+        min-height: 568px;
+    }
+
+    .actions {
+        position: sticky;
+        bottom: 0;
+        background: white;
+        padding: 1.5rem 2rem;
+        box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 100;
+    }
+
+    .btn {
+        border: none;
+        padding: 0.9rem 2.5rem;
+        border-radius: 4px;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-weight: 500;
+    }
+
+    .btn-primary {
+        background: #3498db;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #2980b9;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+    }
+
+    .btn-primary:disabled {
+        background: #bdc3c7;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    .btn-secondary {
+        background: #95a5a6;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: #7f8c8d;
+    }
+
+    #message-area {
+        margin-bottom: 1rem;
+    }
+</style>
+
+<div class="header">
+    <h1>CXone Expert CSS Editor</h1>
+</div>
+
+<div class="config-section">
+    <h2>Configuration</h2>
+    <div class="config-grid">
+        <label for="base-url">Base URL:</label>
+        <input type="text" id="base-url" value="https://help.benelliot-nice.com"
+            placeholder="https://help.benelliot-nice.com">
+
+        <label for="auth-token">Auth Token:</label>
+        <input type="text" id="auth-token"
+            value="***REMOVED***"
+            placeholder="eyJhbGciOiJIUzI1NiIsImtpZCI6Imh0dHBzOi...">
+
+        <label for="mt-session">MT Web Session:</label>
+        <input type="text" id="mt-session" value="6a177e120b810f25a448c78def371d54"
+            placeholder="6a177e120b810f25a448c78def371d54">
+
+        <label for="deki-session">Deki Session:</label>
+        <input type="text" id="deki-session"
+            value="***REMOVED***"
+            placeholder="OGFlY2UxZWQtODliNi00OGU5LWExNTQtMGY2NzNjODg5ZDE3...">
     </div>
+    <button class="btn btn-primary" id="load-btn">Load CSS from Legacy System</button>
+</div>
 
-    <div class="config-section">
-        <h2>Configuration</h2>
-        <div class="config-grid">
-            <label for="base-url">Base URL:</label>
-            <input type="text" id="base-url" value="https://help.benelliot-nice.com" placeholder="https://help.benelliot-nice.com">
-
-            <label for="auth-token">Auth Token:</label>
-            <input type="text" id="auth-token" value="***REMOVED***" placeholder="eyJhbGciOiJIUzI1NiIsImtpZCI6Imh0dHBzOi...">
-
-            <label for="mt-session">MT Web Session:</label>
-            <input type="text" id="mt-session" value="6a177e120b810f25a448c78def371d54" placeholder="6a177e120b810f25a448c78def371d54">
-
-            <label for="deki-session">Deki Session:</label>
-            <input type="text" id="deki-session" value="***REMOVED***" placeholder="OGFlY2UxZWQtODliNi00OGU5LWExNTQtMGY2NzNjODg5ZDE3...">
+<div class="container">
+    <div id="message-area"></div>
+    <div id="loading" class="loading" style="display: none;">Loading CSS from legacy system...</div>
+    <div id="editor-container" style="display: none;">
+        <div class="toggle-bar">
+            <button class="toggle-btn" data-role="all">All Roles</button>
+            <button class="toggle-btn" data-role="anonymous">Anonymous</button>
+            <button class="toggle-btn" data-role="viewer">Community Member</button>
+            <button class="toggle-btn" data-role="seated">Pro Member</button>
+            <button class="toggle-btn" data-role="admin">Admin</button>
+            <button class="toggle-btn" data-role="grape">Legacy Browser</button>
         </div>
-        <button class="btn btn-primary" onclick="loadCSS()" id="load-btn">Load CSS from Legacy System</button>
-    </div>
-
-    <div class="container">
-        <div id="message-area"></div>
-        <div id="loading" class="loading" style="display: none;">Loading CSS from legacy system...</div>
-        <div id="editor-container" style="display: none;">
-            <div class="editor-section">
-                <div class="editor-header">
-                    <h2>All Roles CSS</h2>
-                    <button class="export-btn" onclick="exportCSS('all')">Export CSS</button>
-                </div>
-                <div id="editor-all" class="editor-wrapper"></div>
-            </div>
-
-            <div class="editor-section">
-                <div class="editor-header">
-                    <h2>Anonymous CSS</h2>
-                    <button class="export-btn" onclick="exportCSS('anonymous')">Export CSS</button>
-                </div>
-                <div id="editor-anonymous" class="editor-wrapper"></div>
-            </div>
-
-            <div class="editor-section">
-                <div class="editor-header">
-                    <h2>Community Member CSS</h2>
-                    <button class="export-btn" onclick="exportCSS('viewer')">Export CSS</button>
-                </div>
-                <div id="editor-viewer" class="editor-wrapper"></div>
-            </div>
-
-            <div class="editor-section">
-                <div class="editor-header">
-                    <h2>Pro Member CSS</h2>
-                    <button class="export-btn" onclick="exportCSS('seated')">Export CSS</button>
-                </div>
-                <div id="editor-seated" class="editor-wrapper"></div>
-            </div>
-
-            <div class="editor-section">
-                <div class="editor-header">
-                    <h2>Admin CSS</h2>
-                    <button class="export-btn" onclick="exportCSS('admin')">Export CSS</button>
-                </div>
-                <div id="editor-admin" class="editor-wrapper"></div>
-            </div>
-
-            <div class="editor-section">
-                <div class="editor-header">
-                    <h2>Compatibility / Legacy Browser CSS</h2>
-                    <button class="export-btn" onclick="exportCSS('grape')">Export CSS</button>
-                </div>
-                <div id="editor-grape" class="editor-wrapper"></div>
-            </div>
+        <div class="editor-actions-bar">
+            <button class="export-btn-small" id="export-active-btn">Export Active</button>
+            <span class="active-count">No editors active</span>
         </div>
+        <div id="editors-grid" class="editors-grid"></div>
     </div>
+</div>
 
-    <div class="actions" id="actions" style="display: none;">
-        <button class="btn btn-secondary" onclick="location.reload()">Reload Page</button>
-        <button class="btn btn-primary" id="save-btn" onclick="saveCSS()">Save All Changes</button>
-    </div>
+<div class="actions" id="actions" style="display: none;">
+    <button class="btn btn-secondary" id="reload-btn">Reload Page</button>
+    <button class="btn btn-primary" id="save-btn">Save All Changes</button>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/stylelint@16.2.1/lib/index.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/monaco-css-linter@1.0.3/dist/index.min.js"></script>
-    <script>
-        console.log('[CSS Editor] Script loaded, initializing Monaco');
+<script>
+    console.log('[CSS Editor] Script loaded, preparing Monaco initialization');
 
-        // Prevent AMD/RequireJS conflicts
-        if (typeof define === 'function' && define.amd) {
-            console.log('[CSS Editor] AMD detected, storing original define');
-            window.__originalDefine = define;
-            window.__originalRequire = require;
+    // Prevent AMD/RequireJS conflicts - store and clear AMD environment BEFORE loading Monaco
+    let originalDefine, originalRequire;
+    if (typeof define === 'function' && define.amd) {
+        console.log('[CSS Editor] AMD detected, storing and clearing original define/require');
+        originalDefine = define;
+        originalRequire = require;
+        // Temporarily remove AMD environment
+        delete window.define;
+        delete window.require;
+    }
+
+    // Now dynamically load Monaco loader after AMD is cleared
+    console.log('[CSS Editor] Loading Monaco loader script');
+    const loaderScript = document.createElement('script');
+    loaderScript.src = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js';
+    loaderScript.onload = () => {
+        console.log('[CSS Editor] Monaco loader loaded');
+    };
+    document.head.appendChild(loaderScript);
+
+    // State management for editors
+    const editorState = {
+        all: { active: false, editor: null, content: '', label: 'All Roles' },
+        anonymous: { active: false, editor: null, content: '', label: 'Anonymous' },
+        viewer: { active: false, editor: null, content: '', label: 'Community Member' },
+        seated: { active: false, editor: null, content: '', label: 'Pro Member' },
+        admin: { active: false, editor: null, content: '', label: 'Admin' },
+        grape: { active: false, editor: null, content: '', label: 'Legacy Browser' }
+    };
+
+    const MAX_ACTIVE_EDITORS = 3;
+    let csrfToken = '';
+    let monacoReady = false;
+    let linterReady = false;
+
+    function getActiveCount() {
+        return Object.values(editorState).filter(s => s.active).length;
+    }
+
+    function updateActiveCount() {
+        const count = getActiveCount();
+        const countEl = document.querySelector('.active-count');
+        if (count === 0) {
+            countEl.textContent = 'No editors active';
+        } else {
+            countEl.textContent = `${count} editor${count === 1 ? '' : 's'} active`;
         }
+    }
 
-        let editors = {};
-        let csrfToken = '';
-        let monacoReady = false;
-        let linterReady = false;
+    function updateToggleButtons() {
+        const activeCount = getActiveCount();
+        Object.keys(editorState).forEach(role => {
+            const btn = document.querySelector(`.toggle-btn[data-role="${role}"]`);
+            if (!btn) return;
 
-        function getConfig() {
-            console.log('[getConfig] Retrieving configuration');
-            const config = {
-                baseUrl: document.getElementById('base-url').value,
-                authToken: document.getElementById('auth-token').value,
-                mtSession: document.getElementById('mt-session').value,
-                dekiSession: document.getElementById('deki-session').value
-            };
-            console.log('[getConfig] Config retrieved:', {
-                baseUrl: config.baseUrl,
-                authTokenLength: config.authToken?.length || 0,
-                mtSessionLength: config.mtSession?.length || 0,
-                dekiSessionLength: config.dekiSession?.length || 0
-            });
-            return config;
-        }
+            const state = editorState[role];
 
-        function showMessage(message, type = 'error') {
-            console.log(`[showMessage] ${type.toUpperCase()}: ${message}`);
-            const messageArea = document.getElementById('message-area');
-            const div = document.createElement('div');
-            div.className = 'message ' + type;
-            div.textContent = message;
-            messageArea.appendChild(div);
+            // Remove all state classes
+            btn.classList.remove('active', 'disabled');
 
-            setTimeout(() => {
-                div.remove();
-            }, 5000);
-        }
-
-        function exportCSS(role) {
-            console.log(`[exportCSS] Exporting CSS for role: ${role}`);
-            try {
-                const content = editors[role].getValue();
-                console.log(`[exportCSS] Content length: ${content.length} characters`);
-                const blob = new Blob([content], { type: 'text/css' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `css_template_${role}.css`;
-                a.click();
-                URL.revokeObjectURL(url);
-                console.log(`[exportCSS] Export complete for ${role}`);
-            } catch (error) {
-                console.error(`[exportCSS] Error exporting ${role}:`, error);
-                showMessage(`Failed to export ${role}: ${error.message}`, 'error');
+            if (state.active) {
+                btn.classList.add('active');
+            } else if (activeCount >= MAX_ACTIVE_EDITORS) {
+                btn.classList.add('disabled');
             }
+        });
+    }
+
+    function updateGrid() {
+        console.log('[updateGrid] Updating editor grid layout');
+        const grid = document.getElementById('editors-grid');
+        const activeRoles = Object.keys(editorState).filter(role => editorState[role].active);
+
+        console.log('[updateGrid] Active roles:', activeRoles);
+
+        // Clear existing grid
+        grid.innerHTML = '';
+
+        // Update grid class based on active count
+        grid.className = 'editors-grid';
+        if (activeRoles.length > 0) {
+            grid.classList.add(`cols-${Math.min(activeRoles.length, 4)}`);
         }
 
-        function parseHTML(html) {
-            console.log('[parseHTML] Starting HTML parsing');
-            console.log('[parseHTML] HTML length:', html.length);
+        // Create editor panes for active roles
+        activeRoles.forEach(role => {
+            const state = editorState[role];
+            const pane = document.createElement('div');
+            pane.className = 'editor-pane';
+            pane.innerHTML = `
+                    <div class="editor-pane-header">
+                        <span class="editor-pane-title">${state.label}</span>
+                        <button class="editor-pane-export" data-export-role="${role}">Export</button>
+                    </div>
+                    <div id="editor-${role}" class="editor-instance"></div>
+                `;
+            grid.appendChild(pane);
 
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, 'text/html');
+            // Add click listener to export button
+            const exportBtn = pane.querySelector('.editor-pane-export');
+            exportBtn.addEventListener('click', () => exportCSS(role));
 
-            const cssData = {
-                csrf_token: '',
-                css: {
-                    all: '',
-                    anonymous: '',
-                    viewer: '',
-                    seated: '',
-                    admin: '',
-                    grape: ''
-                }
-            };
-
-            // Extract CSRF token
-            const csrfInput = doc.querySelector('input[name="csrf_token"]');
-            if (csrfInput) {
-                cssData.csrf_token = csrfInput.value;
-                console.log('[parseHTML] CSRF token found:', cssData.csrf_token.substring(0, 20) + '...');
+            // Create or restore Monaco editor
+            if (!state.editor) {
+                console.log(`[updateGrid] Creating new Monaco editor for ${role}`);
+                createMonacoEditor(role);
             } else {
-                console.warn('[parseHTML] CSRF token NOT found in HTML');
+                console.log(`[updateGrid] Moving existing editor for ${role}`);
+                // Editor already exists, just need to re-mount it
+                setTimeout(() => {
+                    const container = document.getElementById(`editor-${role}`);
+                    if (container && state.editor) {
+                        state.editor.layout();
+                    }
+                }, 100);
             }
+        });
 
-            // Extract CSS from textareas
-            const textareas = {
-                'css_template_all': 'all',
-                'css_template_anonymous': 'anonymous',
-                'css_template_viewer': 'viewer',
-                'css_template_seated': 'seated',
-                'css_template_admin': 'admin',
-                'css_template_grape': 'grape'
-            };
+        console.log('[updateGrid] Grid update complete');
+    }
 
-            Object.entries(textareas).forEach(([name, key]) => {
-                const textarea = doc.querySelector(`textarea[name="${name}"]`);
-                if (textarea) {
-                    cssData.css[key] = textarea.textContent;
-                    console.log(`[parseHTML] Found ${key} CSS: ${cssData.css[key].length} characters`);
-                } else {
-                    console.warn(`[parseHTML] Textarea "${name}" NOT found`);
-                }
-            });
+    function createMonacoEditor(role) {
+        console.log(`[createMonacoEditor] Creating editor for ${role}`);
 
-            console.log('[parseHTML] Parsing complete. CSS sections found:', Object.keys(cssData.css).filter(k => cssData.css[k].length > 0));
-            return cssData;
+        if (!monacoReady) {
+            console.error('[createMonacoEditor] Monaco not ready!');
+            return;
         }
 
-        function initializeMonaco(callback) {
-            console.log('[initializeMonaco] Loading Monaco Editor');
-
-            require.config({
-                paths: {
-                    vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs'
-                }
-            });
-
-            require(['vs/editor/editor.main'], function() {
-                console.log('[initializeMonaco] Monaco Editor loaded successfully');
-                monacoReady = true;
-
-                // Initialize CSS Linter
-                try {
-                    console.log('[initializeMonaco] Initializing CSS Linter');
-                    if (typeof MonacoCSSLinter !== 'undefined') {
-                        const linterConfig = {
-                            rules: {
-                                'color-no-invalid-hex': true,
-                                'declaration-block-no-duplicate-properties': true,
-                                'no-duplicate-selectors': true,
-                                'selector-type-no-unknown': true
-                            }
-                        };
-
-                        // Note: MonacoCSSLinter will be initialized per editor
-                        linterReady = true;
-                        console.log('[initializeMonaco] CSS Linter ready');
-                    } else {
-                        console.warn('[initializeMonaco] MonacoCSSLinter not available, continuing without linting');
-                    }
-                } catch (error) {
-                    console.warn('[initializeMonaco] Error initializing CSS Linter:', error);
-                }
-
-                if (callback) callback();
-            });
+        const container = document.getElementById(`editor-${role}`);
+        if (!container) {
+            console.error(`[createMonacoEditor] Container not found for ${role}`);
+            return;
         }
 
-        function initializeEditors(cssData) {
-            console.log('[initializeEditors] Starting editor initialization');
-            console.log('[initializeEditors] Monaco ready?', monacoReady);
+        const state = editorState[role];
 
-            if (!monacoReady) {
-                console.error('[initializeEditors] Monaco not ready yet!');
-                return;
+        const editor = monaco.editor.create(container, {
+            value: state.content || '',
+            language: 'css',
+            theme: 'vs-dark',
+            automaticLayout: true,
+            minimap: { enabled: true },
+            fontSize: 14,
+            wordWrap: 'on',
+            scrollBeyondLastLine: false,
+            lineNumbers: 'on',
+            renderWhitespace: 'selection',
+            cursorBlinking: 'smooth',
+            folding: true,
+            bracketPairColorization: {
+                enabled: true
             }
+        });
 
-            const roles = ['all', 'anonymous', 'viewer', 'seated', 'admin', 'grape'];
-
-            roles.forEach(role => {
-                try {
-                    console.log(`[initializeEditors] Creating editor for ${role}`);
-                    const editorElement = document.getElementById(`editor-${role}`);
-                    if (!editorElement) {
-                        console.error(`[initializeEditors] Element #editor-${role} NOT FOUND`);
-                        return;
-                    }
-
-                    console.log(`[initializeEditors] Element found for ${role}, creating Monaco editor`);
-                    const editor = monaco.editor.create(editorElement, {
-                        value: cssData.css[role] || '',
-                        language: 'css',
-                        theme: 'vs-dark',
-                        automaticLayout: true,
-                        minimap: { enabled: true },
-                        fontSize: 14,
-                        wordWrap: 'on',
-                        scrollBeyondLastLine: false,
-                        lineNumbers: 'on',
-                        renderWhitespace: 'selection',
-                        cursorBlinking: 'smooth',
-                        folding: true,
-                        bracketPairColorization: {
-                            enabled: true
-                        }
-                    });
-
-                    // Initialize CSS Linter for this editor if available
-                    if (linterReady && typeof MonacoCSSLinter !== 'undefined') {
-                        try {
-                            console.log(`[initializeEditors] Enabling CSS linter for ${role}`);
-                            new MonacoCSSLinter.CSSLinter(editor, {
-                                rules: {
-                                    'color-no-invalid-hex': true,
-                                    'declaration-block-no-duplicate-properties': true,
-                                    'no-duplicate-selectors': true,
-                                    'selector-type-no-unknown': true,
-                                    'unit-no-unknown': true,
-                                    'property-no-unknown': true
-                                }
-                            });
-                            console.log(`[initializeEditors] CSS linter enabled for ${role}`);
-                        } catch (lintError) {
-                            console.warn(`[initializeEditors] Could not enable linter for ${role}:`, lintError);
-                        }
-                    }
-
-                    editors[role] = editor;
-                    console.log(`[initializeEditors] Editor for ${role} initialized successfully`);
-                } catch (error) {
-                    console.error(`[initializeEditors] Error creating editor for ${role}:`, error);
-                    console.error(`[initializeEditors] Error stack:`, error.stack);
-                }
-            });
-
-            console.log('[initializeEditors] All editors initialized. Total:', Object.keys(editors).length);
-        }
-
-        async function loadCSS() {
-            console.log('[loadCSS] ===== LOAD CSS STARTED =====');
-            const config = getConfig();
-
-            if (!config.authToken || !config.mtSession || !config.dekiSession) {
-                console.error('[loadCSS] Missing required configuration fields');
-                showMessage('Please fill in all configuration fields', 'error');
-                return;
-            }
-
-            const loadBtn = document.getElementById('load-btn');
-            loadBtn.disabled = true;
-            loadBtn.textContent = 'Loading...';
-
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('message-area').innerHTML = '';
-
-            const url = `${config.baseUrl}/deki/cp/custom_css.php?params=%2F`;
-            console.log('[loadCSS] Fetching from URL:', url);
-
+        // Initialize CSS Linter if available
+        if (linterReady && typeof MonacoCSSLinter !== 'undefined') {
             try {
-                const response = await fetch(url, {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                        'Accept-Language': 'en-US,en;q=0.9',
-                        'Cache-Control': 'max-age=0',
-                        'Cookie': `authtoken="${config.authToken}"; mtwebsession=${config.mtSession}; dekisession="${config.dekiSession}"`,
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'
-                    },
-                    credentials: 'include'
+                console.log(`[createMonacoEditor] Enabling CSS linter for ${role}`);
+                new MonacoCSSLinter.CSSLinter(editor, {
+                    rules: {
+                        'color-no-invalid-hex': true,
+                        'declaration-block-no-duplicate-properties': true,
+                        'no-duplicate-selectors': true,
+                        'selector-type-no-unknown': true,
+                        'unit-no-unknown': true,
+                        'property-no-unknown': true
+                    }
                 });
-
-                console.log('[loadCSS] Response status:', response.status, response.statusText);
-                console.log('[loadCSS] Response headers:', Object.fromEntries(response.headers.entries()));
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const html = await response.text();
-                console.log('[loadCSS] HTML received, length:', html.length);
-
-                const parsedData = parseHTML(html);
-                csrfToken = parsedData.csrf_token;
-
-                if (!csrfToken) {
-                    console.error('[loadCSS] CSRF token missing after parsing');
-                    throw new Error('Failed to extract CSRF token. Check your authentication.');
-                }
-
-                console.log('[loadCSS] CSRF token stored:', csrfToken.substring(0, 20) + '...');
-
-                // Ensure Monaco is loaded before initializing editors
-                if (!monacoReady) {
-                    console.log('[loadCSS] Monaco not ready, loading now...');
-                    await new Promise((resolve) => {
-                        initializeMonaco(() => {
-                            console.log('[loadCSS] Monaco loaded via callback');
-                            resolve();
-                        });
-                    });
-                }
-
-                // Initialize editors if not already created
-                if (Object.keys(editors).length === 0) {
-                    console.log('[loadCSS] Initializing new editors');
-                    console.log('[loadCSS] Parsed data:', {
-                        hasCSRF: !!parsedData.csrf_token,
-                        cssLengths: Object.keys(parsedData.css).map(k => `${k}: ${parsedData.css[k]?.length || 0}`)
-                    });
-                    initializeEditors(parsedData);
-                } else {
-                    console.log('[loadCSS] Updating existing editors');
-                    Object.keys(editors).forEach(role => {
-                        editors[role].setValue(parsedData.css[role] || '');
-                        console.log(`[loadCSS] Updated ${role} editor with ${parsedData.css[role]?.length || 0} characters`);
-                    });
-                }
-
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('editor-container').style.display = 'block';
-                document.getElementById('actions').style.display = 'flex';
-                showMessage('CSS loaded successfully!', 'success');
-                console.log('[loadCSS] ===== LOAD CSS COMPLETE =====');
-
-            } catch (error) {
-                console.error('[loadCSS] ===== ERROR =====');
-                console.error('[loadCSS] Error details:', error);
-                console.error('[loadCSS] Error stack:', error.stack);
-                document.getElementById('loading').style.display = 'none';
-                showMessage('Error loading CSS: ' + error.message + ' (Note: CORS may block direct requests. You may need to use a browser extension or proxy.)', 'error');
-            } finally {
-                loadBtn.disabled = false;
-                loadBtn.textContent = 'Load CSS from Legacy System';
+            } catch (lintError) {
+                console.warn(`[createMonacoEditor] Could not enable linter for ${role}:`, lintError);
             }
         }
 
-        function buildMultipartBody(cssData) {
-            console.log('[buildMultipartBody] Building multipart form data');
-            const boundary = '----WebKitFormBoundary' + Math.random().toString(36).substring(2, 15);
-            console.log('[buildMultipartBody] Boundary:', boundary);
-            let body = '';
+        // Listen for content changes to update state
+        editor.onDidChangeModelContent(() => {
+            state.content = editor.getValue();
+        });
 
-            // Add CSRF token
-            body += `--${boundary}\r\n`;
-            body += `Content-Disposition: form-data; name="csrf_token"\r\n\r\n`;
-            body += `${cssData.csrf_token}\r\n`;
-            console.log('[buildMultipartBody] Added CSRF token');
+        state.editor = editor;
+        console.log(`[createMonacoEditor] Editor created for ${role}`);
+    }
 
-            // Add CSS templates
-            const fields = {
-                'css_template_all': cssData.css_template_all,
-                'css_template_anonymous': cssData.css_template_anonymous,
-                'css_template_viewer': cssData.css_template_viewer,
-                'css_template_seated': cssData.css_template_seated,
-                'css_template_admin': cssData.css_template_admin,
-                'css_template_grape': cssData.css_template_grape
-            };
+    function toggleEditor(role) {
+        console.log(`[toggleEditor] Toggling editor: ${role}`);
 
-            Object.entries(fields).forEach(([name, value]) => {
-                body += `--${boundary}\r\n`;
-                body += `Content-Disposition: form-data; name="${name}"\r\n\r\n`;
-                body += `${value}\r\n`;
-                console.log(`[buildMultipartBody] Added ${name}: ${value?.length || 0} characters`);
-            });
-
-            // Add submit button
-            body += `--${boundary}\r\n`;
-            body += `Content-Disposition: form-data; name="deki_buttons[submit][submit]"\r\n\r\n`;
-            body += `submit\r\n`;
-            body += `--${boundary}--\r\n`;
-
-            console.log('[buildMultipartBody] Total body length:', body.length);
-            return { body, boundary };
+        if (!monacoReady) {
+            console.error('[toggleEditor] Monaco not ready yet!');
+            showMessage('Please wait for Monaco Editor to load', 'error');
+            return;
         }
 
-        async function saveCSS() {
-            console.log('[saveCSS] ===== SAVE CSS STARTED =====');
-            const config = getConfig();
+        const state = editorState[role];
+        const activeCount = getActiveCount();
+
+        if (state.active) {
+            // Turn off - save content first
+            console.log(`[toggleEditor] Turning off ${role}`);
+            if (state.editor) {
+                state.content = state.editor.getValue();
+                state.editor.dispose();
+                state.editor = null;
+            }
+            state.active = false;
+        } else {
+            // Turn on - check limit
+            if (activeCount >= MAX_ACTIVE_EDITORS) {
+                console.log(`[toggleEditor] Max editors reached (${MAX_ACTIVE_EDITORS})`);
+                showMessage(`Maximum ${MAX_ACTIVE_EDITORS} editors allowed at once. Turn one off first.`, 'error');
+                return;
+            }
+            console.log(`[toggleEditor] Turning on ${role}`);
+            state.active = true;
+        }
+
+        updateGrid();
+        updateToggleButtons();
+        updateActiveCount();
+    }
+    window.toggleEditor = toggleEditor;
+
+    function exportActiveEditors() {
+        console.log('[exportActiveEditors] Exporting all active editors');
+        const activeRoles = Object.keys(editorState).filter(role => editorState[role].active);
+
+        if (activeRoles.length === 0) {
+            showMessage('No active editors to export', 'error');
+            return;
+        }
+
+        activeRoles.forEach(role => {
+            exportCSS(role);
+        });
+
+        showMessage(`Exported ${activeRoles.length} CSS file${activeRoles.length === 1 ? '' : 's'}`, 'success');
+    }
+    window.exportActiveEditors = exportActiveEditors;
+
+    function getConfig() {
+        console.log('[getConfig] Retrieving configuration');
+        const config = {
+            baseUrl: document.getElementById('base-url').value,
+            authToken: document.getElementById('auth-token').value,
+            mtSession: document.getElementById('mt-session').value,
+            dekiSession: document.getElementById('deki-session').value
+        };
+        console.log('[getConfig] Config retrieved:', {
+            baseUrl: config.baseUrl,
+            authTokenLength: config.authToken?.length || 0,
+            mtSessionLength: config.mtSession?.length || 0,
+            dekiSessionLength: config.dekiSession?.length || 0
+        });
+        return config;
+    }
+
+    function showMessage(message, type = 'error') {
+        console.log(`[showMessage] ${type.toUpperCase()}: ${message}`);
+        const messageArea = document.getElementById('message-area');
+        const div = document.createElement('div');
+        div.className = 'message ' + type;
+        div.textContent = message;
+        messageArea.appendChild(div);
+
+        setTimeout(() => {
+            div.remove();
+        }, 5000);
+    }
+
+    function exportCSS(role) {
+        console.log(`[exportCSS] Exporting CSS for role: ${role}`);
+        try {
+            const state = editorState[role];
+            // Get content from editor if active, otherwise from state
+            const content = state.editor ? state.editor.getValue() : state.content;
+            console.log(`[exportCSS] Content length: ${content.length} characters`);
+            const blob = new Blob([content], { type: 'text/css' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `css_template_${role}.css`;
+            a.click();
+            URL.revokeObjectURL(url);
+            console.log(`[exportCSS] Export complete for ${role}`);
+        } catch (error) {
+            console.error(`[exportCSS] Error exporting ${role}:`, error);
+            showMessage(`Failed to export ${role}: ${error.message}`, 'error');
+        }
+    }
+    window.exportCSS = exportCSS;
+
+    function parseHTML(html) {
+        console.log('[parseHTML] Starting HTML parsing');
+        console.log('[parseHTML] HTML length:', html.length);
+
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+
+        const cssData = {
+            csrf_token: '',
+            css: {
+                all: '',
+                anonymous: '',
+                viewer: '',
+                seated: '',
+                admin: '',
+                grape: ''
+            }
+        };
+
+        // Extract CSRF token
+        const csrfInput = doc.querySelector('input[name="csrf_token"]');
+        if (csrfInput) {
+            cssData.csrf_token = csrfInput.value;
+            console.log('[parseHTML] CSRF token found:', cssData.csrf_token.substring(0, 20) + '...');
+        } else {
+            console.warn('[parseHTML] CSRF token NOT found in HTML');
+        }
+
+        // Extract CSS from textareas
+        const textareas = {
+            'css_template_all': 'all',
+            'css_template_anonymous': 'anonymous',
+            'css_template_viewer': 'viewer',
+            'css_template_seated': 'seated',
+            'css_template_admin': 'admin',
+            'css_template_grape': 'grape'
+        };
+
+        Object.entries(textareas).forEach(([name, key]) => {
+            const textarea = doc.querySelector(`textarea[name="${name}"]`);
+            if (textarea) {
+                cssData.css[key] = textarea.textContent;
+                console.log(`[parseHTML] Found ${key} CSS: ${cssData.css[key].length} characters`);
+            } else {
+                console.warn(`[parseHTML] Textarea "${name}" NOT found`);
+            }
+        });
+
+        console.log('[parseHTML] Parsing complete. CSS sections found:', Object.keys(cssData.css).filter(k => cssData.css[k].length > 0));
+        return cssData;
+    }
+
+    function initializeMonaco(callback) {
+        console.log('[initializeMonaco] Loading Monaco Editor');
+
+        require.config({
+            paths: {
+                vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs'
+            }
+        });
+
+        require(['vs/editor/editor.main'], function () {
+            console.log('[initializeMonaco] Monaco Editor loaded successfully');
+            monacoReady = true;
+
+            // DO NOT restore AMD here - it causes conflicts with other page scripts
+            // We'll keep AMD disabled for the entire session since we only need Monaco
+
+            // Initialize CSS Linter
+            try {
+                console.log('[initializeMonaco] Initializing CSS Linter');
+                if (typeof MonacoCSSLinter !== 'undefined') {
+                    const linterConfig = {
+                        rules: {
+                            'color-no-invalid-hex': true,
+                            'declaration-block-no-duplicate-properties': true,
+                            'no-duplicate-selectors': true,
+                            'selector-type-no-unknown': true
+                        }
+                    };
+
+                    // Note: MonacoCSSLinter will be initialized per editor
+                    linterReady = true;
+                    console.log('[initializeMonaco] CSS Linter ready');
+                } else {
+                    console.warn('[initializeMonaco] MonacoCSSLinter not available, continuing without linting');
+                }
+            } catch (error) {
+                console.warn('[initializeMonaco] Error initializing CSS Linter:', error);
+            }
+
+            if (callback) callback();
+        });
+    }
+
+    function initializeEditors(cssData) {
+        console.log('[initializeEditors] Starting editor initialization');
+        console.log('[initializeEditors] Monaco ready?', monacoReady);
+
+        if (!monacoReady) {
+            console.error('[initializeEditors] Monaco not ready yet!');
+            return;
+        }
+
+        // Load CSS data into state
+        Object.keys(editorState).forEach(role => {
+            const state = editorState[role];
+            state.content = cssData.css[role] || '';
+
+            // If editor is already active, update its content
+            if (state.active && state.editor) {
+                console.log(`[initializeEditors] Updating active editor ${role}`);
+                state.editor.setValue(state.content);
+            }
+
+            console.log(`[initializeEditors] Loaded ${role}: ${state.content.length} characters`);
+        });
+
+        console.log('[initializeEditors] CSS loaded into state');
+    }
+
+    async function loadCSS() {
+        console.log('[loadCSS] ===== LOAD CSS STARTED =====');
+        const config = getConfig();
+
+        if (!config.authToken || !config.mtSession || !config.dekiSession) {
+            console.error('[loadCSS] Missing required configuration fields');
+            showMessage('Please fill in all configuration fields', 'error');
+            return;
+        }
+
+        const loadBtn = document.getElementById('load-btn');
+        loadBtn.disabled = true;
+        loadBtn.textContent = 'Loading...';
+
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('message-area').innerHTML = '';
+
+        const url = `${config.baseUrl}/deki/cp/custom_css.php?params=%2F`;
+        console.log('[loadCSS] Fetching from URL:', url);
+
+        try {
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Cache-Control': 'max-age=0',
+                    'Cookie': `authtoken="${config.authToken}"; mtwebsession=${config.mtSession}; dekisession="${config.dekiSession}"`,
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'
+                },
+                credentials: 'include'
+            });
+
+            console.log('[loadCSS] Response status:', response.status, response.statusText);
+            console.log('[loadCSS] Response headers:', Object.fromEntries(response.headers.entries()));
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const html = await response.text();
+            console.log('[loadCSS] HTML received, length:', html.length);
+
+            const parsedData = parseHTML(html);
+            csrfToken = parsedData.csrf_token;
 
             if (!csrfToken) {
-                console.error('[saveCSS] No CSRF token available');
-                showMessage('Please load CSS first before saving', 'error');
-                return;
+                console.error('[loadCSS] CSRF token missing after parsing');
+                throw new Error('Failed to extract CSRF token. Check your authentication.');
             }
 
-            console.log('[saveCSS] Using CSRF token:', csrfToken.substring(0, 20) + '...');
+            console.log('[loadCSS] CSRF token stored:', csrfToken.substring(0, 20) + '...');
 
-            const saveBtn = document.getElementById('save-btn');
-            saveBtn.disabled = true;
-            saveBtn.textContent = 'Saving...';
-
-            try {
-                console.log('[saveCSS] Collecting CSS from editors');
-                const cssData = {
-                    csrf_token: csrfToken,
-                    css_template_all: editors.all.getValue(),
-                    css_template_anonymous: editors.anonymous.getValue(),
-                    css_template_viewer: editors.viewer.getValue(),
-                    css_template_seated: editors.seated.getValue(),
-                    css_template_admin: editors.admin.getValue(),
-                    css_template_grape: editors.grape.getValue()
-                };
-
-                console.log('[saveCSS] CSS data collected:', {
-                    all: cssData.css_template_all?.length || 0,
-                    anonymous: cssData.css_template_anonymous?.length || 0,
-                    viewer: cssData.css_template_viewer?.length || 0,
-                    seated: cssData.css_template_seated?.length || 0,
-                    admin: cssData.css_template_admin?.length || 0,
-                    grape: cssData.css_template_grape?.length || 0
+            // Ensure Monaco is loaded before initializing
+            if (!monacoReady) {
+                console.log('[loadCSS] Monaco not ready, loading now...');
+                await new Promise((resolve) => {
+                    initializeMonaco(() => {
+                        console.log('[loadCSS] Monaco loaded via callback');
+                        resolve();
+                    });
                 });
-
-                const { body, boundary } = buildMultipartBody(cssData);
-
-                const url = `${config.baseUrl}/deki/cp/custom_css.php?params=%2F`;
-                console.log('[saveCSS] Posting to URL:', url);
-
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                        'Accept-Language': 'en-US,en;q=0.9',
-                        'Cache-Control': 'max-age=0',
-                        'Content-Type': `multipart/form-data; boundary=${boundary}`,
-                        'Cookie': `authtoken="${config.authToken}"; mtwebsession=${config.mtSession}; dekisession="${config.dekiSession}"`,
-                        'Origin': config.baseUrl,
-                        'Referer': `${config.baseUrl}/deki/cp/custom_css.php?params=%2F`,
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'
-                    },
-                    credentials: 'include',
-                    body: body,
-                    redirect: 'follow'
-                });
-
-                console.log('[saveCSS] Response status:', response.status, response.statusText);
-                console.log('[saveCSS] Response redirected:', response.redirected);
-                console.log('[saveCSS] Response URL:', response.url);
-
-                if (response.ok || response.redirected) {
-                    console.log('[saveCSS] Save successful!');
-                    showMessage('CSS saved successfully!', 'success');
-                } else {
-                    throw new Error(`Failed to save: ${response.status} ${response.statusText}`);
-                }
-
-                console.log('[saveCSS] ===== SAVE CSS COMPLETE =====');
-
-            } catch (error) {
-                console.error('[saveCSS] ===== ERROR =====');
-                console.error('[saveCSS] Error details:', error);
-                console.error('[saveCSS] Error stack:', error.stack);
-                showMessage('Error saving CSS: ' + error.message + ' (Note: CORS may block direct requests. You may need to use a browser extension or proxy.)', 'error');
-            } finally {
-                saveBtn.disabled = false;
-                saveBtn.textContent = 'Save All Changes';
             }
+
+            // Load CSS into state
+            console.log('[loadCSS] Loading CSS into state');
+            initializeEditors(parsedData);
+
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('editor-container').style.display = 'block';
+            document.getElementById('actions').style.display = 'flex';
+            showMessage('CSS loaded successfully! Click editor buttons above to toggle editors on/off.', 'success');
+            console.log('[loadCSS] ===== LOAD CSS COMPLETE =====');
+
+        } catch (error) {
+            console.error('[loadCSS] ===== ERROR =====');
+            console.error('[loadCSS] Error details:', error);
+            console.error('[loadCSS] Error stack:', error.stack);
+            document.getElementById('loading').style.display = 'none';
+            showMessage('Error loading CSS: ' + error.message + ' (Note: CORS may block direct requests. You may need to use a browser extension or proxy.)', 'error');
+        } finally {
+            loadBtn.disabled = false;
+            loadBtn.textContent = 'Load CSS from Legacy System';
+        }
+    }
+    window.loadCSS = loadCSS;
+    console.log('[CSS Editor] loadCSS assigned to window, typeof window.loadCSS:', typeof window.loadCSS);
+
+    function buildMultipartBody(cssData) {
+        console.log('[buildMultipartBody] Building multipart form data');
+        const boundary = '----WebKitFormBoundary' + Math.random().toString(36).substring(2, 15);
+        console.log('[buildMultipartBody] Boundary:', boundary);
+        let body = '';
+
+        // Add CSRF token
+        body += `--${boundary}\r\n`;
+        body += `Content-Disposition: form-data; name="csrf_token"\r\n\r\n`;
+        body += `${cssData.csrf_token}\r\n`;
+        console.log('[buildMultipartBody] Added CSRF token');
+
+        // Add CSS templates
+        const fields = {
+            'css_template_all': cssData.css_template_all,
+            'css_template_anonymous': cssData.css_template_anonymous,
+            'css_template_viewer': cssData.css_template_viewer,
+            'css_template_seated': cssData.css_template_seated,
+            'css_template_admin': cssData.css_template_admin,
+            'css_template_grape': cssData.css_template_grape
+        };
+
+        Object.entries(fields).forEach(([name, value]) => {
+            body += `--${boundary}\r\n`;
+            body += `Content-Disposition: form-data; name="${name}"\r\n\r\n`;
+            body += `${value}\r\n`;
+            console.log(`[buildMultipartBody] Added ${name}: ${value?.length || 0} characters`);
+        });
+
+        // Add submit button
+        body += `--${boundary}\r\n`;
+        body += `Content-Disposition: form-data; name="deki_buttons[submit][submit]"\r\n\r\n`;
+        body += `submit\r\n`;
+        body += `--${boundary}--\r\n`;
+
+        console.log('[buildMultipartBody] Total body length:', body.length);
+        return { body, boundary };
+    }
+
+    async function saveCSS() {
+        console.log('[saveCSS] ===== SAVE CSS STARTED =====');
+        const config = getConfig();
+
+        if (!csrfToken) {
+            console.error('[saveCSS] No CSRF token available');
+            showMessage('Please load CSS first before saving', 'error');
+            return;
         }
 
-        // Auto-load config from localStorage if available
-        window.addEventListener('load', () => {
-            console.log('[load] Page loaded, checking localStorage');
-            const savedConfig = localStorage.getItem('cssEditorConfig');
-            if (savedConfig) {
-                console.log('[load] Found saved config in localStorage');
-                try {
-                    const config = JSON.parse(savedConfig);
-                    document.getElementById('base-url').value = config.baseUrl || '';
-                    document.getElementById('auth-token').value = config.authToken || '';
-                    document.getElementById('mt-session').value = config.mtSession || '';
-                    document.getElementById('deki-session').value = config.dekiSession || '';
-                    console.log('[load] Config loaded from localStorage');
-                } catch (error) {
-                    console.error('[load] Error parsing saved config:', error);
+        console.log('[saveCSS] Using CSRF token:', csrfToken.substring(0, 20) + '...');
+
+        const saveBtn = document.getElementById('save-btn');
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+
+        try {
+            console.log('[saveCSS] Collecting CSS from state');
+
+            // Sync active editors back to state first
+            Object.keys(editorState).forEach(role => {
+                const state = editorState[role];
+                if (state.active && state.editor) {
+                    state.content = state.editor.getValue();
+                    console.log(`[saveCSS] Synced ${role} from editor to state: ${state.content.length} chars`);
                 }
+            });
+
+            const cssData = {
+                csrf_token: csrfToken,
+                css_template_all: editorState.all.content,
+                css_template_anonymous: editorState.anonymous.content,
+                css_template_viewer: editorState.viewer.content,
+                css_template_seated: editorState.seated.content,
+                css_template_admin: editorState.admin.content,
+                css_template_grape: editorState.grape.content
+            };
+
+            console.log('[saveCSS] CSS data collected from state:', {
+                all: cssData.css_template_all?.length || 0,
+                anonymous: cssData.css_template_anonymous?.length || 0,
+                viewer: cssData.css_template_viewer?.length || 0,
+                seated: cssData.css_template_seated?.length || 0,
+                admin: cssData.css_template_admin?.length || 0,
+                grape: cssData.css_template_grape?.length || 0
+            });
+
+            const { body, boundary } = buildMultipartBody(cssData);
+
+            const url = `${config.baseUrl}/deki/cp/custom_css.php?params=%2F`;
+            console.log('[saveCSS] Posting to URL:', url);
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Cache-Control': 'max-age=0',
+                    'Content-Type': `multipart/form-data; boundary=${boundary}`,
+                    'Cookie': `authtoken="${config.authToken}"; mtwebsession=${config.mtSession}; dekisession="${config.dekiSession}"`,
+                    'Origin': config.baseUrl,
+                    'Referer': `${config.baseUrl}/deki/cp/custom_css.php?params=%2F`,
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'
+                },
+                credentials: 'include',
+                body: body,
+                redirect: 'follow'
+            });
+
+            console.log('[saveCSS] Response status:', response.status, response.statusText);
+            console.log('[saveCSS] Response redirected:', response.redirected);
+            console.log('[saveCSS] Response URL:', response.url);
+
+            if (response.ok || response.redirected) {
+                console.log('[saveCSS] Save successful!');
+                showMessage('CSS saved successfully!', 'success');
             } else {
-                console.log('[load] No saved config in localStorage');
+                throw new Error(`Failed to save: ${response.status} ${response.statusText}`);
             }
-        });
 
-        // Save config to localStorage on input change
-        ['base-url', 'auth-token', 'mt-session', 'deki-session'].forEach(id => {
-            document.getElementById(id).addEventListener('change', () => {
-                console.log(`[config] Field "${id}" changed, saving to localStorage`);
-                const config = getConfig();
-                localStorage.setItem('cssEditorConfig', JSON.stringify(config));
-                console.log('[config] Config saved to localStorage');
-            });
-        });
+            console.log('[saveCSS] ===== SAVE CSS COMPLETE =====');
 
-        console.log('[CSS Editor] All event listeners registered');
+        } catch (error) {
+            console.error('[saveCSS] ===== ERROR =====');
+            console.error('[saveCSS] Error details:', error);
+            console.error('[saveCSS] Error stack:', error.stack);
+            showMessage('Error saving CSS: ' + error.message + ' (Note: CORS may block direct requests. You may need to use a browser extension or proxy.)', 'error');
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save All Changes';
+        }
+    }
+    window.saveCSS = saveCSS;
 
-        // Initialize Monaco Editor on page load
-        window.addEventListener('DOMContentLoaded', () => {
-            console.log('[DOMContentLoaded] Page ready, initializing Monaco');
-            initializeMonaco(() => {
-                console.log('[DOMContentLoaded] Monaco initialization complete');
-            });
+    // Auto-load config from localStorage if available
+    window.addEventListener('load', () => {
+        console.log('[load] Page loaded, checking localStorage');
+        const savedConfig = localStorage.getItem('cssEditorConfig');
+        if (savedConfig) {
+            console.log('[load] Found saved config in localStorage');
+            try {
+                const config = JSON.parse(savedConfig);
+                document.getElementById('base-url').value = config.baseUrl || '';
+                document.getElementById('auth-token').value = config.authToken || '';
+                document.getElementById('mt-session').value = config.mtSession || '';
+                document.getElementById('deki-session').value = config.dekiSession || '';
+                console.log('[load] Config loaded from localStorage');
+            } catch (error) {
+                console.error('[load] Error parsing saved config:', error);
+            }
+        } else {
+            console.log('[load] No saved config in localStorage');
+        }
+    });
+
+    // Save config to localStorage on input change
+    ['base-url', 'auth-token', 'mt-session', 'deki-session'].forEach(id => {
+        document.getElementById(id).addEventListener('change', () => {
+            console.log(`[config] Field "${id}" changed, saving to localStorage`);
+            const config = getConfig();
+            localStorage.setItem('cssEditorConfig', JSON.stringify(config));
+            console.log('[config] Config saved to localStorage');
         });
-    </script>
-</body>
-</html>
+    });
+
+    // Add event listeners for buttons
+    document.getElementById('load-btn').addEventListener('click', loadCSS);
+    document.getElementById('save-btn').addEventListener('click', saveCSS);
+    document.getElementById('reload-btn').addEventListener('click', () => location.reload());
+    document.getElementById('export-active-btn').addEventListener('click', exportActiveEditors);
+
+    // Add toggle button listeners
+    document.querySelectorAll('.toggle-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const role = btn.getAttribute('data-role');
+            toggleEditor(role);
+        });
+    });
+
+    console.log('[CSS Editor] All event listeners registered');
+
+    // Initialize Monaco Editor on page load
+    window.addEventListener('DOMContentLoaded', () => {
+        console.log('[DOMContentLoaded] Page ready, waiting for Monaco loader');
+
+        // Wait for Monaco loader to be available
+        const waitForMonaco = setInterval(() => {
+            if (typeof require !== 'undefined' && typeof require.config === 'function') {
+                clearInterval(waitForMonaco);
+                console.log('[DOMContentLoaded] Monaco loader ready, initializing');
+                initializeMonaco(() => {
+                    console.log('[DOMContentLoaded] Monaco initialization complete');
+                });
+            }
+        }, 50);
+    });
+</script>
