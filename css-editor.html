@@ -350,25 +350,38 @@
 <script>
     console.log('[CSS Editor] Script loaded, preparing Monaco initialization');
 
-    // Prevent AMD/RequireJS conflicts - store and clear AMD environment BEFORE loading Monaco
-    let originalDefine, originalRequire;
-    if (typeof define === 'function' && define.amd) {
-        console.log('[CSS Editor] AMD detected, storing and clearing original define/require');
-        originalDefine = define;
-        originalRequire = require;
-        // Temporarily remove AMD environment
+    // Create an isolated scope for Monaco to avoid AMD conflicts
+    // We'll temporarily hide AMD only when Monaco's loader script executes
+    (function() {
+        const originalDefine = window.define;
+        const originalRequire = window.require;
+
+        console.log('[CSS Editor] Temporarily hiding AMD for Monaco loader');
         delete window.define;
         delete window.require;
-    }
 
-    // Now dynamically load Monaco loader after AMD is cleared
-    console.log('[CSS Editor] Loading Monaco loader script');
-    const loaderScript = document.createElement('script');
-    loaderScript.src = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js';
-    loaderScript.onload = () => {
-        console.log('[CSS Editor] Monaco loader loaded');
-    };
-    document.head.appendChild(loaderScript);
+        // Load Monaco loader script
+        const loaderScript = document.createElement('script');
+        loaderScript.src = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js';
+        loaderScript.onload = () => {
+            console.log('[CSS Editor] Monaco loader loaded, restoring page AMD');
+            // Immediately restore the page's AMD after Monaco loader loads
+            // Monaco has its own require/define now in a different scope
+            if (originalDefine) window.define = originalDefine;
+            if (originalRequire) window.require = originalRequire;
+
+            // Store Monaco's require separately before page AMD overwrites it
+            window.monacoRequire = require;
+            console.log('[CSS Editor] Page AMD restored, Monaco require stored separately');
+        };
+        loaderScript.onerror = () => {
+            console.error('[CSS Editor] Failed to load Monaco loader');
+            // Restore AMD even on error
+            if (originalDefine) window.define = originalDefine;
+            if (originalRequire) window.require = originalRequire;
+        };
+        document.head.appendChild(loaderScript);
+    })();
 
     // State management for editors
     const editorState = {
@@ -695,18 +708,23 @@
     function initializeMonaco(callback) {
         console.log('[initializeMonaco] Loading Monaco Editor');
 
-        require.config({
+        // Use Monaco's require (stored separately from page's AMD)
+        const monacoReq = window.monacoRequire || window.require;
+
+        if (!monacoReq || typeof monacoReq.config !== 'function') {
+            console.error('[initializeMonaco] Monaco require not available!');
+            return;
+        }
+
+        monacoReq.config({
             paths: {
                 vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs'
             }
         });
 
-        require(['vs/editor/editor.main'], function () {
+        monacoReq(['vs/editor/editor.main'], function () {
             console.log('[initializeMonaco] Monaco Editor loaded successfully');
             monacoReady = true;
-
-            // DO NOT restore AMD here - it causes conflicts with other page scripts
-            // We'll keep AMD disabled for the entire session since we only need Monaco
 
             // Initialize CSS Linter
             try {
@@ -1061,11 +1079,11 @@
     window.addEventListener('DOMContentLoaded', () => {
         console.log('[DOMContentLoaded] Page ready, waiting for Monaco loader');
 
-        // Wait for Monaco loader to be available
+        // Wait for Monaco's require to be available (stored separately)
         const waitForMonaco = setInterval(() => {
-            if (typeof require !== 'undefined' && typeof require.config === 'function') {
+            if (typeof window.monacoRequire !== 'undefined' && typeof window.monacoRequire.config === 'function') {
                 clearInterval(waitForMonaco);
-                console.log('[DOMContentLoaded] Monaco loader ready, initializing');
+                console.log('[DOMContentLoaded] Monaco require ready, initializing');
                 initializeMonaco(() => {
                     console.log('[DOMContentLoaded] Monaco initialization complete');
                     // Attach event listeners after Monaco is ready
