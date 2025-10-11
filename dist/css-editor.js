@@ -782,6 +782,28 @@ function attachEventListeners() {
     console.log('[CSS Editor] All event listeners registered');
 }
 
+// Handle window resize to update editor layouts
+let resizeTimeout;
+window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+        console.log('[resize] Window resized, updating editor layouts');
+        const activeEditors = Object.keys(editorState).filter(role => editorState[role].active && editorState[role].editor);
+        console.log('[resize] Active editors:', activeEditors);
+
+        activeEditors.forEach(role => {
+            const state = editorState[role];
+            const container = document.getElementById(`editor-${role}`);
+            if (container) {
+                const rect = container.getBoundingClientRect();
+                console.log(`[resize] ${role} container size: ${rect.width}x${rect.height}`);
+                state.editor.layout({ width: rect.width, height: rect.height });
+                console.log(`[resize] Layout updated for ${role}`);
+            }
+        });
+    }, 100);
+});
+
 // Initialize Monaco Editor on page load
 window.addEventListener('DOMContentLoaded', () => {
     console.log('[DOMContentLoaded] Page ready, waiting for Monaco loader');

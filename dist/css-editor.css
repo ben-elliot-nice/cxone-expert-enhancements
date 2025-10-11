@@ -13,6 +13,7 @@
     max-width: 1600px;
     margin: 0 auto;
     padding: 2rem;
+    overflow-x: hidden;
 }
 
 #css-editor-app .loading {
@@ -220,6 +221,8 @@
     gap: 0;
     height: 690px;
     background: #1e1e1e;
+    width: 100%;
+    overflow: hidden;
 }
 
 #css-editor-app .editors-grid.cols-1 {
@@ -242,6 +245,8 @@
     position: relative;
     height: 690px;
     border-right: 1px solid #444;
+    min-width: 0;
+    overflow: hidden;
 }
 
 #css-editor-app .editor-pane:last-child {
@@ -282,6 +287,8 @@
 
 #css-editor-app .editor-instance {
     height: 650px;
+    width: 100%;
+    overflow: hidden;
 }
 
 #css-editor-app .btn {
