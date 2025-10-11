@@ -1,17 +1,22 @@
 # CXone Expert CSS Editor
 
-A modern CSS editor interface for the CXone Expert (MindTouch) legacy control panel with toggle-based split-view editing.
+A modern CSS editor interface for the CXone Expert (MindTouch) legacy control panel with toggle-based split-view editing. Now available as a **floating overlay** that can be embedded anywhere on your CX1 site!
 
 ## Features
 
+- **🎈 Floating Overlay Mode** - Embeddable JavaScript that creates a draggable, resizable CSS editor overlay
+- **🔴 Live CSS Preview** - See your CSS changes reflected instantly in the page (no save required!)
 - **Monaco Editor Integration** - Same editor as VS Code with full CSS syntax highlighting
 - **Toggle-Based Split View** - Show/hide up to 3 editors simultaneously
 - **Multiple Role Support** - Edit CSS for all user roles (All Roles, Anonymous, Community Member, Pro Member, Admin, Legacy Browser)
+- **Draggable & Resizable** - Move and resize the editor window to fit your workflow
+- **Mobile Responsive** - Automatically adapts to smaller screens
 - **State Management** - CSS content persists even when editors are toggled off
+- **localStorage Persistence** - Your changes survive page reloads
 - **Export Functionality** - Export individual or active CSS files
 - **Direct Save** - Saves changes directly back to the legacy control panel
 - **CSRF Protection** - Automatically handles CSRF tokens
-- **localStorage Config** - Authentication config persists across sessions
+- **Dirty State Tracking** - Visual indicators (✓/●) show saved vs unsaved changes
 
 ## Project Structure
 
@@ -21,15 +26,49 @@ expert-css-editor/
 ├── dist/                    # Deployable files
 │   ├── css-editor.css      # Styles
 │   ├── css-editor.js       # Application logic
+│   ├── css-editor-embed.js # 🆕 Embeddable loader (floating overlay)
 │   ├── index.html          # Full HTML page
-│   └── cxone-embed.html    # Minimal HTML for pasting into CXone Expert
+│   ├── cxone-embed.html    # Minimal HTML for pasting into CXone Expert
+│   └── embed-demo.html     # 🆕 Demo page showing the floating overlay
 ├── deploy.js               # Deployment script for Digital Ocean Spaces
 ├── .env                    # Environment variables (DO credentials)
 ├── package.json            # Dependencies and scripts
 └── README.md              # This file
 ```
 
-## Quick Start
+## 🚀 Quick Start - Floating Overlay (Recommended!)
+
+### Option 1: Single-Line Embed (Easiest!)
+
+Add this **one line** to the `<head>` of your CX1 site:
+
+```html
+<script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/media/misc/expert-css/css-editor-embed.js"></script>
+```
+
+That's it! A floating CSS editor toggle button (`</>`) will appear in the top-right corner.
+
+**Try the demo**: Open `dist/embed-demo.html` in your browser to see it in action!
+
+### What you get:
+- 🔘 Floating toggle button in top-right corner
+- 📦 Draggable editor overlay
+- 📏 Resizable window (drag bottom-right corner)
+- 🔴 **Live CSS preview** - changes appear instantly!
+- 💾 Auto-saves to localStorage
+- 📱 Mobile responsive
+
+### Usage:
+1. Click the `</>` button to open the editor
+2. Click a role button (e.g., "All Roles") to activate an editor
+3. Edit CSS and watch changes apply live to the page
+4. Drag the purple header to move the window
+5. Drag the bottom-right corner to resize
+6. Click "Save All" when ready to persist changes to the server
+
+---
+
+## 🛠️ Development & Deployment
 
 ### 1. Installation
 
@@ -57,12 +96,15 @@ npm run deploy
 This uploads `css-editor.css` and `css-editor.js` to your DO Spaces bucket.
 
 **Public URLs**:
-- CSS: https://benelliot-nice.sgp1.cdn.digitaloceanspaces.com/media/misc/expert-css/css-editor.css
-- JS: https://benelliot-nice.sgp1.cdn.digitaloceanspaces.com/media/misc/expert-css/css-editor.js
+- Embed (floating overlay): https://benelliot-nice.sgp1.digitaloceanspaces.com/media/misc/expert-css/css-editor-embed.js
+- CSS: https://benelliot-nice.sgp1.digitaloceanspaces.com/media/misc/expert-css/css-editor.css
+- JS: https://benelliot-nice.sgp1.digitaloceanspaces.com/media/misc/expert-css/css-editor.js
 
 ### 4. Use in CXone Expert
 
-Copy/paste the contents of `dist/cxone-embed.html` into the CXone Expert custom HTML field.
+**Option A (Recommended):** Add the embed script to your site's `<head>` tag for a floating overlay editor.
+
+**Option B (Traditional):** Copy/paste the contents of `dist/cxone-embed.html` into the CXone Expert custom HTML field for an inline editor.
 
 ## Development Workflow
 
@@ -181,14 +223,17 @@ Saves CSS to legacy system.
 
 ## Future Enhancements
 
+- [x] ~~Live preview~~ ✅ **DONE!** (See floating overlay mode)
+- [x] ~~Draggable/resizable editor~~ ✅ **DONE!**
 - [ ] Dynamic authentication (OAuth or session management)
 - [ ] Diff view to see changes before saving
-- [ ] CSS validation and linting
+- [ ] Enhanced CSS validation and linting
 - [ ] Version history
 - [ ] Undo/redo functionality
 - [ ] Dark/light theme toggle
 - [ ] CSS minification option
-- [ ] Live preview (if possible)
+- [ ] Fullscreen mode
+- [ ] Keyboard shortcuts (Ctrl+S to save, etc.)
 
 ## Security Notes
 

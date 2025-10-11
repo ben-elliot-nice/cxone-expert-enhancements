@@ -50,6 +50,8 @@ let linterReady = false;
 let originalContent = {}; // Store original CSS from API
 let isMobileView = false; // Track if we're in mobile view (< 1080px)
 let saveToLocalStorageDebounceTimer = null; // Debounce timer for localStorage saves
+let livePreviewStyleTag = null; // Style tag for live CSS preview injection
+let livePreviewDebounceTimer = null; // Debounce timer for live preview updates
 
 function getActiveCount() {
     return Object.values(editorState).filter(s => s.active).length;
@@ -146,6 +148,75 @@ function clearCSSFromLocalStorage() {
         console.log('[clearCSSFromLocalStorage] Cleared CSS content from localStorage');
     } catch (error) {
         console.warn('[clearCSSFromLocalStorage] Failed to clear localStorage:', error);
+    }
+}
+
+/**
+ * Initialize or get the live preview style tag
+ */
+function getLivePreviewStyleTag() {
+    if (!livePreviewStyleTag) {
+        livePreviewStyleTag = document.createElement('style');
+        livePreviewStyleTag.id = 'css-editor-live-preview';
+        livePreviewStyleTag.setAttribute('data-source', 'CSS Editor Live Preview');
+        document.head.appendChild(livePreviewStyleTag);
+        console.log('[getLivePreviewStyleTag] Created live preview style tag');
+    }
+    return livePreviewStyleTag;
+}
+
+/**
+ * Update live CSS preview in the page (debounced)
+ */
+function updateLivePreview() {
+    // Clear existing timer
+    if (livePreviewDebounceTimer) {
+        clearTimeout(livePreviewDebounceTimer);
+    }
+
+    // Set new timer - update after 300ms of inactivity
+    livePreviewDebounceTimer = setTimeout(() => {
+        performLivePreviewUpdate();
+        livePreviewDebounceTimer = null;
+    }, 300);
+}
+
+/**
+ * Actually perform the live preview update
+ */
+function performLivePreviewUpdate() {
+    try {
+        const styleTag = getLivePreviewStyleTag();
+
+        // Collect all CSS from active editors
+        // In the CXone site, we'd want to inject the "all" role CSS plus any role-specific CSS
+        // For now, we'll combine all dirty (modified) editors' CSS
+        let combinedCSS = '';
+
+        Object.keys(editorState).forEach(role => {
+            const state = editorState[role];
+            // Include CSS from editors that have modifications
+            if (state.content && state.content.trim()) {
+                combinedCSS += `\n/* CSS Editor Preview: ${state.label} */\n`;
+                combinedCSS += state.content;
+                combinedCSS += '\n';
+            }
+        });
+
+        styleTag.textContent = combinedCSS;
+        console.log(`[performLivePreviewUpdate] Updated live preview: ${combinedCSS.length} characters`);
+    } catch (error) {
+        console.warn('[performLivePreviewUpdate] Failed to update live preview:', error);
+    }
+}
+
+/**
+ * Clear live preview CSS
+ */
+function clearLivePreview() {
+    if (livePreviewStyleTag) {
+        livePreviewStyleTag.textContent = '';
+        console.log('[clearLivePreview] Cleared live preview');
     }
 }
 
@@ -561,6 +632,9 @@ function createMonacoEditor(role) {
 
         // Save to localStorage with debounce (500ms after typing stops)
         debouncedSaveCSSToLocalStorage();
+
+        // Update live preview with debounce (300ms after typing stops)
+        updateLivePreview();
     });
 
     state.editor = editor;
@@ -833,6 +907,9 @@ function initializeEditors(cssData) {
         updateGrid();
         updateToggleButtons();
     }
+
+    // STEP 5: Initialize live preview with current content
+    performLivePreviewUpdate();
 }
 
 async function loadCSS() {

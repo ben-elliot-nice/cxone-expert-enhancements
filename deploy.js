@@ -20,6 +20,7 @@ const s3 = new S3Client({
 const distFiles = [
   { local: 'dist/css-editor.css', remote: 'media/misc/expert-css/css-editor.css', contentType: 'text/css' },
   { local: 'dist/css-editor.js', remote: 'media/misc/expert-css/css-editor.js', contentType: 'application/javascript' },
+  { local: 'dist/css-editor-embed.js', remote: 'media/misc/expert-css/css-editor-embed.js', contentType: 'application/javascript' },
 ];
 
 async function uploadFile(localPath, s3Key, contentType) {
