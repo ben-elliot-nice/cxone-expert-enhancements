@@ -171,7 +171,13 @@ function updateGrid() {
                         <span class="editor-pane-title">${state.label}</span>
                     </div>
                     <div class="editor-pane-actions">
-                        <button class="editor-pane-save" data-save-role="${role}">Save</button>
+                        <div class="editor-save-dropdown">
+                            <button class="editor-pane-save" data-save-role="${role}">Save</button>
+                            <button class="editor-save-dropdown-toggle" data-dropdown-role="${role}">▼</button>
+                            <div class="editor-save-dropdown-menu" data-menu-role="${role}">
+                                <button class="editor-dropdown-item" data-revert-role="${role}">Revert Changes</button>
+                            </div>
+                        </div>
                         <button class="editor-pane-export" data-export-role="${role}">Export</button>
                     </div>
                 </div>
@@ -182,6 +188,22 @@ function updateGrid() {
         // Add click listener to save button
         const saveBtn = pane.querySelector('.editor-pane-save');
         saveBtn.addEventListener('click', () => saveSinglePane(role));
+
+        // Add click listener to dropdown toggle
+        const dropdownToggle = pane.querySelector('.editor-save-dropdown-toggle');
+        dropdownToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleEditorDropdown(role);
+        });
+
+        // Add click listener to revert button
+        const revertBtn = pane.querySelector(`[data-revert-role="${role}"]`);
+        revertBtn.addEventListener('click', () => {
+            revertSinglePane(role);
+            // Close dropdown after action
+            const menu = document.querySelector(`[data-menu-role="${role}"]`);
+            if (menu) menu.classList.remove('show');
+        });
 
         // Add click listener to export button
         const exportBtn = pane.querySelector('.editor-pane-export');
@@ -645,7 +667,7 @@ async function saveSinglePane(role) {
     const state = editorState[role];
     if (!state.isDirty) {
         console.log(`[saveSinglePane] ${role} has no changes, skipping save`);
-        showMessage(`${state.label} has no unsaved changes`, 'success');
+        showMessage(`"${state.label}" has no unsaved changes`, 'success');
         return;
     }
 
@@ -707,7 +729,7 @@ async function saveSinglePane(role) {
             state.isDirty = false;
             updateStatusIcon(role);
 
-            showMessage(`${state.label} saved successfully!`, 'success');
+            showMessage(`"${state.label}" saved successfully!`, 'success');
         } else {
             throw new Error(`Failed to save: ${response.status} ${response.statusText}`);
         }
@@ -824,6 +846,63 @@ async function saveCSS() {
 }
 window.saveCSS = saveCSS;
 
+
+function revertSinglePane(role) {
+    console.log(`[revertSinglePane] Reverting ${role} to original content`);
+
+    if (!originalContent[role]) {
+        showMessage('No original content to revert to', 'error');
+        return;
+    }
+
+    const state = editorState[role];
+
+    // Confirm with user if there are unsaved changes
+    if (state.isDirty) {
+        if (!confirm(`Are you sure you want to revert ${state.label}? This will discard unsaved changes for this editor only.`)) {
+            console.log(`[revertSinglePane] User cancelled revert for ${role}`);
+            return;
+        }
+    }
+
+    // Revert content to original
+    state.content = originalContent[role];
+
+    // If editor is active, update its content
+    if (state.editor) {
+        state.editor.setValue(state.content);
+        console.log(`[revertSinglePane] Reverted ${role} editor: ${state.content.length} chars`);
+    }
+
+    // Mark as clean
+    state.isDirty = false;
+    updateStatusIcon(role);
+
+    showMessage(`"${state.label}" reverted to original content.`, 'success');
+    console.log(`[revertSinglePane] Revert complete for ${role}`);
+}
+window.revertSinglePane = revertSinglePane;
+
+function toggleEditorDropdown(role) {
+    const menu = document.querySelector(`[data-menu-role="${role}"]`);
+    if (!menu) return;
+
+    // Close all other editor dropdowns
+    document.querySelectorAll('.editor-save-dropdown-menu.show').forEach(m => {
+        if (m !== menu) m.classList.remove('show');
+    });
+
+    menu.classList.toggle('show');
+}
+
+// Close editor dropdowns when clicking outside
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.editor-save-dropdown')) {
+        document.querySelectorAll('.editor-save-dropdown-menu.show').forEach(menu => {
+            menu.classList.remove('show');
+        });
+    }
+});
 
 function discardChanges() {
     console.log('[discardChanges] Reverting all changes to original content');
