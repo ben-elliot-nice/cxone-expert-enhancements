@@ -2,10 +2,12 @@
   "name": "expert-css-editor",
   "version": "1.0.0",
   "description": "A modern CSS editor interface for CXone Expert legacy control panel",
+  "type": "module",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "deploy": "node deploy.js"
   },
   "keywords": [
     "css",
@@ -16,8 +18,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.0.0",
     "axios": "^1.6.2",
     "cheerio": "^1.0.0-rc.12",
+    "dotenv": "^16.0.0",
     "express": "^4.18.2"
   },
   "devDependencies": {
