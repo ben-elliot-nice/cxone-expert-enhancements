@@ -815,7 +815,8 @@ function createMonacoEditor(role) {
         folding: true,
         bracketPairColorization: {
             enabled: true
-        }
+        },
+        fixedOverflowWidgets: true  // Attach suggest/color widgets to body to prevent clipping
     });
 
     // Initialize CSS Linter if available
