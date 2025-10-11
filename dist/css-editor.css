@@ -289,6 +289,11 @@
     overflow: hidden;
 }
 
+/* Overlay mode: remove padding, keep fixed heights for now */
+#css-editor-overlay #css-editor-app.container {
+    padding: 0;
+}
+
 #css-editor-app .editors-grid.cols-1 {
     grid-template-columns: 1fr;
 }

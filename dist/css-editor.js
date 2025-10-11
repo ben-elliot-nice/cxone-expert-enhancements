@@ -43,6 +43,9 @@ const editorState = {
     grape: { active: false, editor: null, content: '', label: 'Legacy Browser', isDirty: false }
 };
 
+// Expose to window for embed script access
+window.editorState = editorState;
+
 const MAX_ACTIVE_EDITORS = 3;
 let csrfToken = '';
 let monacoReady = false;
@@ -52,6 +55,7 @@ let isMobileView = false; // Track if we're in mobile view (< 1080px)
 let saveToLocalStorageDebounceTimer = null; // Debounce timer for localStorage saves
 let livePreviewStyleTag = null; // Style tag for live CSS preview injection
 let livePreviewDebounceTimer = null; // Debounce timer for live preview updates
+// Note: Live preview flag is now stored in window.cssEditorEnableLivePreview (controlled by overlay toggle button)
 
 function getActiveCount() {
     return Object.values(editorState).filter(s => s.active).length;
@@ -169,6 +173,17 @@ function getLivePreviewStyleTag() {
  * Update live CSS preview in the page (debounced)
  */
 function updateLivePreview() {
+    // Check the dynamic flag (can be toggled by overlay button)
+    const isEnabled = window.cssEditorEnableLivePreview || false;
+
+    // Only update if live preview is enabled
+    if (!isEnabled) {
+        console.log('[updateLivePreview] Live preview disabled, skipping');
+        return;
+    }
+
+    console.log('[updateLivePreview] Scheduling live preview update');
+
     // Clear existing timer
     if (livePreviewDebounceTimer) {
         clearTimeout(livePreviewDebounceTimer);
@@ -219,6 +234,10 @@ function clearLivePreview() {
         console.log('[clearLivePreview] Cleared live preview');
     }
 }
+
+// Expose functions for embed script
+window.updateLivePreview = updateLivePreview;
+window.clearLivePreview = clearLivePreview;
 
 
 function updateToggleButtons() {
@@ -274,7 +293,23 @@ function updateToggleButtons() {
 
 function checkViewportWidth() {
     const wasMobileView = isMobileView;
-    isMobileView = window.innerWidth < 1080;
+
+    // Check if we're in overlay mode (inside #css-editor-overlay)
+    const editorApp = document.getElementById('css-editor-app');
+    const isInOverlay = editorApp && editorApp.closest('#css-editor-overlay');
+
+    if (isInOverlay) {
+        // In overlay mode - use overlay width
+        const overlay = document.getElementById('css-editor-overlay');
+        if (overlay) {
+            isMobileView = overlay.offsetWidth < 1080;
+            console.log(`[checkViewportWidth] Overlay mode: width=${overlay.offsetWidth}px, mobile=${isMobileView}`);
+        }
+    } else {
+        // Standard page mode - use window width
+        isMobileView = window.innerWidth < 1080;
+        console.log(`[checkViewportWidth] Page mode: width=${window.innerWidth}px, mobile=${isMobileView}`);
+    }
 
     // If view mode changed, rebuild the toggle bar
     if (wasMobileView !== isMobileView) {
@@ -305,6 +340,7 @@ function checkViewportWidth() {
 
     return isMobileView;
 }
+window.checkViewportWidth = checkViewportWidth;
 
 function rebuildToggleBar() {
     console.log(`[rebuildToggleBar] Rebuilding toggle bar for ${isMobileView ? 'mobile' : 'desktop'} view`);
@@ -546,6 +582,16 @@ function updateGrid() {
     });
 
     console.log('[updateGrid] Grid update complete');
+
+    // If in overlay mode, trigger height recalculation
+    const editorApp = document.getElementById('css-editor-app');
+    const isInOverlay = editorApp && editorApp.closest('#css-editor-overlay');
+    if (isInOverlay && typeof window.cssEditorUpdateHeights === 'function') {
+        // Delay slightly to let DOM settle
+        setTimeout(() => {
+            window.cssEditorUpdateHeights();
+        }, 50);
+    }
 }
 
 function createMonacoEditor(role) {
@@ -908,8 +954,11 @@ function initializeEditors(cssData) {
         updateToggleButtons();
     }
 
-    // STEP 5: Initialize live preview with current content
-    performLivePreviewUpdate();
+    // STEP 5: Initialize live preview with current content (only if enabled)
+    const isLivePreviewEnabled = window.cssEditorEnableLivePreview || false;
+    if (isLivePreviewEnabled) {
+        performLivePreviewUpdate();
+    }
 }
 
 async function loadCSS() {
@@ -1761,8 +1810,25 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // Set initial mobile view flag WITHOUT rebuilding toggle bar yet
     // (we'll rebuild after editors are loaded)
-    isMobileView = window.innerWidth < 1080;
-    console.log(`[DOMContentLoaded] Initial view mode: ${isMobileView ? 'mobile' : 'desktop'}`);
+    // Check if we're in overlay mode
+    const editorApp = document.getElementById('css-editor-app');
+    const isInOverlay = editorApp && editorApp.closest('#css-editor-overlay');
+
+    if (isInOverlay) {
+        const overlay = document.getElementById('css-editor-overlay');
+        isMobileView = overlay ? overlay.offsetWidth < 1080 : false;
+        console.log(`[DOMContentLoaded] Initial view mode (overlay): ${isMobileView ? 'mobile' : 'desktop'}`);
+    } else {
+        // Direct page embed mode - clear any existing live preview
+        isMobileView = window.innerWidth < 1080;
+        console.log(`[DOMContentLoaded] Initial view mode (page): ${isMobileView ? 'mobile' : 'desktop'}`);
+        console.log(`[DOMContentLoaded] Direct embed mode detected - clearing any existing live preview`);
+        const existingPreviewTag = document.getElementById('css-editor-live-preview');
+        if (existingPreviewTag) {
+            existingPreviewTag.remove();
+            console.log(`[DOMContentLoaded] Removed existing live preview style tag`);
+        }
+    }
 
     // Wait for Monaco's require to be available (stored separately)
     const waitForMonaco = setInterval(() => {
