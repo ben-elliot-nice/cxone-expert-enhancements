@@ -360,6 +360,50 @@
     }
 
     /**
+     * Save overlay dimensions to localStorage
+     */
+    function saveOverlayDimensions() {
+        try {
+            const dimensions = {
+                width: overlay.style.width,
+                height: overlay.style.height,
+                left: overlay.style.left,
+                top: overlay.style.top
+            };
+            localStorage.setItem('cssEditorOverlayDimensions', JSON.stringify(dimensions));
+            console.log('[CSS Editor Embed] Saved overlay dimensions:', dimensions);
+        } catch (error) {
+            console.warn('[CSS Editor Embed] Failed to save overlay dimensions:', error);
+        }
+    }
+
+    /**
+     * Restore overlay dimensions from localStorage
+     */
+    function restoreOverlayDimensions() {
+        try {
+            const saved = localStorage.getItem('cssEditorOverlayDimensions');
+            if (saved) {
+                const dimensions = JSON.parse(saved);
+                console.log('[CSS Editor Embed] Restoring overlay dimensions:', dimensions);
+
+                if (dimensions.width) overlay.style.width = dimensions.width;
+                if (dimensions.height) overlay.style.height = dimensions.height;
+                if (dimensions.left) overlay.style.left = dimensions.left;
+                if (dimensions.top) overlay.style.top = dimensions.top;
+
+                // Clear right positioning when restoring left
+                overlay.style.right = 'auto';
+
+                return true;
+            }
+        } catch (error) {
+            console.warn('[CSS Editor Embed] Failed to restore overlay dimensions:', error);
+        }
+        return false;
+    }
+
+    /**
      * Toggle live preview on/off
      */
     function toggleLivePreview() {
@@ -405,6 +449,13 @@
             toggleButton.style.opacity = '0.7';
             console.log('[CSS Editor Embed] Editor opened');
 
+            // Save open state to localStorage
+            try {
+                localStorage.setItem('cssEditorOverlayOpen', 'true');
+            } catch (error) {
+                console.warn('[CSS Editor Embed] Failed to save overlay state:', error);
+            }
+
             // Update editor heights now that overlay is visible
             // Use setTimeout to let the browser render first
             setTimeout(() => {
@@ -414,6 +465,13 @@
             overlay.style.display = 'none';
             toggleButton.style.opacity = '1';
             console.log('[CSS Editor Embed] Editor closed');
+
+            // Save closed state to localStorage
+            try {
+                localStorage.setItem('cssEditorOverlayOpen', 'false');
+            } catch (error) {
+                console.warn('[CSS Editor Embed] Failed to save overlay state:', error);
+            }
         }
     }
 
@@ -458,6 +516,9 @@
         if (!isDragging) return;
         isDragging = false;
         overlayHeader.style.cursor = 'move';
+
+        // Save position and size to localStorage after drag
+        saveOverlayDimensions();
     }
 
     /**
@@ -632,6 +693,9 @@
         if (!isResizing) return;
         isResizing = false;
         resizeDirection = null;
+
+        // Save position and size to localStorage after resize
+        saveOverlayDimensions();
     }
 
     /**
@@ -671,6 +735,10 @@
             // Create UI elements
             createToggleButton();
             createOverlay();
+
+            // Restore saved dimensions if available
+            restoreOverlayDimensions();
+
             loadEditorContent();
 
             // Load main editor JS last (it auto-initializes on DOMContentLoaded)
@@ -702,6 +770,20 @@
             }, 500);
 
             console.log('[CSS Editor Embed] Initialization complete!');
+
+            // Restore overlay visibility state from localStorage
+            try {
+                const savedState = localStorage.getItem('cssEditorOverlayOpen');
+                if (savedState === 'true') {
+                    console.log('[CSS Editor Embed] Restoring overlay open state from localStorage');
+                    // Open the overlay after a short delay to ensure everything is initialized
+                    setTimeout(() => {
+                        toggleEditor();
+                    }, 600);
+                }
+            } catch (error) {
+                console.warn('[CSS Editor Embed] Failed to restore overlay state:', error);
+            }
         } catch (error) {
             console.error('[CSS Editor Embed] Initialization failed:', error);
         }
