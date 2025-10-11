@@ -1755,6 +1755,8 @@ function attachEventListeners() {
             toggleDropdown();
         });
         console.log('[attachEventListeners] Dropdown toggle listener attached');
+    } else {
+        console.warn('[attachEventListeners] Dropdown toggle button not found!');
     }
 
     if (discardBtn) {
@@ -1777,6 +1779,8 @@ function attachEventListeners() {
 
     console.log('[CSS Editor] All event listeners registered');
 }
+// Expose for overlay embed to call after injecting HTML
+window.attachEventListeners = attachEventListeners;
 
 // Handle window resize to update editor layouts and check viewport width
 let resizeTimeout;
@@ -1796,8 +1800,11 @@ window.addEventListener('resize', () => {
             const container = document.getElementById(`editor-${role}`);
             if (container) {
                 const rect = container.getBoundingClientRect();
-                console.log(`[resize] ${role} container size: ${rect.width}x${rect.height}`);
-                state.editor.layout({ width: rect.width, height: rect.height });
+                // Floor dimensions to avoid sub-pixel issues
+                const width = Math.floor(rect.width);
+                const height = Math.floor(rect.height);
+                console.log(`[resize] ${role} container size: ${width}x${height}`);
+                state.editor.layout({ width, height });
                 console.log(`[resize] Layout updated for ${role}`);
             }
         });
