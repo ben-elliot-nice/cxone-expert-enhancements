@@ -246,7 +246,7 @@
         overlayContent.id = 'css-editor-overlay-content';
         overlayContent.style.cssText = `
             flex: 1;
-            overflow: auto;
+            overflow: hidden;
             background: #f5f5f5;
         `;
 
@@ -485,7 +485,7 @@
         const deltaX = e.clientX - resizeStartX;
         const deltaY = e.clientY - resizeStartY;
 
-        const minWidth = 800;
+        const minWidth = 600;
         const minHeight = 600;
 
         let newWidth = overlayStartWidth;
@@ -611,7 +611,10 @@
                     const container = document.getElementById(`editor-${role}`);
                     if (container) {
                         const rect = container.getBoundingClientRect();
-                        state.editor.layout({ width: rect.width, height: rect.height });
+                        // Floor dimensions to avoid sub-pixel issues
+                        const width = Math.floor(rect.width);
+                        const height = Math.floor(rect.height);
+                        state.editor.layout({ width, height });
                     }
                 }
             });
@@ -675,6 +678,14 @@
 
             // Wait a bit for the main JS to initialize, then manually trigger if needed
             setTimeout(() => {
+                // Since we injected HTML after DOMContentLoaded fired, manually attach event listeners
+                if (typeof window.attachEventListeners === 'function') {
+                    console.log('[CSS Editor Embed] Manually attaching event listeners');
+                    window.attachEventListeners();
+                } else {
+                    console.warn('[CSS Editor Embed] attachEventListeners not found on window');
+                }
+
                 // Check if editor hasn't auto-initialized
                 if (typeof window.loadCSS === 'function') {
                     const loading = document.getElementById('loading');
