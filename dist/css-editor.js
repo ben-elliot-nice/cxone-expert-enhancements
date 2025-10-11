@@ -49,6 +49,7 @@ let monacoReady = false;
 let linterReady = false;
 let originalContent = {}; // Store original CSS from API
 let isMobileView = false; // Track if we're in mobile view (< 1080px)
+let saveToLocalStorageDebounceTimer = null; // Debounce timer for localStorage saves
 
 function getActiveCount() {
     return Object.values(editorState).filter(s => s.active).length;
@@ -85,6 +86,67 @@ function loadActiveEditors() {
         console.warn('[loadActiveEditors] Failed to load from localStorage:', error);
     }
     return 0;
+}
+
+function saveCSSToLocalStorage() {
+    try {
+        const data = {
+            modified: {},
+            original: {}
+        };
+        Object.keys(editorState).forEach(role => {
+            data.modified[role] = editorState[role].content;
+            data.original[role] = originalContent[role];
+        });
+        localStorage.setItem('cssEditorContent', JSON.stringify(data));
+        console.log('[saveCSSToLocalStorage] Saved CSS content and original baseline to localStorage');
+    } catch (error) {
+        console.warn('[saveCSSToLocalStorage] Failed to save to localStorage:', error);
+    }
+}
+
+function debouncedSaveCSSToLocalStorage() {
+    // Clear existing timer
+    if (saveToLocalStorageDebounceTimer) {
+        clearTimeout(saveToLocalStorageDebounceTimer);
+    }
+
+    // Set new timer - save after 500ms of inactivity
+    saveToLocalStorageDebounceTimer = setTimeout(() => {
+        saveCSSToLocalStorage();
+        saveToLocalStorageDebounceTimer = null;
+    }, 500);
+}
+
+function loadCSSFromLocalStorage() {
+    try {
+        const saved = localStorage.getItem('cssEditorContent');
+        if (saved) {
+            const data = JSON.parse(saved);
+
+            // Handle legacy format (plain object) or new format (modified/original)
+            if (data.modified && data.original) {
+                console.log('[loadCSSFromLocalStorage] Found CSS content with original baseline in localStorage');
+                return data;
+            } else {
+                // Legacy format - treat as modified content only
+                console.log('[loadCSSFromLocalStorage] Found legacy CSS content in localStorage (no baseline)');
+                return { modified: data, original: null };
+            }
+        }
+    } catch (error) {
+        console.warn('[loadCSSFromLocalStorage] Failed to load from localStorage:', error);
+    }
+    return null;
+}
+
+function clearCSSFromLocalStorage() {
+    try {
+        localStorage.removeItem('cssEditorContent');
+        console.log('[clearCSSFromLocalStorage] Cleared CSS content from localStorage');
+    } catch (error) {
+        console.warn('[clearCSSFromLocalStorage] Failed to clear localStorage:', error);
+    }
 }
 
 
@@ -476,7 +538,25 @@ function createMonacoEditor(role) {
         // Update status icon if dirty state changed
         if (wasDirty !== state.isDirty) {
             updateStatusIcon(role);
+
+            // If this editor just became clean, check if ALL editors are now clean
+            if (!state.isDirty) {
+                const allClean = Object.values(editorState).every(s => !s.isDirty);
+                if (allClean) {
+                    console.log(`[createMonacoEditor] Editor ${role} became clean and all editors are clean, clearing localStorage`);
+                    // Cancel any pending debounced save
+                    if (saveToLocalStorageDebounceTimer) {
+                        clearTimeout(saveToLocalStorageDebounceTimer);
+                        saveToLocalStorageDebounceTimer = null;
+                    }
+                    clearCSSFromLocalStorage();
+                    return; // Don't save to localStorage since we just cleared it
+                }
+            }
         }
+
+        // Save to localStorage with debounce (500ms after typing stops)
+        debouncedSaveCSSToLocalStorage();
     });
 
     state.editor = editor;
@@ -712,12 +792,23 @@ function initializeEditors(cssData) {
         return;
     }
 
-    // STEP 1: Load CSS data into state first and store original
+    // STEP 1: Load CSS data into state first and store original baseline
     Object.keys(editorState).forEach(role => {
         const state = editorState[role];
         state.content = cssData.css[role] || '';
-        originalContent[role] = cssData.css[role] || ''; // Store original
-        console.log(`[initializeEditors] Loaded ${role}: ${state.content.length} characters`);
+
+        // Use provided original baseline if available, otherwise use current content as baseline
+        if (cssData.original && cssData.original[role] !== undefined) {
+            originalContent[role] = cssData.original[role];
+            console.log(`[initializeEditors] Loaded ${role}: ${state.content.length} chars (original baseline: ${originalContent[role].length} chars)`);
+        } else {
+            originalContent[role] = cssData.css[role] || '';
+            console.log(`[initializeEditors] Loaded ${role}: ${state.content.length} chars (using as baseline)`);
+        }
+
+        // Calculate initial dirty state by comparing content to original baseline
+        state.isDirty = state.content !== originalContent[role];
+        console.log(`[initializeEditors] ${role} isDirty: ${state.isDirty}`);
     });
 
     console.log('[initializeEditors] CSS loaded into state and original content stored');
@@ -743,8 +834,96 @@ async function loadCSS() {
     document.getElementById('loading').style.display = 'block';
     document.getElementById('message-area').innerHTML = '';
 
+    // Check localStorage first
+    const localData = loadCSSFromLocalStorage();
+    if (localData) {
+        console.log('[loadCSS] Found CSS in localStorage, using cached content');
+
+        // If we have original baseline in localStorage, use it. Otherwise fetch from API.
+        let apiOriginalContent = localData.original;
+
+        if (!apiOriginalContent) {
+            console.log('[loadCSS] No baseline in localStorage, fetching from API');
+            try {
+                const url = '/deki/cp/custom_css.php?params=%2F';
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Cache-Control': 'max-age=0'
+                    },
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const html = await response.text();
+                    const parsedData = parseHTML(html);
+                    csrfToken = parsedData.csrf_token;
+                    apiOriginalContent = parsedData.css;
+                    console.log('[loadCSS] Fetched baseline and CSRF token from API');
+                }
+            } catch (error) {
+                console.warn('[loadCSS] Failed to fetch from API:', error);
+            }
+        } else {
+            // Still need to fetch CSRF token for saves
+            console.log('[loadCSS] Have baseline in localStorage, just fetching CSRF token');
+            try {
+                const url = '/deki/cp/custom_css.php?params=%2F';
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Cache-Control': 'max-age=0'
+                    },
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const html = await response.text();
+                    const parsedData = parseHTML(html);
+                    csrfToken = parsedData.csrf_token;
+                    console.log('[loadCSS] CSRF token fetched:', csrfToken?.substring(0, 20) + '...');
+                }
+            } catch (error) {
+                console.warn('[loadCSS] Failed to fetch CSRF token, saves will not work:', error);
+            }
+        }
+
+        // Create parsedData structure with modified content and original baseline
+        const parsedData = {
+            csrf_token: csrfToken,
+            css: localData.modified,
+            original: apiOriginalContent
+        };
+
+        // Ensure Monaco is loaded before initializing
+        if (!monacoReady) {
+            console.log('[loadCSS] Monaco not ready, loading now...');
+            await new Promise((resolve) => {
+                initializeMonaco(() => {
+                    console.log('[loadCSS] Monaco loaded via callback');
+                    resolve();
+                });
+            });
+        }
+
+        // Load CSS into state with proper original baseline
+        console.log('[loadCSS] Loading CSS from localStorage into state');
+        initializeEditors(parsedData);
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('editor-container').style.display = 'block';
+        showMessage('CSS loaded from local cache!', 'success');
+        console.log('[loadCSS] ===== LOAD CSS COMPLETE (from localStorage) =====');
+        return;
+    }
+
+    // No localStorage data, fetch from API
     const url = '/deki/cp/custom_css.php?params=%2F';
-    console.log('[loadCSS] Fetching from URL:', url);
+    console.log('[loadCSS] No localStorage data, fetching from URL:', url);
 
     try {
         const response = await fetch(url, {
@@ -921,6 +1100,13 @@ async function saveSinglePane(role) {
             state.isDirty = false;
             updateStatusIcon(role);
 
+            // Check if all editors are now clean - if so, clear localStorage
+            const allClean = Object.values(editorState).every(s => !s.isDirty);
+            if (allClean) {
+                console.log(`[saveSinglePane] All editors are clean, clearing localStorage`);
+                clearCSSFromLocalStorage();
+            }
+
             showMessage(`"${state.label}" saved successfully!`, 'success');
         } else {
             throw new Error(`Failed to save: ${response.status} ${response.statusText}`);
@@ -1019,6 +1205,9 @@ async function saveCSS() {
                 updateStatusIcon(role);
             });
 
+            // Clear localStorage since everything is now saved
+            clearCSSFromLocalStorage();
+
             showMessage('CSS saved successfully!', 'success');
         } else {
             throw new Error(`Failed to save: ${response.status} ${response.statusText}`);
@@ -1083,6 +1272,13 @@ function performRevert(role) {
     // Mark as clean
     state.isDirty = false;
     updateStatusIcon(role);
+
+    // Check if all editors are now clean - if so, clear localStorage
+    const allClean = Object.values(editorState).every(s => !s.isDirty);
+    if (allClean) {
+        console.log(`[performRevert] All editors are clean, clearing localStorage`);
+        clearCSSFromLocalStorage();
+    }
 
     // Close dropdown menu
     const menu = document.querySelector(`[data-menu-role="${role}"]`);
@@ -1160,6 +1356,9 @@ function performDiscardChanges() {
 
         updateStatusIcon(role);
     });
+
+    // Clear localStorage since we reverted all changes
+    clearCSSFromLocalStorage();
 
     // Close dropdown menu
     const dropdown = document.querySelector('.save-dropdown');
