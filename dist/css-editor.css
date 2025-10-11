@@ -265,8 +265,58 @@
     height: 40px;
 }
 
+#css-editor-app .editor-pane-title-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+#css-editor-app .editor-pane-status {
+    font-size: 0.9rem;
+    font-weight: bold;
+    line-height: 1;
+}
+
+#css-editor-app .editor-pane-status.saved {
+    color: #4caf50;
+}
+
+#css-editor-app .editor-pane-status.dirty {
+    color: #ff9800;
+}
+
 #css-editor-app .editor-pane-title {
     font-weight: 500;
+}
+
+#css-editor-app .editor-pane-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+#css-editor-app .editor-pane-save {
+    background: #0d6efd;
+    border: 1px solid #0d6efd;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+#css-editor-app .editor-pane-save:hover {
+    background: #0b5ed7;
+    border-color: #0a58ca;
+}
+
+#css-editor-app .editor-pane-save:disabled {
+    background: #6c757d;
+    border-color: #6c757d;
+    cursor: not-allowed;
+    opacity: 0.65;
 }
 
 #css-editor-app .editor-pane-export {

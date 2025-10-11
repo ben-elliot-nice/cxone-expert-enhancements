@@ -35,12 +35,12 @@ console.log('[CSS Editor] Script loaded, preparing Monaco initialization');
 
 // State management for editors
 const editorState = {
-    all: { active: false, editor: null, content: '', label: 'All Roles' },
-    anonymous: { active: false, editor: null, content: '', label: 'Anonymous' },
-    viewer: { active: false, editor: null, content: '', label: 'Community Member' },
-    seated: { active: false, editor: null, content: '', label: 'Pro Member' },
-    admin: { active: false, editor: null, content: '', label: 'Admin' },
-    grape: { active: false, editor: null, content: '', label: 'Legacy Browser' }
+    all: { active: false, editor: null, content: '', label: 'All Roles', isDirty: false },
+    anonymous: { active: false, editor: null, content: '', label: 'Anonymous', isDirty: false },
+    viewer: { active: false, editor: null, content: '', label: 'Community Member', isDirty: false },
+    seated: { active: false, editor: null, content: '', label: 'Pro Member', isDirty: false },
+    admin: { active: false, editor: null, content: '', label: 'Admin', isDirty: false },
+    grape: { active: false, editor: null, content: '', label: 'Legacy Browser', isDirty: false }
 };
 
 const MAX_ACTIVE_EDITORS = 3;
@@ -115,6 +115,22 @@ function updateToggleButtons() {
     });
 }
 
+function updateStatusIcon(role) {
+    const statusIcon = document.querySelector(`[data-status-role="${role}"]`);
+    if (!statusIcon) return;
+
+    const state = editorState[role];
+    if (state.isDirty) {
+        statusIcon.textContent = '●';
+        statusIcon.className = 'editor-pane-status dirty';
+        statusIcon.title = 'Unsaved changes';
+    } else {
+        statusIcon.textContent = '✓';
+        statusIcon.className = 'editor-pane-status saved';
+        statusIcon.title = 'Saved';
+    }
+}
+
 function updateGrid() {
     console.log('[updateGrid] Updating editor grid layout');
     const grid = document.getElementById('editors-grid');
@@ -150,12 +166,22 @@ function updateGrid() {
         pane.className = 'editor-pane';
         pane.innerHTML = `
                 <div class="editor-pane-header">
-                    <span class="editor-pane-title">${state.label}</span>
-                    <button class="editor-pane-export" data-export-role="${role}">Export</button>
+                    <div class="editor-pane-title-group">
+                        <span class="editor-pane-status ${state.isDirty ? 'dirty' : 'saved'}" data-status-role="${role}" title="${state.isDirty ? 'Unsaved changes' : 'Saved'}">${state.isDirty ? '●' : '✓'}</span>
+                        <span class="editor-pane-title">${state.label}</span>
+                    </div>
+                    <div class="editor-pane-actions">
+                        <button class="editor-pane-save" data-save-role="${role}">Save</button>
+                        <button class="editor-pane-export" data-export-role="${role}">Export</button>
+                    </div>
                 </div>
                 <div id="editor-${role}" class="editor-instance"></div>
             `;
         grid.appendChild(pane);
+
+        // Add click listener to save button
+        const saveBtn = pane.querySelector('.editor-pane-save');
+        saveBtn.addEventListener('click', () => saveSinglePane(role));
 
         // Add click listener to export button
         const exportBtn = pane.querySelector('.editor-pane-export');
@@ -223,9 +249,18 @@ function createMonacoEditor(role) {
         }
     }
 
-    // Listen for content changes to update state
+    // Listen for content changes to update state and dirty flag
     editor.onDidChangeModelContent(() => {
         state.content = editor.getValue();
+
+        // Mark as dirty if content differs from original
+        const wasDirty = state.isDirty;
+        state.isDirty = state.content !== originalContent[role];
+
+        // Update status icon if dirty state changed
+        if (wasDirty !== state.isDirty) {
+            updateStatusIcon(role);
+        }
     });
 
     state.editor = editor;
@@ -598,6 +633,100 @@ function buildMultipartBody(cssData) {
     return { body, boundary };
 }
 
+async function saveSinglePane(role) {
+    console.log(`[saveSinglePane] ===== SAVE SINGLE PANE STARTED: ${role} =====`);
+
+    if (!csrfToken) {
+        console.error('[saveSinglePane] No CSRF token available');
+        showMessage('Please reload the page first', 'error');
+        return;
+    }
+
+    const state = editorState[role];
+    if (!state.isDirty) {
+        console.log(`[saveSinglePane] ${role} has no changes, skipping save`);
+        showMessage(`${state.label} has no unsaved changes`, 'success');
+        return;
+    }
+
+    console.log(`[saveSinglePane] Using CSRF token:`, csrfToken.substring(0, 20) + '...');
+
+    const saveBtn = document.querySelector(`[data-save-role="${role}"]`);
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+    }
+
+    try {
+        console.log(`[saveSinglePane] Collecting CSS for ${role}`);
+
+        // Sync active editor to state
+        if (state.active && state.editor) {
+            state.content = state.editor.getValue();
+            console.log(`[saveSinglePane] Synced ${role} from editor to state: ${state.content.length} chars`);
+        }
+
+        // Build CSS data with all roles (only updating the specific role)
+        const cssData = {
+            csrf_token: csrfToken,
+            css_template_all: editorState.all.content,
+            css_template_anonymous: editorState.anonymous.content,
+            css_template_viewer: editorState.viewer.content,
+            css_template_seated: editorState.seated.content,
+            css_template_admin: editorState.admin.content,
+            css_template_grape: editorState.grape.content
+        };
+
+        console.log(`[saveSinglePane] Saving ${role} with ${cssData[`css_template_${role}`]?.length || 0} chars`);
+
+        const { body, boundary } = buildMultipartBody(cssData);
+
+        const url = '/deki/cp/custom_css.php?params=%2F';
+        console.log(`[saveSinglePane] Posting to URL:`, url);
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Cache-Control': 'max-age=0',
+                'Content-Type': `multipart/form-data; boundary=${boundary}`
+            },
+            credentials: 'include',
+            body: body,
+            redirect: 'follow'
+        });
+
+        console.log(`[saveSinglePane] Response status:`, response.status, response.statusText);
+
+        if (response.ok || response.redirected) {
+            console.log(`[saveSinglePane] Save successful for ${role}!`);
+
+            // Update original content and mark as clean
+            originalContent[role] = state.content;
+            state.isDirty = false;
+            updateStatusIcon(role);
+
+            showMessage(`${state.label} saved successfully!`, 'success');
+        } else {
+            throw new Error(`Failed to save: ${response.status} ${response.statusText}`);
+        }
+
+        console.log(`[saveSinglePane] ===== SAVE SINGLE PANE COMPLETE: ${role} =====`);
+
+    } catch (error) {
+        console.error(`[saveSinglePane] ===== ERROR =====`);
+        console.error(`[saveSinglePane] Error details:`, error);
+        showMessage(`Error saving ${state.label}: ${error.message}`, 'error');
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save';
+        }
+    }
+}
+window.saveSinglePane = saveSinglePane;
+
 async function saveCSS() {
     console.log('[saveCSS] ===== SAVE CSS STARTED =====');
 
@@ -668,6 +797,14 @@ async function saveCSS() {
 
         if (response.ok || response.redirected) {
             console.log('[saveCSS] Save successful!');
+
+            // Update original content for all roles and mark as clean
+            Object.keys(editorState).forEach(role => {
+                originalContent[role] = editorState[role].content;
+                editorState[role].isDirty = false;
+                updateStatusIcon(role);
+            });
+
             showMessage('CSS saved successfully!', 'success');
         } else {
             throw new Error(`Failed to save: ${response.status} ${response.statusText}`);
