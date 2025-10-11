@@ -287,7 +287,7 @@
     height: 690px;
     background: #1e1e1e;
     width: 100%;
-    overflow: hidden;
+    overflow: visible;
 }
 
 /* Overlay mode: remove padding, keep fixed heights for now */
@@ -316,7 +316,7 @@
     height: 690px;
     border-right: 1px solid #444;
     min-width: 0;
-    overflow: hidden;
+    overflow: visible;
 }
 
 #css-editor-app .editor-pane:last-child {
@@ -528,4 +528,19 @@
 
 #css-editor-app #message-area .message {
     pointer-events: auto;
+}
+
+/* Monaco Editor widget z-index fixes for overlay mode */
+.monaco-editor .suggest-widget,
+.monaco-editor .colorpicker-widget,
+.monaco-editor .parameter-hints-widget,
+.monaco-editor .monaco-hover,
+.monaco-editor .find-widget,
+.monaco-editor .context-view {
+    z-index: 10000 !important;
+}
+
+/* Ensure Monaco autocomplete is above everything */
+.monaco-editor .monaco-list-row {
+    z-index: 10001 !important;
 }

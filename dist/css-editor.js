@@ -57,6 +57,155 @@ let livePreviewStyleTag = null; // Style tag for live CSS preview injection
 let livePreviewDebounceTimer = null; // Debounce timer for live preview updates
 // Note: Live preview flag is now stored in window.cssEditorEnableLivePreview (controlled by overlay toggle button)
 
+// Autocomplete data storage
+let autocompleteData = {
+    classes: new Map(), // className -> count
+    ids: new Set(),
+    dataAttributes: new Set(),
+    cssVariables: new Map(), // --var-name -> value
+    colors: new Map(), // color value -> count
+    selectors: new Set(),
+    fontFamilies: new Set(),
+    mediaBreakpoints: new Set()
+};
+
+/**
+ * Scan the DOM for classes, IDs, and data-* attributes
+ * Excludes the CSS editor overlay to avoid suggesting editor UI classes
+ */
+function scanDOMForAutocomplete() {
+    console.log('[scanDOMForAutocomplete] Starting DOM scan');
+
+    autocompleteData.classes.clear();
+    autocompleteData.ids.clear();
+    autocompleteData.dataAttributes.clear();
+
+    // Get all elements except those inside the editor overlay
+    const allElements = document.querySelectorAll('*:not(#css-editor-overlay *):not(#css-editor-app *)');
+
+    allElements.forEach(el => {
+        // Collect classes
+        if (el.classList && el.classList.length > 0) {
+            el.classList.forEach(className => {
+                const count = autocompleteData.classes.get(className) || 0;
+                autocompleteData.classes.set(className, count + 1);
+            });
+        }
+
+        // Collect IDs
+        if (el.id && el.id.length > 0) {
+            autocompleteData.ids.add(el.id);
+        }
+
+        // Collect data-* attributes
+        if (el.attributes) {
+            Array.from(el.attributes).forEach(attr => {
+                if (attr.name.startsWith('data-')) {
+                    autocompleteData.dataAttributes.add(attr.name);
+                }
+            });
+        }
+    });
+
+    console.log(`[scanDOMForAutocomplete] Found ${autocompleteData.classes.size} unique classes, ${autocompleteData.ids.size} IDs, ${autocompleteData.dataAttributes.size} data attributes`);
+}
+
+/**
+ * Scan all loaded CSS for variables, colors, selectors, fonts, and breakpoints
+ */
+function scanCSSForAutocomplete() {
+    console.log('[scanCSSForAutocomplete] Starting CSS scan');
+
+    autocompleteData.cssVariables.clear();
+    autocompleteData.colors.clear();
+    autocompleteData.selectors.clear();
+    autocompleteData.fontFamilies.clear();
+    autocompleteData.mediaBreakpoints.clear();
+
+    // Regex patterns
+    const cssVarPattern = /--([\w-]+)\s*:\s*([^;]+)/g;
+    const colorPattern = /#[0-9a-fA-F]{3,8}\b|rgba?\([^)]+\)|hsla?\([^)]+\)|(?:aliceblue|antiquewhite|aqua|aquamarine|azure|beige|bisque|black|blanchedalmond|blue|blueviolet|brown|burlywood|cadetblue|chartreuse|chocolate|coral|cornflowerblue|cornsilk|crimson|cyan|darkblue|darkcyan|darkgoldenrod|darkgray|darkgreen|darkgrey|darkkhaki|darkmagenta|darkolivegreen|darkorange|darkorchid|darkred|darksalmon|darkseagreen|darkslateblue|darkslategray|darkslategrey|darkturquoise|darkviolet|deeppink|deepskyblue|dimgray|dimgrey|dodgerblue|firebrick|floralwhite|forestgreen|fuchsia|gainsboro|ghostwhite|gold|goldenrod|gray|green|greenyellow|grey|honeydew|hotpink|indianred|indigo|ivory|khaki|lavender|lavenderblush|lawngreen|lemonchiffon|lightblue|lightcoral|lightcyan|lightgoldenrodyellow|lightgray|lightgreen|lightgrey|lightpink|lightsalmon|lightseagreen|lightskyblue|lightslategray|lightslategrey|lightsteelblue|lightyellow|lime|limegreen|linen|magenta|maroon|mediumaquamarine|mediumblue|mediumorchid|mediumpurple|mediumseagreen|mediumslateblue|mediumspringgreen|mediumturquoise|mediumvioletred|midnightblue|mintcream|mistyrose|moccasin|navajowhite|navy|oldlace|olive|olivedrab|orange|orangered|orchid|palegoldenrod|palegreen|paleturquoise|palevioletred|papayawhip|peachpuff|peru|pink|plum|powderblue|purple|rebeccapurple|red|rosybrown|royalblue|saddlebrown|salmon|sandybrown|seagreen|seashell|sienna|silver|skyblue|slateblue|slategray|slategrey|snow|springgreen|steelblue|tan|teal|thistle|tomato|turquoise|violet|wheat|white|whitesmoke|yellow|yellowgreen)\b/gi;
+    const fontFamilyPattern = /font-family\s*:\s*([^;{]+)/gi;
+    const mediaQueryPattern = /@media[^{]*\((?:max-width|min-width)\s*:\s*([^)]+)\)/gi;
+
+    // Scan document.styleSheets
+    try {
+        Array.from(document.styleSheets).forEach(sheet => {
+            try {
+                if (!sheet.href || sheet.href.includes(window.location.hostname)) {
+                    Array.from(sheet.cssRules || []).forEach(rule => {
+                        if (rule instanceof CSSStyleRule) {
+                            // Collect selectors
+                            if (rule.selectorText) {
+                                autocompleteData.selectors.add(rule.selectorText);
+                            }
+
+                            const cssText = rule.cssText;
+
+                            // Extract CSS variables
+                            let match;
+                            while ((match = cssVarPattern.exec(cssText)) !== null) {
+                                autocompleteData.cssVariables.set('--' + match[1], match[2].trim());
+                            }
+
+                            // Extract colors
+                            while ((match = colorPattern.exec(cssText)) !== null) {
+                                const color = match[0].toLowerCase();
+                                const count = autocompleteData.colors.get(color) || 0;
+                                autocompleteData.colors.set(color, count + 1);
+                            }
+
+                            // Extract font families
+                            while ((match = fontFamilyPattern.exec(cssText)) !== null) {
+                                match[1].split(',').forEach(font => {
+                                    const cleanFont = font.trim().replace(/['"]/g, '');
+                                    if (cleanFont) autocompleteData.fontFamilies.add(cleanFont);
+                                });
+                            }
+                        }
+
+                        // Extract media query breakpoints
+                        if (rule instanceof CSSMediaRule) {
+                            let match;
+                            while ((match = mediaQueryPattern.exec(rule.cssText)) !== null) {
+                                autocompleteData.mediaBreakpoints.add(match[1].trim());
+                            }
+                        }
+                    });
+                }
+            } catch (e) {
+                // Skip stylesheets that can't be accessed (CORS)
+                console.warn('[scanCSSForAutocomplete] Skipping inaccessible stylesheet:', sheet.href, e);
+            }
+        });
+    } catch (error) {
+        console.warn('[scanCSSForAutocomplete] Error scanning stylesheets:', error);
+    }
+
+    // Also scan CSS from our editor state
+    Object.keys(editorState).forEach(role => {
+        const cssContent = editorState[role].content;
+        if (cssContent) {
+            // Extract CSS variables
+            let match;
+            const cssVarPattern2 = /--([\w-]+)\s*:\s*([^;]+)/g;
+            while ((match = cssVarPattern2.exec(cssContent)) !== null) {
+                autocompleteData.cssVariables.set('--' + match[1], match[2].trim());
+            }
+
+            // Extract colors
+            const colorPattern2 = /#[0-9a-fA-F]{3,8}\b|rgba?\([^)]+\)|hsla?\([^)]+\)/gi;
+            while ((match = colorPattern2.exec(cssContent)) !== null) {
+                const color = match[0].toLowerCase();
+                const count = autocompleteData.colors.get(color) || 0;
+                autocompleteData.colors.set(color, count + 1);
+            }
+        }
+    });
+
+    console.log(`[scanCSSForAutocomplete] Found ${autocompleteData.cssVariables.size} CSS variables, ${autocompleteData.colors.size} colors, ${autocompleteData.selectors.size} selectors, ${autocompleteData.fontFamilies.size} fonts, ${autocompleteData.mediaBreakpoints.size} breakpoints`);
+}
+
 function getActiveCount() {
     return Object.values(editorState).filter(s => s.active).length;
 }
@@ -984,6 +1133,284 @@ function initializeMonaco(callback) {
             console.warn('[initializeMonaco] Error initializing CSS Linter:', error);
         }
 
+        // Register autocomplete completion providers
+        console.log('[initializeMonaco] Registering autocomplete providers');
+
+        // Provider 1: DOM Classes (trigger: '.')
+        monaco.languages.registerCompletionItemProvider('css', {
+            triggerCharacters: ['.'],
+            provideCompletionItems: (model, position) => {
+                // Only suggest in selector context (not in property values)
+                const lineText = model.getLineContent(position.lineNumber);
+                const textBeforeCursor = lineText.substring(0, position.column - 1);
+
+                // Check if we're inside a rule block
+                const textUpToHere = model.getValueInRange({
+                    startLineNumber: Math.max(1, position.lineNumber - 5),
+                    startColumn: 1,
+                    endLineNumber: position.lineNumber,
+                    endColumn: position.column
+                });
+
+                // Count braces to determine if we're inside a rule
+                const openBraces = (textUpToHere.match(/\{/g) || []).length;
+                const closeBraces = (textUpToHere.match(/\}/g) || []).length;
+                const insideRule = openBraces > closeBraces;
+
+                // If we're inside a rule (between { and }), don't suggest classes
+                if (insideRule) {
+                    return { suggestions: [] };
+                }
+
+                // Also don't trigger if we see a colon on the current line before the cursor
+                if (textBeforeCursor.includes(':')) {
+                    return { suggestions: [] };
+                }
+
+                const word = model.getWordUntilPosition(position);
+                const range = {
+                    startLineNumber: position.lineNumber,
+                    endLineNumber: position.lineNumber,
+                    startColumn: word.startColumn,
+                    endColumn: word.endColumn
+                };
+
+                const suggestions = [];
+                autocompleteData.classes.forEach((count, className) => {
+                    suggestions.push({
+                        label: `.${className}`,
+                        kind: monaco.languages.CompletionItemKind.Class,
+                        detail: `Used ${count} time${count > 1 ? 's' : ''} on page`,
+                        documentation: `Class found on ${count} element${count > 1 ? 's' : ''}`,
+                        insertText: className,
+                        range: range
+                    });
+                });
+
+                return { suggestions };
+            }
+        });
+
+        // Provider 2: DOM IDs (trigger: '#')
+        monaco.languages.registerCompletionItemProvider('css', {
+            triggerCharacters: ['#'],
+            provideCompletionItems: (model, position) => {
+                // Only suggest in selector context (not in property values)
+                const lineText = model.getLineContent(position.lineNumber);
+                const textBeforeCursor = lineText.substring(0, position.column - 1);
+
+                // Don't trigger if we're inside a rule block (after {)
+                // Check if there's an opening brace before us on this line or previous context
+                const textUpToHere = model.getValueInRange({
+                    startLineNumber: Math.max(1, position.lineNumber - 5),
+                    startColumn: 1,
+                    endLineNumber: position.lineNumber,
+                    endColumn: position.column
+                });
+
+                // Count braces to determine if we're inside a rule
+                const openBraces = (textUpToHere.match(/\{/g) || []).length;
+                const closeBraces = (textUpToHere.match(/\}/g) || []).length;
+                const insideRule = openBraces > closeBraces;
+
+                // If we're inside a rule (between { and }), don't suggest IDs
+                if (insideRule) {
+                    return { suggestions: [] };
+                }
+
+                // Also don't trigger if we see a colon on the current line before the cursor
+                if (textBeforeCursor.includes(':')) {
+                    return { suggestions: [] };
+                }
+
+                const word = model.getWordUntilPosition(position);
+                const range = {
+                    startLineNumber: position.lineNumber,
+                    endLineNumber: position.lineNumber,
+                    startColumn: word.startColumn,
+                    endColumn: word.endColumn
+                };
+
+                const suggestions = [];
+                autocompleteData.ids.forEach(id => {
+                    suggestions.push({
+                        label: `#${id}`,
+                        kind: monaco.languages.CompletionItemKind.Reference,
+                        detail: 'ID from page',
+                        documentation: `Element ID found on page`,
+                        insertText: id,
+                        range: range
+                    });
+                });
+
+                return { suggestions };
+            }
+        });
+
+        // Provider 3: CSS Variables (trigger when typing inside var())
+        monaco.languages.registerCompletionItemProvider('css', {
+            triggerCharacters: ['('],
+            provideCompletionItems: (model, position) => {
+                const textBeforeCursor = model.getValueInRange({
+                    startLineNumber: position.lineNumber,
+                    startColumn: Math.max(1, position.column - 20),
+                    endLineNumber: position.lineNumber,
+                    endColumn: position.column
+                });
+
+                // Only trigger if we're inside var(
+                if (!textBeforeCursor.match(/var\(\s*--?[\w-]*$/)) {
+                    return { suggestions: [] };
+                }
+
+                const word = model.getWordUntilPosition(position);
+                const range = {
+                    startLineNumber: position.lineNumber,
+                    endLineNumber: position.lineNumber,
+                    startColumn: word.startColumn,
+                    endColumn: word.endColumn
+                };
+
+                const suggestions = [];
+                autocompleteData.cssVariables.forEach((value, varName) => {
+                    suggestions.push({
+                        label: varName,
+                        kind: monaco.languages.CompletionItemKind.Variable,
+                        detail: value,
+                        documentation: `CSS Variable: ${value}`,
+                        insertText: varName,
+                        range: range
+                    });
+                });
+
+                return { suggestions };
+            }
+        });
+
+        // Provider 4: Colors (when typing color properties)
+        monaco.languages.registerCompletionItemProvider('css', {
+            provideCompletionItems: (model, position) => {
+                const textBeforeCursor = model.getValueInRange({
+                    startLineNumber: position.lineNumber,
+                    startColumn: 1,
+                    endLineNumber: position.lineNumber,
+                    endColumn: position.column
+                });
+
+                // Only trigger on specific color properties, right after the colon
+                if (!textBeforeCursor.match(/\b(?:color|background-color|border-color|outline-color|fill|stroke)\s*:\s*$/)) {
+                    return { suggestions: [] };
+                }
+
+                const word = model.getWordUntilPosition(position);
+                const range = {
+                    startLineNumber: position.lineNumber,
+                    endLineNumber: position.lineNumber,
+                    startColumn: word.startColumn,
+                    endColumn: word.endColumn
+                };
+
+                const suggestions = [];
+                // Sort colors by usage count
+                const sortedColors = Array.from(autocompleteData.colors.entries())
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 20); // Limit to top 20 colors
+
+                sortedColors.forEach(([color, count]) => {
+                    suggestions.push({
+                        label: color,
+                        kind: monaco.languages.CompletionItemKind.Color,
+                        detail: `Used ${count} time${count > 1 ? 's' : ''}`,
+                        documentation: `Color value found in CSS`,
+                        insertText: color,
+                        range: range
+                    });
+                });
+
+                return { suggestions };
+            }
+        });
+
+        // Provider 5: Font Families
+        monaco.languages.registerCompletionItemProvider('css', {
+            provideCompletionItems: (model, position) => {
+                const textBeforeCursor = model.getValueInRange({
+                    startLineNumber: position.lineNumber,
+                    startColumn: 1,
+                    endLineNumber: position.lineNumber,
+                    endColumn: position.column
+                });
+
+                // Only trigger on font-family property, right after the colon
+                if (!textBeforeCursor.match(/\bfont-family\s*:\s*$/)) {
+                    return { suggestions: [] };
+                }
+
+                const word = model.getWordUntilPosition(position);
+                const range = {
+                    startLineNumber: position.lineNumber,
+                    endLineNumber: position.lineNumber,
+                    startColumn: word.startColumn,
+                    endColumn: word.endColumn
+                };
+
+                const suggestions = [];
+                autocompleteData.fontFamilies.forEach(font => {
+                    const needsQuotes = font.includes(' ');
+                    suggestions.push({
+                        label: font,
+                        kind: monaco.languages.CompletionItemKind.Text,
+                        detail: 'Font found on page',
+                        insertText: needsQuotes ? `"${font}"` : font,
+                        range: range
+                    });
+                });
+
+                return { suggestions };
+            }
+        });
+
+        // Provider 6: Data Attributes
+        monaco.languages.registerCompletionItemProvider('css', {
+            triggerCharacters: ['['],
+            provideCompletionItems: (model, position) => {
+                const textBeforeCursor = model.getValueInRange({
+                    startLineNumber: position.lineNumber,
+                    startColumn: Math.max(1, position.column - 10),
+                    endLineNumber: position.lineNumber,
+                    endColumn: position.column
+                });
+
+                // Check if we just typed [
+                if (!textBeforeCursor.endsWith('[')) {
+                    return { suggestions: [] };
+                }
+
+                const word = model.getWordUntilPosition(position);
+                const range = {
+                    startLineNumber: position.lineNumber,
+                    endLineNumber: position.lineNumber,
+                    startColumn: word.startColumn,
+                    endColumn: word.endColumn
+                };
+
+                const suggestions = [];
+                autocompleteData.dataAttributes.forEach(attr => {
+                    suggestions.push({
+                        label: attr,
+                        kind: monaco.languages.CompletionItemKind.Property,
+                        detail: 'Data attribute from page',
+                        insertText: `${attr}]`,
+                        range: range
+                    });
+                });
+
+                return { suggestions };
+            }
+        });
+
+        console.log('[initializeMonaco] Autocomplete providers registered');
+
         if (callback) callback();
     });
 }
@@ -1047,6 +1474,11 @@ function initializeEditors(cssData) {
     if (isLivePreviewEnabled) {
         performLivePreviewUpdate();
     }
+
+    // STEP 6: Scan page for autocomplete data
+    console.log('[initializeEditors] Scanning page for autocomplete data');
+    scanDOMForAutocomplete();
+    scanCSSForAutocomplete();
 }
 
 async function loadCSS() {
