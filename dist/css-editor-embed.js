@@ -208,6 +208,41 @@
             toggleLivePreview();
         });
 
+        // Role selector dropdown for preview
+        const roleSelector = document.createElement('select');
+        roleSelector.id = 'live-preview-role-selector';
+        roleSelector.style.cssText = `
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            color: #333;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s;
+        `;
+        roleSelector.innerHTML = `
+            <option value="anonymous">Anonymous</option>
+            <option value="viewer">Community</option>
+            <option value="seated">Pro</option>
+            <option value="admin">Admin</option>
+            <option value="grape">Legacy</option>
+        `;
+        // Load saved role preference
+        try {
+            const savedRole = localStorage.getItem('cssEditorPreviewRole') || 'anonymous';
+            roleSelector.value = savedRole;
+            console.log('[CSS Editor Embed] Loaded preview role from localStorage:', savedRole);
+        } catch (error) {
+            console.warn('[CSS Editor Embed] Failed to load preview role preference:', error);
+        }
+        roleSelector.addEventListener('change', (e) => {
+            e.stopPropagation();
+            console.log('[CSS Editor Embed] Role selector changed, calling handleRoleChange with:', e.target.value);
+            handleRoleChange(e.target.value);
+        });
+
         const minimizeBtn = document.createElement('button');
         minimizeBtn.innerHTML = '−';
         minimizeBtn.title = 'Minimize';
@@ -238,6 +273,7 @@
         });
 
         headerButtons.appendChild(livePreviewBtn);
+        headerButtons.appendChild(roleSelector);
         headerButtons.appendChild(minimizeBtn);
         overlayHeader.appendChild(headerButtons);
 
@@ -404,6 +440,28 @@
     }
 
     /**
+     * Handle role selection change for preview
+     */
+    function handleRoleChange(selectedRole) {
+        console.log('[CSS Editor Embed] Role changed to:', selectedRole);
+
+        // Save preference
+        try {
+            localStorage.setItem('cssEditorPreviewRole', selectedRole);
+        } catch (error) {
+            console.warn('[CSS Editor Embed] Failed to save preview role preference:', error);
+        }
+
+        // Set the preview role on window for the main JS to use
+        window.cssEditorPreviewRole = selectedRole;
+
+        // If live preview is enabled, update immediately
+        if (window.cssEditorEnableLivePreview && typeof window.updateLivePreview === 'function') {
+            window.updateLivePreview();
+        }
+    }
+
+    /**
      * Toggle live preview on/off
      */
     function toggleLivePreview() {
@@ -480,7 +538,7 @@
      */
     function startDrag(e) {
         if (e.target !== overlayHeader && !overlayHeader.contains(e.target)) return;
-        if (e.target.tagName === 'BUTTON') return; // Don't drag when clicking buttons
+        if (e.target.tagName === 'BUTTON' || e.target.tagName === 'SELECT') return; // Don't drag when clicking buttons or selects
 
         isDragging = true;
         dragStartX = e.clientX;
@@ -699,9 +757,34 @@
     }
 
     /**
+     * Check if user has admin permissions
+     */
+    function hasAdminPermission() {
+        try {
+            if (typeof window.Deki !== 'undefined' &&
+                Array.isArray(window.Deki.UserPermissions)) {
+                const hasAdmin = window.Deki.UserPermissions.includes('ADMIN');
+                console.log('[CSS Editor Embed] Admin permission check:', hasAdmin);
+                return hasAdmin;
+            }
+            console.warn('[CSS Editor Embed] Deki.UserPermissions not available, defaulting to false');
+            return false;
+        } catch (error) {
+            console.error('[CSS Editor Embed] Error checking admin permissions:', error);
+            return false;
+        }
+    }
+
+    /**
      * Initialize everything when DOM is ready
      */
     async function init() {
+        // Check admin permission first
+        if (!hasAdminPermission()) {
+            console.log('[CSS Editor Embed] User does not have admin permission, aborting initialization');
+            return;
+        }
+
         // Expose updateEditorHeights to window scope so main JS can call it
         window.cssEditorUpdateHeights = updateEditorHeights;
         try {
@@ -727,6 +810,16 @@
                 // localStorage might not be available
                 console.warn('[CSS Editor Embed] Failed to load live preview preference, defaulting to OFF:', error);
                 window.cssEditorEnableLivePreview = false;
+            }
+
+            // Load preview role preference
+            try {
+                const savedRole = localStorage.getItem('cssEditorPreviewRole') || 'anonymous';
+                window.cssEditorPreviewRole = savedRole;
+                console.log('[CSS Editor Embed] Preview role set to:', savedRole);
+            } catch (error) {
+                console.warn('[CSS Editor Embed] Failed to load preview role preference:', error);
+                window.cssEditorPreviewRole = 'anonymous';
             }
 
             // Load CSS first
