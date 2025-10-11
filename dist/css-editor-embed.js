@@ -88,12 +88,12 @@
         toggleButton.title = 'Toggle CSS Editor';
         toggleButton.style.cssText = `
             position: fixed;
-            top: 20px;
-            right: 20px;
-            width: 50px;
+            top: 15px;
+            right: -45px;
+            width: 100px;
             height: 50px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 25px;
+            background: #667eea;
             border: 3px solid white;
             color: white;
             font-size: 20px;
@@ -101,22 +101,23 @@
             font-family: monospace;
             cursor: pointer;
             z-index: 999998;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            box-shadow: -4px 4px 20px rgba(0, 0, 0, 0.3);
             transition: all 0.3s ease;
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: left;
+            padding-left: 12px;
             line-height: 1;
         `;
 
         toggleButton.addEventListener('mouseenter', () => {
-            toggleButton.style.transform = 'scale(1.1) rotate(5deg)';
-            toggleButton.style.boxShadow = '0 6px 30px rgba(102, 126, 234, 0.5)';
+            toggleButton.style.transform = 'scale(1.1)';
+            toggleButton.style.boxShadow = '-6px 6px 30px rgba(102, 126, 234, 0.5)';
         });
 
         toggleButton.addEventListener('mouseleave', () => {
-            toggleButton.style.transform = 'scale(1) rotate(0deg)';
-            toggleButton.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.3)';
+            toggleButton.style.transform = 'scale(1)';
+            toggleButton.style.boxShadow = '-4px 4px 20px rgba(0, 0, 0, 0.3)';
         });
 
         toggleButton.addEventListener('click', toggleEditor);
@@ -152,7 +153,7 @@
         overlayHeader = document.createElement('div');
         overlayHeader.id = 'css-editor-overlay-header';
         overlayHeader.style.cssText = `
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #667eea;
             color: white;
             padding: 12px 20px;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -260,6 +261,8 @@
             align-items: center;
             justify-content: center;
             transition: background 0.2s;
+            position: relative;
+            z-index: 20;
         `;
         minimizeBtn.addEventListener('mouseenter', () => {
             minimizeBtn.style.background = 'rgba(255, 255, 255, 0.3)';
