@@ -1,209 +1,254 @@
-* {
-    margin: 0;
-    padding: 0;
+/* Scoped to #css-editor-app to avoid conflicts with page styles */
+
+#css-editor-app * {
     box-sizing: border-box;
 }
 
-body {
+#css-editor-app {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    background: #f5f5f5;
     color: #333;
 }
 
-.header {
-    background: #2c3e50;
-    color: white;
-    padding: 1.5rem 2rem;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.header h1 {
-    font-size: 1.8rem;
-    font-weight: 400;
-}
-
-.config-section {
-    background: white;
-    padding: 2rem;
-    border-bottom: 2px solid #e0e0e0;
-}
-
-.config-section h2 {
-    font-size: 1.2rem;
-    margin-bottom: 1.5rem;
-    color: #2c3e50;
-    font-weight: 500;
-}
-
-.config-grid {
-    display: grid;
-    grid-template-columns: 150px 1fr;
-    gap: 1.5rem;
-    align-items: center;
-    margin-bottom: 1.5rem;
-}
-
-.config-grid label {
-    font-weight: 500;
-    color: #555;
-}
-
-.config-grid input {
-    padding: 0.75rem;
-    border: 2px solid #e0e0e0;
-    border-radius: 4px;
-    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-    font-size: 0.9rem;
-    transition: border-color 0.2s;
-}
-
-.config-grid input:focus {
-    outline: none;
-    border-color: #3498db;
-}
-
-.container {
+#css-editor-app.container {
     max-width: 1600px;
     margin: 0 auto;
     padding: 2rem;
 }
 
-.loading {
+#css-editor-app .loading {
     text-align: center;
     padding: 4rem;
     font-size: 1.3rem;
     color: #666;
 }
 
-.message {
+#css-editor-app .message {
     padding: 1rem 1.5rem;
     border-radius: 4px;
     margin-bottom: 1.5rem;
     font-size: 0.95rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
 }
 
-.error {
+#css-editor-app .error {
     background: #ffebee;
     border-left: 4px solid #e74c3c;
     color: #c62828;
 }
 
-.success {
+#css-editor-app .success {
     background: #e8f5e9;
     border-left: 4px solid #27ae60;
     color: #2e7d32;
 }
 
-.toggle-bar {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 8px 8px 0 0;
-    display: flex;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-    border-bottom: 2px solid #e0e0e0;
+#css-editor-app .message-text {
+    flex: 1;
 }
 
-.toggle-btn {
-    padding: 0.6rem 1.25rem;
-    border: 2px solid #e0e0e0;
-    background: white;
-    color: #666;
-    border-radius: 20px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: 500;
-    transition: all 0.2s;
-    white-space: nowrap;
-}
-
-.toggle-btn:hover {
-    border-color: #3498db;
-    color: #3498db;
-}
-
-.toggle-btn.active {
-    background: #3498db;
-    border-color: #3498db;
-    color: white;
-}
-
-.toggle-btn.disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-    border-color: #ccc;
-    color: #999;
-}
-
-.toggle-btn.disabled:hover {
-    border-color: #ccc;
-    color: #999;
-}
-
-.editor-actions-bar {
-    background: white;
-    padding: 0.75rem 1.5rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #e0e0e0;
-}
-
-.export-btn-small {
+#css-editor-app .message-close {
     background: transparent;
-    border: 1px solid #3498db;
-    color: #3498db;
-    padding: 0.4rem 1rem;
-    border-radius: 4px;
+    border: none;
+    color: inherit;
+    font-size: 1.5rem;
+    line-height: 1;
     cursor: pointer;
-    font-size: 0.85rem;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    opacity: 0.6;
     transition: all 0.2s;
+    flex-shrink: 0;
 }
 
-.export-btn-small:hover {
-    background: #3498db;
+#css-editor-app .message-close:hover {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.1);
+}
+
+#css-editor-app .toggle-bar {
+    background: white;
+    padding: 0.5rem 0.2rem 0 1rem;
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    border-bottom: none;
+    position: relative;
+}
+
+#css-editor-app .toggle-btn {
+    padding: 0.4rem 1rem;
+    border: 1px solid #444;
+    border-bottom: none;
+    background: #6c757d;
+    color: #e9ecef;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all 0.15s;
+    white-space: nowrap;
+    position: relative;
+}
+
+#css-editor-app .toggle-btn:hover {
+    background: #5a6268;
     color: white;
 }
 
-.active-count {
-    font-size: 0.9rem;
+#css-editor-app .toggle-btn.active {
+    background: #2d2d30;
+    border-color: #444;
+    color: white;
+    z-index: 1;
+}
+
+#css-editor-app .toggle-btn.disabled {
+    cursor: not-allowed;
+    background: #6c757d;
+    color: #adb5bd;
+    opacity: 0.6;
+    padding: 0.25rem 1rem;
+    font-size: 0.75rem;
+    text-decoration: line-through;
+}
+
+#css-editor-app .toggle-btn.disabled:hover {
+    background: #6c757d;
+    color: #adb5bd;
+}
+
+
+
+#css-editor-app .active-count {
+    font-size: 0.8rem;
     color: #666;
+    margin-left: auto;
+    padding: 0.4rem 0.75rem;
+    align-self: center;
 }
 
-.editors-grid {
-    display: grid;
-    gap: 0;
-    min-height: 600px;
-    background: #1e1e1e;
-}
-
-.editors-grid.cols-1 {
-    grid-template-columns: 1fr;
-}
-
-.editors-grid.cols-2 {
-    grid-template-columns: 1fr 1fr;
-}
-
-.editors-grid.cols-3 {
-    grid-template-columns: repeat(3, 1fr);
-}
-
-.editors-grid.cols-4 {
-    grid-template-columns: repeat(4, 1fr);
-}
-
-.editor-pane {
+#css-editor-app .save-dropdown {
+    display: inline-flex;
     position: relative;
-    min-height: 600px;
-    border-right: 1px solid #444;
+    align-self: flex-end;
+    margin-left: 0.5rem;
+    padding-bottom: 0;
 }
 
-.editor-pane:last-child {
+#css-editor-app .save-dropdown .btn-primary {
+    padding: 0 10px;
+    font-size: 0.8rem;
+    border-radius: 6px 0 0 0;
     border-right: none;
 }
 
-.editor-pane-header {
+#css-editor-app .btn-dropdown-toggle {
+    background: #0d6efd;
+    color: white;
+    border: 1px solid #0d6efd;
+    border-left: 1px solid rgba(255, 255, 255, 0.25);
+    padding: 0.4rem 0.5rem;
+    border-radius: 0 6px 0 0;
+    cursor: pointer;
+    font-size: 0.65rem;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+}
+
+#css-editor-app .btn-dropdown-toggle:hover {
+    background: #0b5ed7;
+    border-color: #0a58ca;
+}
+
+#css-editor-app .btn-dropdown-toggle:active {
+    background: #0a58ca;
+}
+
+#css-editor-app .dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 0.25rem;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    min-width: 180px;
+    overflow: hidden;
+}
+
+#css-editor-app .dropdown-menu.show {
+    display: block;
+}
+
+#css-editor-app .dropdown-item {
+    display: block;
+    width: 100%;
+    padding: 0.7rem 1rem;
+    border: none;
+    background: white;
+    color: #dc3545;
+    text-align: left;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: background 0.15s;
+}
+
+#css-editor-app .dropdown-item:hover {
+    background: #f8f9fa;
+    color: #bb2d3b;
+}
+
+
+#css-editor-app .editors-grid {
+    display: grid;
+    gap: 0;
+    height: 690px;
+    background: #1e1e1e;
+}
+
+#css-editor-app .editors-grid.cols-1 {
+    grid-template-columns: 1fr;
+}
+
+#css-editor-app .editors-grid.cols-2 {
+    grid-template-columns: 1fr 1fr;
+}
+
+#css-editor-app .editors-grid.cols-3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+#css-editor-app .editors-grid.cols-4 {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+#css-editor-app .editor-pane {
+    position: relative;
+    height: 690px;
+    border-right: 1px solid #444;
+}
+
+#css-editor-app .editor-pane:last-child {
+    border-right: none;
+}
+
+#css-editor-app .editor-pane-header {
     background: #2d2d30;
     color: #ccc;
     padding: 0.5rem 1rem;
@@ -212,13 +257,14 @@ body {
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid #444;
+    height: 40px;
 }
 
-.editor-pane-title {
+#css-editor-app .editor-pane-title {
     font-weight: 500;
 }
 
-.editor-pane-export {
+#css-editor-app .editor-pane-export {
     background: transparent;
     border: 1px solid #555;
     color: #ccc;
@@ -229,65 +275,51 @@ body {
     transition: all 0.2s;
 }
 
-.editor-pane-export:hover {
+#css-editor-app .editor-pane-export:hover {
     border-color: #3498db;
     color: #3498db;
 }
 
-.editor-instance {
-    height: calc(100% - 32px);
-    min-height: 568px;
+#css-editor-app .editor-instance {
+    height: 650px;
 }
 
-.actions {
-    position: sticky;
-    bottom: 0;
-    background: white;
-    padding: 1.5rem 2rem;
-    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.1);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    z-index: 100;
-}
-
-.btn {
+#css-editor-app .btn {
     border: none;
-    padding: 0.9rem 2.5rem;
-    border-radius: 4px;
-    font-size: 1rem;
+    font-size: 0.95rem;
     cursor: pointer;
-    transition: all 0.2s;
-    font-weight: 500;
+    transition: all 0.2s ease;
+    font-weight: 600;
 }
 
-.btn-primary {
-    background: #3498db;
+#css-editor-app .btn-primary {
+    background: #0d6efd;
     color: white;
+    border: 1px solid #0d6efd;
+    box-shadow: 0 1px 3px rgba(13, 110, 253, 0.2);
 }
 
-.btn-primary:hover {
-    background: #2980b9;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+#css-editor-app .btn-primary:hover {
+    background: #0b5ed7;
+    border-color: #0a58ca;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
 }
 
-.btn-primary:disabled {
-    background: #bdc3c7;
+#css-editor-app .btn-primary:active {
+    background: #0a58ca;
+    border-color: #0a58ca;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+#css-editor-app .btn-primary:disabled {
+    background: #6c757d;
+    border-color: #6c757d;
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
+    opacity: 0.65;
 }
 
-.btn-secondary {
-    background: #95a5a6;
-    color: white;
-}
-
-.btn-secondary:hover {
-    background: #7f8c8d;
-}
-
-#message-area {
+#css-editor-app #message-area {
     margin-bottom: 1rem;
 }

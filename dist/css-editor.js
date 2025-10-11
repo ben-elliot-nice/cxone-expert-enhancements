@@ -47,9 +47,43 @@ const MAX_ACTIVE_EDITORS = 3;
 let csrfToken = '';
 let monacoReady = false;
 let linterReady = false;
+let originalContent = {}; // Store original CSS from API
 
 function getActiveCount() {
     return Object.values(editorState).filter(s => s.active).length;
+}
+
+function saveActiveEditors() {
+    const activeRoles = Object.keys(editorState).filter(role => editorState[role].active);
+    try {
+        localStorage.setItem('cssEditorActiveRoles', JSON.stringify(activeRoles));
+        console.log('[saveActiveEditors] Saved active roles to localStorage:', activeRoles);
+    } catch (error) {
+        console.warn('[saveActiveEditors] Failed to save to localStorage:', error);
+    }
+}
+
+function loadActiveEditors() {
+    try {
+        const saved = localStorage.getItem('cssEditorActiveRoles');
+        if (saved) {
+            const activeRoles = JSON.parse(saved);
+            console.log('[loadActiveEditors] Loaded active roles from localStorage:', activeRoles);
+
+            // Just activate the roles in state, don't create editors yet
+            activeRoles.forEach(role => {
+                if (editorState[role] && getActiveCount() < MAX_ACTIVE_EDITORS) {
+                    editorState[role].active = true;
+                    console.log(`[loadActiveEditors] Marked ${role} as active`);
+                }
+            });
+
+            return activeRoles.length;
+        }
+    } catch (error) {
+        console.warn('[loadActiveEditors] Failed to load from localStorage:', error);
+    }
+    return 0;
 }
 
 function updateActiveCount() {
@@ -88,6 +122,18 @@ function updateGrid() {
 
     console.log('[updateGrid] Active roles:', activeRoles);
 
+    // Save content from existing editors before clearing grid
+    activeRoles.forEach(role => {
+        const state = editorState[role];
+        if (state.editor) {
+            state.content = state.editor.getValue();
+            console.log(`[updateGrid] Saved content for ${role}: ${state.content.length} chars`);
+            // Dispose the old editor since we're clearing the DOM
+            state.editor.dispose();
+            state.editor = null;
+        }
+    });
+
     // Clear existing grid
     grid.innerHTML = '';
 
@@ -115,20 +161,9 @@ function updateGrid() {
         const exportBtn = pane.querySelector('.editor-pane-export');
         exportBtn.addEventListener('click', () => exportCSS(role));
 
-        // Create or restore Monaco editor
-        if (!state.editor) {
-            console.log(`[updateGrid] Creating new Monaco editor for ${role}`);
-            createMonacoEditor(role);
-        } else {
-            console.log(`[updateGrid] Moving existing editor for ${role}`);
-            // Editor already exists, just need to re-mount it
-            setTimeout(() => {
-                const container = document.getElementById(`editor-${role}`);
-                if (container && state.editor) {
-                    state.editor.layout();
-                }
-            }, 100);
-        }
+        // Always create a fresh Monaco editor
+        console.log(`[updateGrid] Creating Monaco editor for ${role}`);
+        createMonacoEditor(role);
     });
 
     console.log('[updateGrid] Grid update complete');
@@ -149,12 +184,13 @@ function createMonacoEditor(role) {
     }
 
     const state = editorState[role];
+    console.log(`[createMonacoEditor] state.content length for ${role}: ${state.content?.length || 0} chars`);
 
     const editor = monaco.editor.create(container, {
         value: state.content || '',
         language: 'css',
         theme: 'vs-dark',
-        automaticLayout: true,
+        automaticLayout: false,
         minimap: { enabled: true },
         fontSize: 14,
         wordWrap: 'on',
@@ -194,6 +230,14 @@ function createMonacoEditor(role) {
 
     state.editor = editor;
     console.log(`[createMonacoEditor] Editor created for ${role}`);
+
+    // Force layout after a short delay to ensure proper rendering
+    setTimeout(() => {
+        if (state.editor) {
+            state.editor.layout();
+            console.log(`[createMonacoEditor] Layout called for ${role}`);
+        }
+    }, 50);
 }
 
 function toggleEditor(role) {
@@ -231,6 +275,7 @@ function toggleEditor(role) {
     updateGrid();
     updateToggleButtons();
     updateActiveCount();
+    saveActiveEditors();
 }
 window.toggleEditor = toggleEditor;
 
@@ -251,34 +296,48 @@ function exportActiveEditors() {
 }
 window.exportActiveEditors = exportActiveEditors;
 
-function getConfig() {
-    console.log('[getConfig] Retrieving configuration');
-    const config = {
-        baseUrl: document.getElementById('base-url').value,
-        authToken: document.getElementById('auth-token').value,
-        mtSession: document.getElementById('mt-session').value,
-        dekiSession: document.getElementById('deki-session').value
-    };
-    console.log('[getConfig] Config retrieved:', {
-        baseUrl: config.baseUrl,
-        authTokenLength: config.authToken?.length || 0,
-        mtSessionLength: config.mtSession?.length || 0,
-        dekiSessionLength: config.dekiSession?.length || 0
-    });
-    return config;
-}
 
 function showMessage(message, type = 'error') {
     console.log(`[showMessage] ${type.toUpperCase()}: ${message}`);
     const messageArea = document.getElementById('message-area');
+
+    // Check if message already exists
+    const existingMessages = messageArea.querySelectorAll('.message');
+    for (const existingMsg of existingMessages) {
+        const existingText = existingMsg.querySelector('.message-text')?.textContent;
+        if (existingText === message && existingMsg.classList.contains(type)) {
+            console.log(`[showMessage] Message already displayed, skipping duplicate`);
+            return;
+        }
+    }
+
     const div = document.createElement('div');
     div.className = 'message ' + type;
-    div.textContent = message;
+
+    const textSpan = document.createElement('span');
+    textSpan.className = 'message-text';
+    textSpan.textContent = message;
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'message-close';
+    closeBtn.innerHTML = '&times;';
+    closeBtn.setAttribute('aria-label', 'Close message');
+    closeBtn.addEventListener('click', () => {
+        div.remove();
+    });
+
+    div.appendChild(textSpan);
+    div.appendChild(closeBtn);
     messageArea.appendChild(div);
 
-    setTimeout(() => {
+    const autoRemove = setTimeout(() => {
         div.remove();
     }, 5000);
+
+    // Clear timeout if manually closed
+    closeBtn.addEventListener('click', () => {
+        clearTimeout(autoRemove);
+    }, { once: true });
 }
 
 function exportCSS(role) {
@@ -380,15 +439,6 @@ function initializeMonaco(callback) {
         try {
             console.log('[initializeMonaco] Initializing CSS Linter');
             if (typeof MonacoCSSLinter !== 'undefined') {
-                const linterConfig = {
-                    rules: {
-                        'color-no-invalid-hex': true,
-                        'declaration-block-no-duplicate-properties': true,
-                        'no-duplicate-selectors': true,
-                        'selector-type-no-unknown': true
-                    }
-                };
-
                 // Note: MonacoCSSLinter will be initialized per editor
                 linterReady = true;
                 console.log('[initializeMonaco] CSS Linter ready');
@@ -412,41 +462,39 @@ function initializeEditors(cssData) {
         return;
     }
 
-    // Load CSS data into state
+    // STEP 1: Load CSS data into state first and store original
     Object.keys(editorState).forEach(role => {
         const state = editorState[role];
         state.content = cssData.css[role] || '';
-
-        // If editor is already active, update its content
-        if (state.active && state.editor) {
-            console.log(`[initializeEditors] Updating active editor ${role}`);
-            state.editor.setValue(state.content);
-        }
-
+        originalContent[role] = cssData.css[role] || ''; // Store original
         console.log(`[initializeEditors] Loaded ${role}: ${state.content.length} characters`);
     });
 
-    console.log('[initializeEditors] CSS loaded into state');
+    console.log('[initializeEditors] CSS loaded into state and original content stored');
+
+    // STEP 2: Restore previously active editors from localStorage (just marks them active)
+    const restored = loadActiveEditors();
+    if (restored > 0) {
+        console.log(`[initializeEditors] Restored ${restored} active editor(s) from cache`);
+    }
+
+    // STEP 3: Now create the UI with the loaded content
+    const activeRoles = Object.keys(editorState).filter(role => editorState[role].active);
+    if (activeRoles.length > 0) {
+        console.log('[initializeEditors] Creating editors for restored roles:', activeRoles);
+        updateGrid();
+        updateToggleButtons();
+        updateActiveCount();
+    }
 }
 
 async function loadCSS() {
     console.log('[loadCSS] ===== LOAD CSS STARTED =====');
-    const config = getConfig();
-
-    if (!config.authToken || !config.mtSession || !config.dekiSession) {
-        console.error('[loadCSS] Missing required configuration fields');
-        showMessage('Please fill in all configuration fields', 'error');
-        return;
-    }
-
-    const loadBtn = document.getElementById('load-btn');
-    loadBtn.disabled = true;
-    loadBtn.textContent = 'Loading...';
 
     document.getElementById('loading').style.display = 'block';
     document.getElementById('message-area').innerHTML = '';
 
-    const url = `${config.baseUrl}/deki/cp/custom_css.php?params=%2F`;
+    const url = '/deki/cp/custom_css.php?params=%2F';
     console.log('[loadCSS] Fetching from URL:', url);
 
     try {
@@ -455,9 +503,7 @@ async function loadCSS() {
             headers: {
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
                 'Accept-Language': 'en-US,en;q=0.9',
-                'Cache-Control': 'max-age=0',
-                'Cookie': `authtoken="${config.authToken}"; mtwebsession=${config.mtSession}; dekisession="${config.dekiSession}"`,
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'
+                'Cache-Control': 'max-age=0'
             },
             credentials: 'include'
         });
@@ -499,8 +545,7 @@ async function loadCSS() {
 
         document.getElementById('loading').style.display = 'none';
         document.getElementById('editor-container').style.display = 'block';
-        document.getElementById('actions').style.display = 'flex';
-        showMessage('CSS loaded successfully! Click editor buttons above to toggle editors on/off.', 'success');
+        showMessage('CSS loaded successfully! Click editor buttons below to toggle editors on/off.', 'success');
         console.log('[loadCSS] ===== LOAD CSS COMPLETE =====');
 
     } catch (error) {
@@ -508,10 +553,7 @@ async function loadCSS() {
         console.error('[loadCSS] Error details:', error);
         console.error('[loadCSS] Error stack:', error.stack);
         document.getElementById('loading').style.display = 'none';
-        showMessage('Error loading CSS: ' + error.message + ' (Note: CORS may block direct requests. You may need to use a browser extension or proxy.)', 'error');
-    } finally {
-        loadBtn.disabled = false;
-        loadBtn.textContent = 'Load CSS from Legacy System';
+        showMessage('Error loading CSS: ' + error.message, 'error');
     }
 }
 window.loadCSS = loadCSS;
@@ -558,7 +600,6 @@ function buildMultipartBody(cssData) {
 
 async function saveCSS() {
     console.log('[saveCSS] ===== SAVE CSS STARTED =====');
-    const config = getConfig();
 
     if (!csrfToken) {
         console.error('[saveCSS] No CSRF token available');
@@ -605,7 +646,7 @@ async function saveCSS() {
 
         const { body, boundary } = buildMultipartBody(cssData);
 
-        const url = `${config.baseUrl}/deki/cp/custom_css.php?params=%2F`;
+        const url = '/deki/cp/custom_css.php?params=%2F';
         console.log('[saveCSS] Posting to URL:', url);
 
         const response = await fetch(url, {
@@ -614,11 +655,7 @@ async function saveCSS() {
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
                 'Accept-Language': 'en-US,en;q=0.9',
                 'Cache-Control': 'max-age=0',
-                'Content-Type': `multipart/form-data; boundary=${boundary}`,
-                'Cookie': `authtoken="${config.authToken}"; mtwebsession=${config.mtSession}; dekisession="${config.dekiSession}"`,
-                'Origin': config.baseUrl,
-                'Referer': `${config.baseUrl}/deki/cp/custom_css.php?params=%2F`,
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'
+                'Content-Type': `multipart/form-data; boundary=${boundary}`
             },
             credentials: 'include',
             body: body,
@@ -642,7 +679,7 @@ async function saveCSS() {
         console.error('[saveCSS] ===== ERROR =====');
         console.error('[saveCSS] Error details:', error);
         console.error('[saveCSS] Error stack:', error.stack);
-        showMessage('Error saving CSS: ' + error.message + ' (Note: CORS may block direct requests. You may need to use a browser extension or proxy.)', 'error');
+        showMessage('Error saving CSS: ' + error.message, 'error');
     } finally {
         saveBtn.disabled = false;
         saveBtn.textContent = 'Save All Changes';
@@ -650,66 +687,86 @@ async function saveCSS() {
 }
 window.saveCSS = saveCSS;
 
-// Auto-load config from localStorage if available
-window.addEventListener('load', () => {
-    console.log('[load] Page loaded, checking localStorage');
-    const savedConfig = localStorage.getItem('cssEditorConfig');
-    if (savedConfig) {
-        console.log('[load] Found saved config in localStorage');
-        try {
-            const config = JSON.parse(savedConfig);
-            document.getElementById('base-url').value = config.baseUrl || '';
-            document.getElementById('auth-token').value = config.authToken || '';
-            document.getElementById('mt-session').value = config.mtSession || '';
-            document.getElementById('deki-session').value = config.dekiSession || '';
-            console.log('[load] Config loaded from localStorage');
-        } catch (error) {
-            console.error('[load] Error parsing saved config:', error);
-        }
-    } else {
-        console.log('[load] No saved config in localStorage');
-    }
-});
 
-// Save config to localStorage on input change
-['base-url', 'auth-token', 'mt-session', 'deki-session'].forEach(id => {
-    document.getElementById(id).addEventListener('change', () => {
-        console.log(`[config] Field "${id}" changed, saving to localStorage`);
-        const config = getConfig();
-        localStorage.setItem('cssEditorConfig', JSON.stringify(config));
-        console.log('[config] Config saved to localStorage');
+function discardChanges() {
+    console.log('[discardChanges] Reverting all changes to original content');
+
+    if (Object.keys(originalContent).length === 0) {
+        showMessage('No original content to revert to', 'error');
+        return;
+    }
+
+    // Confirm with user
+    if (!confirm('Are you sure you want to discard all changes? This will revert all CSS to the originally loaded content.')) {
+        console.log('[discardChanges] User cancelled discard');
+        return;
+    }
+
+    // Revert all state to original content
+    Object.keys(editorState).forEach(role => {
+        const state = editorState[role];
+        state.content = originalContent[role] || '';
+
+        // If editor is active, update its content
+        if (state.editor) {
+            state.editor.setValue(state.content);
+            console.log(`[discardChanges] Reverted ${role} editor: ${state.content.length} chars`);
+        }
     });
+
+    showMessage('All changes discarded. CSS reverted to original content.', 'success');
+    console.log('[discardChanges] Discard complete');
+}
+window.discardChanges = discardChanges;
+
+function toggleDropdown() {
+    const dropdown = document.querySelector('.save-dropdown');
+    const dropdownMenu = document.getElementById('save-dropdown-menu');
+    dropdownMenu.classList.toggle('show');
+    dropdown.classList.toggle('open');
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+    const dropdown = document.querySelector('.save-dropdown');
+    const dropdownMenu = document.getElementById('save-dropdown-menu');
+
+    if (dropdown && dropdownMenu && !dropdown.contains(e.target)) {
+        dropdownMenu.classList.remove('show');
+        dropdown.classList.remove('open');
+    }
 });
 
 // Function to attach event listeners (called after DOM is ready)
 function attachEventListeners() {
     console.log('[attachEventListeners] Attaching event listeners to buttons');
 
-    const loadBtn = document.getElementById('load-btn');
     const saveBtn = document.getElementById('save-btn');
-    const reloadBtn = document.getElementById('reload-btn');
-    const exportActiveBtn = document.getElementById('export-active-btn');
-
-    if (loadBtn) {
-        loadBtn.addEventListener('click', loadCSS);
-        console.log('[attachEventListeners] Load button listener attached');
-    } else {
-        console.error('[attachEventListeners] load-btn not found!');
-    }
+    const dropdownToggle = document.getElementById('save-dropdown-toggle');
+    const discardBtn = document.getElementById('discard-btn');
 
     if (saveBtn) {
         saveBtn.addEventListener('click', saveCSS);
         console.log('[attachEventListeners] Save button listener attached');
     }
 
-    if (reloadBtn) {
-        reloadBtn.addEventListener('click', () => location.reload());
-        console.log('[attachEventListeners] Reload button listener attached');
+    if (dropdownToggle) {
+        dropdownToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleDropdown();
+        });
+        console.log('[attachEventListeners] Dropdown toggle listener attached');
     }
 
-    if (exportActiveBtn) {
-        exportActiveBtn.addEventListener('click', exportActiveEditors);
-        console.log('[attachEventListeners] Export active button listener attached');
+    if (discardBtn) {
+        discardBtn.addEventListener('click', () => {
+            discardChanges();
+            // Close dropdown after action
+            const dropdown = document.querySelector('.save-dropdown');
+            document.getElementById('save-dropdown-menu').classList.remove('show');
+            dropdown.classList.remove('open');
+        });
+        console.log('[attachEventListeners] Discard button listener attached');
     }
 
     // Add toggle button listeners
@@ -738,6 +795,9 @@ window.addEventListener('DOMContentLoaded', () => {
                 console.log('[DOMContentLoaded] Monaco initialization complete');
                 // Attach event listeners after Monaco is ready
                 attachEventListeners();
+                // Automatically load CSS
+                console.log('[DOMContentLoaded] Automatically loading CSS');
+                loadCSS();
             });
         }
     }, 50);

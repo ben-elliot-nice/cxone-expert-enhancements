@@ -23,36 +23,17 @@ const distFiles = [
 ];
 
 async function uploadFile(localPath, s3Key, contentType) {
-  const localSize = statSync(localPath).size;
-  let upload = false;
-
-  try {
-    const headResp = await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: s3Key }));
-    if (headResp.ContentLength !== localSize) {
-      upload = true;
-    } else {
-      console.log(`[SKIP] ${s3Key} (unchanged)`);
-    }
-  } catch (err) {
-    if (err.name === 'NotFound' || err.$metadata?.httpStatusCode === 404) {
-      upload = true;
-    } else {
-      throw err;
-    }
-  }
-
-  if (upload) {
-    console.log(`[UPLOAD] ${localPath} -> ${s3Key}`);
-    await s3.send(new PutObjectCommand({
-      Bucket: bucket,
-      Key: s3Key,
-      Body: createReadStream(localPath),
-      ACL: "public-read",
-      ContentType: contentType,
-      CacheControl: 'public, max-age=3600',
-    }));
-    console.log(`[SUCCESS] Uploaded: ${s3Key}`);
-  }
+  // Force upload without checking size
+  console.log(`[UPLOAD] ${localPath} -> ${s3Key}`);
+  await s3.send(new PutObjectCommand({
+    Bucket: bucket,
+    Key: s3Key,
+    Body: createReadStream(localPath),
+    ACL: "public-read",
+    ContentType: contentType,
+    CacheControl: 'no-cache, no-store, must-revalidate',
+  }));
+  console.log(`[SUCCESS] Uploaded: ${s3Key}`);
 }
 
 async function deploy() {
