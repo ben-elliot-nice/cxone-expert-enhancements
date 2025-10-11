@@ -48,6 +48,7 @@ let csrfToken = '';
 let monacoReady = false;
 let linterReady = false;
 let originalContent = {}; // Store original CSS from API
+let isMobileView = false; // Track if we're in mobile view (< 1080px)
 
 function getActiveCount() {
     return Object.values(editorState).filter(s => s.active).length;
@@ -86,18 +87,11 @@ function loadActiveEditors() {
     return 0;
 }
 
-function updateActiveCount() {
-    const count = getActiveCount();
-    const countEl = document.querySelector('.active-count');
-    if (count === 0) {
-        countEl.textContent = 'No editors active';
-    } else {
-        countEl.textContent = `${count} editor${count === 1 ? '' : 's'} active`;
-    }
-}
 
 function updateToggleButtons() {
     const activeCount = getActiveCount();
+
+    // Update regular toggle buttons (desktop view)
     Object.keys(editorState).forEach(role => {
         const btn = document.querySelector(`.toggle-btn[data-role="${role}"]`);
         if (!btn) return;
@@ -113,21 +107,223 @@ function updateToggleButtons() {
             btn.classList.add('disabled');
         }
     });
+
+    // Update mobile dropdown selector if it exists
+    const mobileSelect = document.getElementById('mobile-editor-select');
+    if (mobileSelect) {
+        let activeRole = Object.keys(editorState).find(role => editorState[role].active);
+
+        // If no active role, activate the first one and render it
+        if (!activeRole) {
+            activeRole = Object.keys(editorState)[0];
+            editorState[activeRole].active = true;
+            // Render the editor after activation
+            setTimeout(() => {
+                updateGrid();
+                saveActiveEditors();
+            }, 0);
+        }
+
+        // Update option text to reflect current status icons
+        const options = mobileSelect.querySelectorAll('option[data-role]');
+        options.forEach(option => {
+            const role = option.getAttribute('data-role');
+            if (role && editorState[role]) {
+                const state = editorState[role];
+                const statusIcon = state.isDirty ? '● ' : '✓ ';
+                option.textContent = statusIcon + state.label;
+            }
+        });
+
+        mobileSelect.value = activeRole;
+    }
+}
+
+function checkViewportWidth() {
+    const wasMobileView = isMobileView;
+    isMobileView = window.innerWidth < 1080;
+
+    // If view mode changed, rebuild the toggle bar
+    if (wasMobileView !== isMobileView) {
+        console.log(`[checkViewportWidth] View mode changed to ${isMobileView ? 'mobile' : 'desktop'}`);
+        rebuildToggleBar();
+
+        // If switching to mobile and multiple editors are active, keep only leftmost
+        if (isMobileView) {
+            const activeRoles = Object.keys(editorState).filter(role => editorState[role].active);
+            if (activeRoles.length > 1) {
+                console.log(`[checkViewportWidth] Multiple editors active in mobile view, keeping only: ${activeRoles[0]}`);
+                // Deactivate all except the first
+                activeRoles.slice(1).forEach(role => {
+                    const state = editorState[role];
+                    if (state.editor) {
+                        state.content = state.editor.getValue();
+                        state.editor.dispose();
+                        state.editor = null;
+                    }
+                    state.active = false;
+                });
+                updateGrid();
+                saveActiveEditors();
+            }
+        }
+        updateToggleButtons();
+    }
+
+    return isMobileView;
+}
+
+function rebuildToggleBar() {
+    console.log(`[rebuildToggleBar] Rebuilding toggle bar for ${isMobileView ? 'mobile' : 'desktop'} view`);
+    const toggleBar = document.querySelector('.toggle-bar');
+    if (!toggleBar) return;
+
+    // Clear existing buttons/selectors (but keep save dropdown)
+    const existingButtons = toggleBar.querySelectorAll('.toggle-btn, .mobile-selector-wrapper');
+    existingButtons.forEach(el => el.remove());
+
+    if (isMobileView) {
+        // Create mobile dropdown selector
+        const wrapper = document.createElement('div');
+        wrapper.className = 'mobile-selector-wrapper';
+
+        const label = document.createElement('label');
+        label.htmlFor = 'mobile-editor-select';
+        label.textContent = 'Editor: ';
+        label.className = 'mobile-selector-label';
+
+        const select = document.createElement('select');
+        select.id = 'mobile-editor-select';
+        select.className = 'mobile-editor-select';
+
+        // Add options for each editor with status icons
+        Object.keys(editorState).forEach(role => {
+            const state = editorState[role];
+            const option = document.createElement('option');
+            option.value = role;
+            const statusIcon = state.isDirty ? '● ' : '✓ ';
+            option.textContent = statusIcon + state.label;
+            option.setAttribute('data-role', role);
+            select.appendChild(option);
+        });
+
+        // Set current selection (default to first if none active)
+        const activeRole = Object.keys(editorState).find(role => editorState[role].active);
+        if (activeRole) {
+            select.value = activeRole;
+        } else {
+            // No editor active, activate the first one
+            const firstRole = Object.keys(editorState)[0];
+            editorState[firstRole].active = true;
+            select.value = firstRole;
+            // Need to render the editor
+            setTimeout(() => {
+                updateGrid();
+                saveActiveEditors();
+            }, 0);
+        }
+
+        // Add change listener
+        select.addEventListener('change', (e) => {
+            handleMobileEditorChange(e.target.value);
+        });
+
+        wrapper.appendChild(label);
+        wrapper.appendChild(select);
+
+        // Insert at the beginning of toggle bar
+        const firstChild = toggleBar.firstChild;
+        toggleBar.insertBefore(wrapper, firstChild);
+    } else {
+        // Create desktop toggle buttons
+        const roles = [
+            { role: 'all', label: 'All Roles' },
+            { role: 'anonymous', label: 'Anonymous' },
+            { role: 'viewer', label: 'Community Member' },
+            { role: 'seated', label: 'Pro Member' },
+            { role: 'admin', label: 'Admin' },
+            { role: 'grape', label: 'Legacy Browser' }
+        ];
+
+        roles.forEach(({ role, label }) => {
+            const btn = document.createElement('button');
+            btn.className = 'toggle-btn';
+            btn.setAttribute('data-role', role);
+            btn.textContent = label;
+            btn.addEventListener('click', () => toggleEditor(role));
+
+            // Insert before the save dropdown
+            const saveDropdown = toggleBar.querySelector('.save-dropdown');
+            toggleBar.insertBefore(btn, saveDropdown);
+        });
+    }
+
+    updateToggleButtons();
+}
+
+function handleMobileEditorChange(newRole) {
+    console.log(`[handleMobileEditorChange] Selected role: ${newRole}`);
+
+    if (!monacoReady) {
+        showMessage('Please wait for Monaco Editor to load', 'error');
+        return;
+    }
+
+    // Get currently active role
+    const currentActiveRole = Object.keys(editorState).find(role => editorState[role].active);
+
+    // If selecting the same role, do nothing
+    if (newRole === currentActiveRole) {
+        return;
+    }
+
+    // Deactivate current editor if any
+    if (currentActiveRole) {
+        const state = editorState[currentActiveRole];
+        if (state.editor) {
+            state.content = state.editor.getValue();
+            state.editor.dispose();
+            state.editor = null;
+        }
+        state.active = false;
+    }
+
+    // Activate new editor
+    editorState[newRole].active = true;
+
+    updateGrid();
+    updateToggleButtons();
+    saveActiveEditors();
 }
 
 function updateStatusIcon(role) {
     const statusIcon = document.querySelector(`[data-status-role="${role}"]`);
-    if (!statusIcon) return;
+    if (statusIcon) {
+        const state = editorState[role];
+        if (state.isDirty) {
+            statusIcon.textContent = '●';
+            statusIcon.className = 'editor-pane-status dirty';
+            statusIcon.title = 'Unsaved changes';
+        } else {
+            statusIcon.textContent = '✓';
+            statusIcon.className = 'editor-pane-status saved';
+            statusIcon.title = 'Saved';
+        }
+    }
 
-    const state = editorState[role];
-    if (state.isDirty) {
-        statusIcon.textContent = '●';
-        statusIcon.className = 'editor-pane-status dirty';
-        statusIcon.title = 'Unsaved changes';
-    } else {
-        statusIcon.textContent = '✓';
-        statusIcon.className = 'editor-pane-status saved';
-        statusIcon.title = 'Saved';
+    // Also update mobile dropdown option for this role
+    updateMobileDropdownOption(role);
+}
+
+function updateMobileDropdownOption(role) {
+    const mobileSelect = document.getElementById('mobile-editor-select');
+    if (!mobileSelect) return;
+
+    const option = mobileSelect.querySelector(`option[data-role="${role}"]`);
+    if (option && editorState[role]) {
+        const state = editorState[role];
+        const statusIcon = state.isDirty ? '● ' : '✓ ';
+        option.textContent = statusIcon + state.label;
     }
 }
 
@@ -175,7 +371,7 @@ function updateGrid() {
                             <button class="editor-pane-save" data-save-role="${role}">Save</button>
                             <button class="editor-save-dropdown-toggle" data-dropdown-role="${role}">▼</button>
                             <div class="editor-save-dropdown-menu" data-menu-role="${role}">
-                                <button class="editor-dropdown-item" data-revert-role="${role}">Revert Changes</button>
+                                <button class="editor-dropdown-item" data-revert-role="${role}">Revert this</button>
                             </div>
                         </div>
                         <button class="editor-pane-export" data-export-role="${role}">Export</button>
@@ -198,11 +394,9 @@ function updateGrid() {
 
         // Add click listener to revert button
         const revertBtn = pane.querySelector(`[data-revert-role="${role}"]`);
-        revertBtn.addEventListener('click', () => {
+        revertBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent dropdown from closing
             revertSinglePane(role);
-            // Close dropdown after action
-            const menu = document.querySelector(`[data-menu-role="${role}"]`);
-            if (menu) menu.classList.remove('show');
         });
 
         // Add click listener to export button
@@ -331,7 +525,6 @@ function toggleEditor(role) {
 
     updateGrid();
     updateToggleButtons();
-    updateActiveCount();
     saveActiveEditors();
 }
 window.toggleEditor = toggleEditor;
@@ -541,7 +734,6 @@ function initializeEditors(cssData) {
         console.log('[initializeEditors] Creating editors for restored roles:', activeRoles);
         updateGrid();
         updateToggleButtons();
-        updateActiveCount();
     }
 }
 
@@ -841,7 +1033,7 @@ async function saveCSS() {
         showMessage('Error saving CSS: ' + error.message, 'error');
     } finally {
         saveBtn.disabled = false;
-        saveBtn.textContent = 'Save All Changes';
+        saveBtn.textContent = 'Save All';
     }
 }
 window.saveCSS = saveCSS;
@@ -856,14 +1048,28 @@ function revertSinglePane(role) {
     }
 
     const state = editorState[role];
+    const revertBtn = document.querySelector(`[data-revert-role="${role}"]`);
 
-    // Confirm with user if there are unsaved changes
+    // If there are unsaved changes, show confirmation
     if (state.isDirty) {
-        if (!confirm(`Are you sure you want to revert ${state.label}? This will discard unsaved changes for this editor only.`)) {
-            console.log(`[revertSinglePane] User cancelled revert for ${role}`);
-            return;
+        if (revertBtn && !revertBtn.classList.contains('confirming')) {
+            // Show inline confirmation
+            showInlineConfirmation(revertBtn, () => {
+                // Confirmed - do the revert
+                performRevert(role);
+            });
         }
+        return;
     }
+
+    // No unsaved changes - show "no changes" message in button
+    if (revertBtn && !revertBtn.classList.contains('showing-no-changes')) {
+        showNoChangesMessage(revertBtn);
+    }
+}
+
+function performRevert(role) {
+    const state = editorState[role];
 
     // Revert content to original
     state.content = originalContent[role];
@@ -871,15 +1077,19 @@ function revertSinglePane(role) {
     // If editor is active, update its content
     if (state.editor) {
         state.editor.setValue(state.content);
-        console.log(`[revertSinglePane] Reverted ${role} editor: ${state.content.length} chars`);
+        console.log(`[performRevert] Reverted ${role} editor: ${state.content.length} chars`);
     }
 
     // Mark as clean
     state.isDirty = false;
     updateStatusIcon(role);
 
+    // Close dropdown menu
+    const menu = document.querySelector(`[data-menu-role="${role}"]`);
+    if (menu) menu.classList.remove('show');
+
     showMessage(`"${state.label}" reverted to original content.`, 'success');
-    console.log(`[revertSinglePane] Revert complete for ${role}`);
+    console.log(`[performRevert] Revert complete for ${role}`);
 }
 window.revertSinglePane = revertSinglePane;
 
@@ -887,10 +1097,12 @@ function toggleEditorDropdown(role) {
     const menu = document.querySelector(`[data-menu-role="${role}"]`);
     if (!menu) return;
 
-    // Close all other editor dropdowns
+    // Close all other editor dropdowns AND the global dropdown
     document.querySelectorAll('.editor-save-dropdown-menu.show').forEach(m => {
         if (m !== menu) m.classList.remove('show');
     });
+    const globalDropdown = document.getElementById('save-dropdown-menu');
+    if (globalDropdown) globalDropdown.classList.remove('show');
 
     menu.classList.toggle('show');
 }
@@ -912,32 +1124,271 @@ function discardChanges() {
         return;
     }
 
-    // Confirm with user
-    if (!confirm('Are you sure you want to discard all changes? This will revert all CSS to the originally loaded content.')) {
-        console.log('[discardChanges] User cancelled discard');
+    // Check if any editors have unsaved changes
+    const hasUnsavedChanges = Object.values(editorState).some(state => state.isDirty);
+    const discardBtn = document.getElementById('discard-btn');
+
+    if (hasUnsavedChanges) {
+        if (discardBtn && !discardBtn.classList.contains('confirming')) {
+            // Show inline confirmation
+            showInlineConfirmation(discardBtn, () => {
+                // Confirmed - do the discard
+                performDiscardChanges();
+            });
+        }
         return;
     }
 
+    // No unsaved changes - show "no changes" message in button
+    if (discardBtn && !discardBtn.classList.contains('showing-no-changes')) {
+        showNoChangesMessage(discardBtn);
+    }
+}
+
+function performDiscardChanges() {
     // Revert all state to original content
     Object.keys(editorState).forEach(role => {
         const state = editorState[role];
         state.content = originalContent[role] || '';
+        state.isDirty = false;
 
         // If editor is active, update its content
         if (state.editor) {
             state.editor.setValue(state.content);
-            console.log(`[discardChanges] Reverted ${role} editor: ${state.content.length} chars`);
+            console.log(`[performDiscardChanges] Reverted ${role} editor: ${state.content.length} chars`);
+        }
+
+        updateStatusIcon(role);
+    });
+
+    // Close dropdown menu
+    const dropdown = document.querySelector('.save-dropdown');
+    const dropdownMenu = document.getElementById('save-dropdown-menu');
+    if (dropdownMenu) dropdownMenu.classList.remove('show');
+    if (dropdown) dropdown.classList.remove('open');
+
+    showMessage('All changes discarded. CSS reverted to original content.', 'success');
+    console.log('[performDiscardChanges] Discard complete');
+}
+window.discardChanges = discardChanges;
+
+function showInlineConfirmation(button, onConfirm) {
+    // Mark button as confirming
+    button.classList.add('confirming');
+
+    // Store original button content and dimensions
+    const originalText = button.textContent;
+    const originalColor = button.style.color;
+    const originalHeight = button.offsetHeight + 'px';
+    const originalMinHeight = button.style.minHeight;
+
+    // Replace button content with confirm UI
+    button.innerHTML = '';
+    button.style.display = 'flex';
+    button.style.alignItems = 'stretch';
+    button.style.gap = '0';
+    button.style.justifyContent = 'space-between';
+    button.style.padding = '0';
+    button.style.height = originalHeight;
+    button.style.minHeight = originalHeight;
+
+    const confirmText = document.createElement('span');
+    confirmText.textContent = 'Confirm?';
+    confirmText.style.fontSize = '0.7rem';
+    confirmText.style.display = 'flex';
+    confirmText.style.alignItems = 'center';
+    confirmText.style.paddingLeft = '1rem';
+    confirmText.style.paddingRight = '0.5rem';
+    confirmText.style.flex = '1';
+
+    const buttonGroup = document.createElement('span');
+    buttonGroup.style.display = 'flex';
+    buttonGroup.style.alignItems = 'stretch';
+    buttonGroup.style.marginLeft = 'auto';
+
+    const tickBtn = document.createElement('span');
+    tickBtn.textContent = '✓';
+    tickBtn.className = 'confirm-tick';
+    tickBtn.style.cursor = 'pointer';
+    tickBtn.style.padding = '0 0.75rem';
+    tickBtn.style.borderRadius = '0';
+    tickBtn.style.background = 'rgba(76, 175, 80, 0.2)';
+    tickBtn.style.color = '#4caf50';
+    tickBtn.style.fontWeight = 'bold';
+    tickBtn.style.display = 'flex';
+    tickBtn.style.alignItems = 'center';
+    tickBtn.style.justifyContent = 'center';
+    tickBtn.style.minWidth = '2.5rem';
+    tickBtn.style.transition = 'all 0.15s';
+
+    const crossBtn = document.createElement('span');
+    crossBtn.textContent = '×';
+    crossBtn.className = 'confirm-cross';
+    crossBtn.style.cursor = 'pointer';
+    crossBtn.style.padding = '0 0.75rem';
+    crossBtn.style.borderRadius = '0';
+    crossBtn.style.background = 'rgba(244, 67, 54, 0.2)';
+    crossBtn.style.color = '#f44336';
+    crossBtn.style.fontWeight = 'bold';
+    crossBtn.style.fontSize = '1.2rem';
+    crossBtn.style.lineHeight = '1';
+    crossBtn.style.display = 'flex';
+    crossBtn.style.alignItems = 'center';
+    crossBtn.style.justifyContent = 'center';
+    crossBtn.style.minWidth = '2.5rem';
+    crossBtn.style.transition = 'all 0.15s';
+
+    // Add hover effects
+    tickBtn.addEventListener('mouseenter', () => {
+        tickBtn.style.background = 'rgba(76, 175, 80, 0.35)';
+    });
+    tickBtn.addEventListener('mouseleave', () => {
+        tickBtn.style.background = 'rgba(76, 175, 80, 0.2)';
+    });
+
+    crossBtn.addEventListener('mouseenter', () => {
+        crossBtn.style.background = 'rgba(244, 67, 54, 0.35)';
+    });
+    crossBtn.addEventListener('mouseleave', () => {
+        crossBtn.style.background = 'rgba(244, 67, 54, 0.2)';
+    });
+
+    buttonGroup.appendChild(tickBtn);
+    buttonGroup.appendChild(crossBtn);
+
+    button.appendChild(confirmText);
+    button.appendChild(buttonGroup);
+
+    // Reset function
+    const resetButton = () => {
+        button.classList.remove('confirming');
+        button.textContent = originalText;
+        button.style.color = originalColor;
+        button.style.display = '';
+        button.style.alignItems = '';
+        button.style.gap = '';
+        button.style.justifyContent = '';
+        button.style.padding = '';
+        button.style.height = '';
+        button.style.minHeight = originalMinHeight;
+    };
+
+    // Tick click handler
+    tickBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        resetButton();
+        onConfirm();
+    });
+
+    // Cross click handler
+    crossBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        resetButton();
+
+        // Close the dropdown menu
+        // Check if this is an editor dropdown button or global dropdown button
+        if (button.hasAttribute('data-revert-role')) {
+            // Editor-specific dropdown
+            const role = button.getAttribute('data-revert-role');
+            const menu = document.querySelector(`[data-menu-role="${role}"]`);
+            if (menu) menu.classList.remove('show');
+        } else if (button.id === 'discard-btn') {
+            // Global dropdown
+            const dropdownMenu = document.getElementById('save-dropdown-menu');
+            if (dropdownMenu) dropdownMenu.classList.remove('show');
         }
     });
 
-    showMessage('All changes discarded. CSS reverted to original content.', 'success');
-    console.log('[discardChanges] Discard complete');
+    // Click outside handler
+    const clickOutsideHandler = (e) => {
+        if (!button.contains(e.target)) {
+            resetButton();
+            document.removeEventListener('click', clickOutsideHandler);
+        }
+    };
+
+    // Add click outside listener after a brief delay to avoid immediate trigger
+    setTimeout(() => {
+        document.addEventListener('click', clickOutsideHandler);
+    }, 100);
 }
-window.discardChanges = discardChanges;
+
+function showNoChangesMessage(button) {
+    // Mark button as showing no changes message
+    button.classList.add('showing-no-changes');
+
+    // Store original button content and dimensions
+    const originalText = button.textContent;
+    const originalColor = button.style.color;
+    const originalHeight = button.offsetHeight + 'px';
+    const originalMinHeight = button.style.minHeight;
+    const originalFontSize = button.style.fontSize;
+    const originalBackground = button.style.background;
+
+    // Replace button content with "no changes" message
+    button.innerHTML = '';
+    button.style.display = 'flex';
+    button.style.alignItems = 'center';
+    button.style.justifyContent = 'flex-start';
+    button.style.padding = '0.5rem 0.75rem';
+    button.style.height = originalHeight;
+    button.style.minHeight = originalHeight;
+    button.style.color = '#ff9800';
+    button.style.cursor = 'default';
+    button.textContent = 'No changes';
+
+    // Flash animation
+    button.style.background = 'rgba(255, 152, 0, 0.15)';
+    button.style.transition = 'background 0.3s ease';
+    setTimeout(() => {
+        button.style.background = originalBackground;
+    }, 300);
+
+    // Reset function
+    const resetButton = () => {
+        button.classList.remove('showing-no-changes');
+        button.textContent = originalText;
+        button.style.color = originalColor;
+        button.style.display = '';
+        button.style.alignItems = '';
+        button.style.justifyContent = '';
+        button.style.padding = '';
+        button.style.height = '';
+        button.style.minHeight = originalMinHeight;
+        button.style.fontSize = originalFontSize;
+        button.style.cursor = '';
+        button.style.background = originalBackground;
+        button.style.transition = '';
+    };
+
+    // Auto-reset after 2 seconds
+    setTimeout(() => {
+        resetButton();
+    }, 2000);
+
+    // Click outside handler
+    const clickOutsideHandler = (e) => {
+        if (!button.contains(e.target)) {
+            resetButton();
+            document.removeEventListener('click', clickOutsideHandler);
+        }
+    };
+
+    // Add click outside listener after a brief delay
+    setTimeout(() => {
+        document.addEventListener('click', clickOutsideHandler);
+    }, 100);
+}
 
 function toggleDropdown() {
     const dropdown = document.querySelector('.save-dropdown');
     const dropdownMenu = document.getElementById('save-dropdown-menu');
+
+    // Close all editor dropdowns when opening global dropdown
+    document.querySelectorAll('.editor-save-dropdown-menu.show').forEach(m => {
+        m.classList.remove('show');
+    });
+
     dropdownMenu.classList.toggle('show');
     dropdown.classList.toggle('open');
 }
@@ -975,12 +1426,9 @@ function attachEventListeners() {
     }
 
     if (discardBtn) {
-        discardBtn.addEventListener('click', () => {
+        discardBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent dropdown from closing
             discardChanges();
-            // Close dropdown after action
-            const dropdown = document.querySelector('.save-dropdown');
-            document.getElementById('save-dropdown-menu').classList.remove('show');
-            dropdown.classList.remove('open');
         });
         console.log('[attachEventListeners] Discard button listener attached');
     }
@@ -998,12 +1446,16 @@ function attachEventListeners() {
     console.log('[CSS Editor] All event listeners registered');
 }
 
-// Handle window resize to update editor layouts
+// Handle window resize to update editor layouts and check viewport width
 let resizeTimeout;
 window.addEventListener('resize', () => {
     clearTimeout(resizeTimeout);
     resizeTimeout = setTimeout(() => {
-        console.log('[resize] Window resized, updating editor layouts');
+        console.log('[resize] Window resized, checking viewport and updating editor layouts');
+
+        // Check if we need to switch between mobile/desktop view
+        checkViewportWidth();
+
         const activeEditors = Object.keys(editorState).filter(role => editorState[role].active && editorState[role].editor);
         console.log('[resize] Active editors:', activeEditors);
 
@@ -1023,6 +1475,9 @@ window.addEventListener('resize', () => {
 // Initialize Monaco Editor on page load
 window.addEventListener('DOMContentLoaded', () => {
     console.log('[DOMContentLoaded] Page ready, waiting for Monaco loader');
+
+    // Check initial viewport width
+    checkViewportWidth();
 
     // Wait for Monaco's require to be available (stored separately)
     const waitForMonaco = setInterval(() => {

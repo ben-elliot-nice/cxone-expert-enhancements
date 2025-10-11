@@ -97,6 +97,62 @@
     align-items: flex-end;
     border-bottom: none;
     position: relative;
+    justify-content: space-between;
+}
+
+#css-editor-app .mobile-selector-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.75rem;
+    background: #2d2d30;
+    border: 1px solid #444;
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    position: relative;
+    z-index: 1;
+}
+
+#css-editor-app .mobile-selector-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #ccc;
+    white-space: nowrap;
+}
+
+#css-editor-app .mobile-editor-select {
+    padding: 0.4rem 1rem;
+    border: 1px solid #555;
+    background: #1e1e1e;
+    color: #e9ecef;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    min-width: 200px;
+    transition: all 0.15s;
+    appearance: none;
+    background-image: url('data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><path fill="%23e9ecef" d="M6 9L1 4h10z"/></svg>');
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    padding-right: 2rem;
+}
+
+#css-editor-app .mobile-editor-select:hover {
+    border-color: #888;
+    background-color: #252526;
+}
+
+#css-editor-app .mobile-editor-select:focus {
+    outline: none;
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
+}
+
+#css-editor-app .mobile-editor-select option {
+    background: #1e1e1e;
+    color: #e9ecef;
+    padding: 0.5rem;
 }
 
 #css-editor-app .toggle-btn {
@@ -143,19 +199,12 @@
 
 
 
-#css-editor-app .active-count {
-    font-size: 0.8rem;
-    color: #666;
-    margin-left: auto;
-    padding: 0.4rem 0.75rem;
-    align-self: center;
-}
 
 #css-editor-app .save-dropdown {
     display: inline-flex;
     position: relative;
     align-self: flex-end;
-    margin-left: 0.5rem;
+    margin-left: auto;
     padding-bottom: 0;
 }
 
@@ -170,7 +219,7 @@
     background: #0d6efd;
     color: white;
     border: 1px solid #0d6efd;
-    border-left: 1px solid rgba(255, 255, 255, 0.25);
+    border-left: 1px solid rgba(255, 255, 255, 0.25) !important;
     padding: 0.4rem 0.5rem;
     border-radius: 0 6px 0 0;
     cursor: pointer;
@@ -198,12 +247,12 @@
     right: 0;
     margin-top: 0.25rem;
     background: white;
-    border: 1px solid #dee2e6;
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
     z-index: 1000;
-    min-width: 180px;
-    overflow: hidden;
+    min-width: 160px;
+    padding: 0;
 }
 
 #css-editor-app .dropdown-menu.show {
@@ -213,20 +262,21 @@
 #css-editor-app .dropdown-item {
     display: block;
     width: 100%;
-    padding: 0.7rem 1rem;
+    padding: 0.5rem 0.75rem;
     border: none;
-    background: white;
+    background: transparent;
     color: #dc3545;
     text-align: left;
     cursor: pointer;
-    font-size: 0.9rem;
+    font-size: 0.75rem;
     font-weight: 500;
     transition: background 0.15s;
+    border-radius: 0 !important;
 }
 
 #css-editor-app .dropdown-item:hover {
-    background: #f8f9fa;
-    color: #bb2d3b;
+    background: rgba(220, 53, 69, 0.08);
+    color: #b02a37;
 }
 
 
@@ -390,6 +440,7 @@
     font-size: 0.75rem;
     font-weight: 500;
     transition: background 0.15s;
+    border-radius: 0 !important;
 }
 
 #css-editor-app .editor-dropdown-item:hover {
