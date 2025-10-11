@@ -269,21 +269,25 @@ function rebuildToggleBar() {
             select.appendChild(option);
         });
 
-        // Set current selection (default to first if none active)
-        const activeRole = Object.keys(editorState).find(role => editorState[role].active);
-        if (activeRole) {
-            select.value = activeRole;
-        } else {
-            // No editor active, activate the first one
+        // Set current selection - respect already active editor from localStorage
+        let activeRole = Object.keys(editorState).find(role => editorState[role].active);
+
+        // Only activate first editor if truly no active editors exist
+        if (!activeRole) {
             const firstRole = Object.keys(editorState)[0];
             editorState[firstRole].active = true;
-            select.value = firstRole;
+            activeRole = firstRole;
+            console.log(`[rebuildToggleBar] No active editor found, activating first: ${activeRole}`);
             // Need to render the editor
             setTimeout(() => {
                 updateGrid();
                 saveActiveEditors();
             }, 0);
+        } else {
+            console.log(`[rebuildToggleBar] Using existing active editor: ${activeRole}`);
         }
+
+        select.value = activeRole;
 
         // Add change listener
         select.addEventListener('change', (e) => {
@@ -819,7 +823,10 @@ function initializeEditors(cssData) {
         console.log(`[initializeEditors] Restored ${restored} active editor(s) from cache`);
     }
 
-    // STEP 3: Now create the UI with the loaded content
+    // STEP 3: Build the toggle bar for current viewport (mobile/desktop)
+    rebuildToggleBar();
+
+    // STEP 4: Now create the UI with the loaded content
     const activeRoles = Object.keys(editorState).filter(role => editorState[role].active);
     if (activeRoles.length > 0) {
         console.log('[initializeEditors] Creating editors for restored roles:', activeRoles);
@@ -1675,8 +1682,10 @@ window.addEventListener('resize', () => {
 window.addEventListener('DOMContentLoaded', () => {
     console.log('[DOMContentLoaded] Page ready, waiting for Monaco loader');
 
-    // Check initial viewport width
-    checkViewportWidth();
+    // Set initial mobile view flag WITHOUT rebuilding toggle bar yet
+    // (we'll rebuild after editors are loaded)
+    isMobileView = window.innerWidth < 1080;
+    console.log(`[DOMContentLoaded] Initial view mode: ${isMobileView ? 'mobile' : 'desktop'}`);
 
     // Wait for Monaco's require to be available (stored separately)
     const waitForMonaco = setInterval(() => {
