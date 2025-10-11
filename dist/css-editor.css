@@ -7,6 +7,7 @@
 #css-editor-app {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     color: #333;
+    position: relative;
 }
 
 #css-editor-app.container {
@@ -512,7 +513,7 @@
 }
 
 #css-editor-app #message-area {
-    position: fixed;
+    position: absolute;
     bottom: 2rem;
     left: 50%;
     transform: translateX(-50%);

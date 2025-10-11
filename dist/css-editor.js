@@ -203,15 +203,44 @@ function performLivePreviewUpdate() {
     try {
         const styleTag = getLivePreviewStyleTag();
 
-        // Collect all CSS from active editors
-        // In the CXone site, we'd want to inject the "all" role CSS plus any role-specific CSS
-        // For now, we'll combine all dirty (modified) editors' CSS
-        let combinedCSS = '';
+        // Get the selected preview role (defaults to 'anonymous')
+        const selectedRole = window.cssEditorPreviewRole || 'anonymous';
+        console.log('[performLivePreviewUpdate] Preview role:', selectedRole);
 
-        Object.keys(editorState).forEach(role => {
+        // Build CSS combination based on selected role
+        // Rules:
+        // - anonymous: all + anonymous
+        // - viewer (community): all + viewer
+        // - seated (pro): all + seated
+        // - admin: all + seated + admin
+        // - grape (legacy): all + grape
+        let combinedCSS = '';
+        const rolesToInclude = [];
+
+        // All roles get "all"
+        rolesToInclude.push('all');
+
+        // Add specific roles based on selection
+        if (selectedRole === 'anonymous') {
+            rolesToInclude.push('anonymous');
+        } else if (selectedRole === 'viewer') {
+            rolesToInclude.push('viewer');
+        } else if (selectedRole === 'seated') {
+            rolesToInclude.push('seated');
+        } else if (selectedRole === 'admin') {
+            // Admins inherit pro (seated) permissions
+            rolesToInclude.push('seated');
+            rolesToInclude.push('admin');
+        } else if (selectedRole === 'grape') {
+            rolesToInclude.push('grape');
+        }
+
+        console.log('[performLivePreviewUpdate] Including roles:', rolesToInclude);
+
+        // Combine CSS in order
+        rolesToInclude.forEach(role => {
             const state = editorState[role];
-            // Include CSS from editors that have modifications
-            if (state.content && state.content.trim()) {
+            if (state && state.content && state.content.trim()) {
                 combinedCSS += `\n/* CSS Editor Preview: ${state.label} */\n`;
                 combinedCSS += state.content;
                 combinedCSS += '\n';
@@ -219,7 +248,7 @@ function performLivePreviewUpdate() {
         });
 
         styleTag.textContent = combinedCSS;
-        console.log(`[performLivePreviewUpdate] Updated live preview: ${combinedCSS.length} characters`);
+        console.log(`[performLivePreviewUpdate] Updated live preview: ${combinedCSS.length} characters for role "${selectedRole}"`);
     } catch (error) {
         console.warn('[performLivePreviewUpdate] Failed to update live preview:', error);
     }
@@ -423,7 +452,18 @@ function rebuildToggleBar() {
             btn.className = 'toggle-btn';
             btn.setAttribute('data-role', role);
             btn.textContent = label;
-            btn.addEventListener('click', () => toggleEditor(role));
+            btn.addEventListener('click', (e) => {
+                // Desktop behavior:
+                // - Regular click: Open solo (close all others)
+                // - Ctrl+click: Toggle split view (add/remove from active set)
+                if (e.ctrlKey || e.metaKey) {
+                    // Ctrl+click: Toggle this editor in split view
+                    toggleEditor(role);
+                } else {
+                    // Regular click: Open solo (close all others, open this one)
+                    openEditorSolo(role);
+                }
+            });
 
             // Insert before the save dropdown
             const saveDropdown = toggleBar.querySelector('.save-dropdown');
@@ -733,6 +773,47 @@ function toggleEditor(role) {
 }
 window.toggleEditor = toggleEditor;
 
+/**
+ * Open a single editor in full view (close all others)
+ */
+function openEditorSolo(role) {
+    console.log(`[openEditorSolo] Opening ${role} in solo view`);
+
+    if (!monacoReady) {
+        console.error('[openEditorSolo] Monaco not ready yet!');
+        showMessage('Please wait for Monaco Editor to load', 'error');
+        return;
+    }
+
+    // Close all other editors first
+    Object.keys(editorState).forEach(r => {
+        if (r !== role) {
+            const state = editorState[r];
+            if (state.active) {
+                console.log(`[openEditorSolo] Closing ${r}`);
+                if (state.editor) {
+                    state.content = state.editor.getValue();
+                    state.editor.dispose();
+                    state.editor = null;
+                }
+                state.active = false;
+            }
+        }
+    });
+
+    // Open the selected editor if not already open
+    const targetState = editorState[role];
+    if (!targetState.active) {
+        console.log(`[openEditorSolo] Opening ${role}`);
+        targetState.active = true;
+    }
+
+    updateGrid();
+    updateToggleButtons();
+    saveActiveEditors();
+}
+window.openEditorSolo = openEditorSolo;
+
 function exportActiveEditors() {
     console.log('[exportActiveEditors] Exporting all active editors');
     const activeRoles = Object.keys(editorState).filter(role => editorState[role].active);
@@ -941,9 +1022,16 @@ function initializeEditors(cssData) {
     const restored = loadActiveEditors();
     if (restored > 0) {
         console.log(`[initializeEditors] Restored ${restored} active editor(s) from cache`);
+    } else {
+        // No cached editors - activate "all" role by default
+        console.log('[initializeEditors] No cached editors, activating "all" role by default');
+        editorState.all.active = true;
     }
 
-    // STEP 3: Build the toggle bar for current viewport (mobile/desktop)
+    // STEP 3: Check viewport width to set correct mobile/desktop state
+    checkViewportWidth();
+
+    // STEP 4: Build the toggle bar for current viewport (mobile/desktop)
     rebuildToggleBar();
 
     // STEP 4: Now create the UI with the loaded content
@@ -1049,7 +1137,6 @@ async function loadCSS() {
 
         document.getElementById('loading').style.display = 'none';
         document.getElementById('editor-container').style.display = 'block';
-        showMessage('CSS loaded from local cache!', 'success');
         console.log('[loadCSS] ===== LOAD CSS COMPLETE (from localStorage) =====');
         return;
     }
@@ -1106,7 +1193,6 @@ async function loadCSS() {
 
         document.getElementById('loading').style.display = 'none';
         document.getElementById('editor-container').style.display = 'block';
-        showMessage('CSS loaded successfully! Click editor buttons below to toggle editors on/off.', 'success');
         console.log('[loadCSS] ===== LOAD CSS COMPLETE =====');
 
     } catch (error) {
@@ -1771,9 +1857,25 @@ function attachEventListeners() {
     const toggleBtns = document.querySelectorAll('.toggle-btn');
     console.log(`[attachEventListeners] Found ${toggleBtns.length} toggle buttons`);
     toggleBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', (e) => {
             const role = btn.getAttribute('data-role');
-            toggleEditor(role);
+
+            // Check if we're in mobile view - if so, use old behavior
+            if (isMobileView) {
+                toggleEditor(role);
+                return;
+            }
+
+            // Desktop behavior:
+            // - Regular click: Open solo (close all others)
+            // - Ctrl+click: Toggle split view (add/remove from active set)
+            if (e.ctrlKey || e.metaKey) {
+                // Ctrl+click: Toggle this editor in split view
+                toggleEditor(role);
+            } else {
+                // Regular click: Open solo (close all others, open this one)
+                openEditorSolo(role);
+            }
         });
     });
 
