@@ -60,7 +60,6 @@ function getVersion() {
 
 function sanitizeBranchName(branch) {
   return branch
-    .replace(/^feature\//, '')
     .replace(/[^a-zA-Z0-9-_\/]/g, '-')
     .toLowerCase();
 }
@@ -89,12 +88,8 @@ function getDeploymentConfig() {
     targets = [
       { path: 'develop', desc: 'Develop branch', cache: 'no-cache' }
     ];
-  } else if (branch.startsWith('feature/')) {
-    const featureName = sanitizeBranchName(branch);
-    targets = [
-      { path: `feature/${featureName}`, desc: `Feature: ${branch}`, cache: 'no-cache' }
-    ];
   } else {
+    // Any other branch - deploy to sanitized branch name
     const sanitized = sanitizeBranchName(branch);
     targets = [
       { path: sanitized, desc: `Branch: ${branch}`, cache: 'no-cache' }

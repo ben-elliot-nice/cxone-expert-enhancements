@@ -2,8 +2,9 @@ name: Deploy Feature Branch
 
 on:
   push:
-    branches:
-      - 'feature/**'
+    branches-ignore:
+      - main
+      - develop
 
 jobs:
   deploy:
@@ -38,18 +39,18 @@ jobs:
         with:
           script: |
             const branch = context.ref.replace('refs/heads/', '');
-            const featureName = branch.replace('feature/', '').replace(/[^a-zA-Z0-9-_/]/g, '-').toLowerCase();
+            const sanitizedBranch = branch.replace(/[^a-zA-Z0-9-_/]/g, '-').toLowerCase();
             const baseUrl = 'https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements';
-            const embedUrl = `${baseUrl}/feature/${featureName}/css-editor-embed.js`;
+            const embedUrl = `${baseUrl}/${sanitizedBranch}/css-editor-embed.js`;
 
-            const comment = `## 🚀 Feature Deployment Successful
+            const comment = `## 🚀 Branch Deployment Successful
 
             **Branch:** \`${branch}\`
-            **Deployment Path:** \`cxone-expert-enhancements/feature/${featureName}/\`
+            **Deployment Path:** \`cxone-expert-enhancements/${sanitizedBranch}/\`
 
             ### Usage
 
-            Add this script to test the feature:
+            Add this script to test this branch:
 
             \`\`\`html
             <script src="${embedUrl}"></script>
@@ -57,9 +58,9 @@ jobs:
 
             ### All Files
 
-            - [css-editor-embed.js](${baseUrl}/feature/${featureName}/css-editor-embed.js)
-            - [css-editor.js](${baseUrl}/feature/${featureName}/css-editor.js)
-            - [css-editor.css](${baseUrl}/feature/${featureName}/css-editor.css)
+            - [css-editor-embed.js](${baseUrl}/${sanitizedBranch}/css-editor-embed.js)
+            - [css-editor.js](${baseUrl}/${sanitizedBranch}/css-editor.js)
+            - [css-editor.css](${baseUrl}/${sanitizedBranch}/css-editor.css)
             `;
 
             github.rest.issues.createComment({
