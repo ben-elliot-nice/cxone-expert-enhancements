@@ -1,19 +1,32 @@
 {
-  "name": "expert-css-editor",
-  "version": "1.0.0",
-  "description": "A modern CSS editor interface for CXone Expert legacy control panel",
+  "name": "cxone-expert-enhancements",
+  "version": "0.0.1",
+  "description": "Extensible toolkit loader for CXone Expert with modular enhancement modules including CSS editor, live preview, and more",
   "type": "module",
   "scripts": {
-    "deploy": "node deploy.js"
+    "deploy": "node deploy.js",
+    "deploy:v2": "node deploy-v2.js",
+    "cleanup": "node cleanup-feature.js"
   },
   "keywords": [
+    "cxone",
+    "expert",
+    "toolkit",
     "css",
     "editor",
-    "cxone",
-    "expert"
+    "modules",
+    "extensions"
   ],
-  "author": "",
+  "author": "Ben Elliot",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ben-elliot-nice/cxone-expert-enhancements.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ben-elliot-nice/cxone-expert-enhancements/issues"
+  },
+  "homepage": "https://github.com/ben-elliot-nice/cxone-expert-enhancements#readme",
   "dependencies": {
     "@aws-sdk/client-s3": "^3.0.0",
     "dotenv": "^16.0.0"
