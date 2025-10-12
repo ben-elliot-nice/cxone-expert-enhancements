@@ -4,7 +4,8 @@
   "description": "Extensible toolkit loader for CXone Expert with modular enhancement modules including CSS editor, live preview, and more",
   "type": "module",
   "scripts": {
-    "deploy": "node deploy.js"
+    "deploy": "node deploy.js",
+    "deploy:v2": "node deploy-v2.js"
   },
   "keywords": [
     "cxone",

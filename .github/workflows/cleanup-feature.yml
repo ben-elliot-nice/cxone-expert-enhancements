@@ -1,0 +1,66 @@
+name: Cleanup Feature Deployment
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - develop
+      - main
+
+jobs:
+  cleanup:
+    name: Remove Feature Deployment
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true && startsWith(github.head_ref, 'feature/')
+
+    steps:
+      - name: Setup AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Delete feature deployment
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          FEATURE_NAME=$(echo "$BRANCH" | sed 's|^feature/||' | sed 's|[^a-zA-Z0-9-_/]|-|g' | tr '[:upper:]' '[:lower:]')
+          BUCKET="${{ secrets.DO_SPACES_BUCKET }}"
+          ENDPOINT="${{ secrets.DO_SPACES_ENDPOINT }}"
+          PREFIX="cxone-expert-enhancements/feature/${FEATURE_NAME}/"
+
+          echo "Cleaning up feature deployment:"
+          echo "  Branch: $BRANCH"
+          echo "  Feature path: $PREFIX"
+          echo ""
+
+          # Delete all files in the feature path
+          aws s3 rm "s3://${BUCKET}/${PREFIX}" \
+            --recursive \
+            --endpoint-url "https://${ENDPOINT}"
+
+          echo ""
+          echo "✓ Feature deployment removed successfully"
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branch = context.payload.pull_request.head.ref;
+            const featureName = branch.replace(/^feature\//, '').replace(/[^a-zA-Z0-9-_/]/g, '-').toLowerCase();
+
+            const comment = `## 🧹 Feature Deployment Cleaned Up
+
+            The deployment for \`${branch}\` has been removed from Digital Ocean Spaces.
+
+            **Removed path:** \`cxone-expert-enhancements/feature/${featureName}/\`
+
+            This cleanup happened automatically because the PR was merged to \`${context.payload.pull_request.base.ref}\`.
+            `;
+
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
