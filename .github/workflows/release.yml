@@ -44,6 +44,24 @@ jobs:
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Update README with new version
+        if: steps.check-tag.outputs.exists == 'false'
+        run: |
+          VERSION="${{ steps.package-version.outputs.version }}"
+          # Update pinned version example in README
+          sed -i "s|cxone-expert-enhancements/releases/v[0-9]*\.[0-9]*\.[0-9]*/|cxone-expert-enhancements/releases/v${VERSION}/|g" README.md
+          # Also update any v0.0.X references
+          sed -i "s|/v[0-9]*\.[0-9]*\.[0-9]*/|/releases/v${VERSION}/|g" README.md
+
+          # Commit if there are changes
+          if [[ -n $(git status -s README.md) ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add README.md
+            git commit -m "docs: Update README with v${VERSION} pinned version [skip ci]"
+            git push origin main
+          fi
+
       - name: Generate changelog
         id: changelog
         if: steps.check-tag.outputs.exists == 'false'
@@ -113,7 +131,7 @@ jobs:
 
             #### Option 2: Pinned Version (No Auto-Updates)
             \`\`\`html
-            <script src="${baseUrl}/v${version}/css-editor-embed.js"></script>
+            <script src="${baseUrl}/releases/v${version}/css-editor-embed.js"></script>
             \`\`\`
 
             ### 📝 Changes
@@ -123,9 +141,9 @@ jobs:
             ### 🔗 Deployment URLs
 
             **Pinned Version (v${version}):**
-            - [css-editor-embed.js](${baseUrl}/v${version}/css-editor-embed.js)
-            - [css-editor.js](${baseUrl}/v${version}/css-editor.js)
-            - [css-editor.css](${baseUrl}/v${version}/css-editor.css)
+            - [css-editor-embed.js](${baseUrl}/releases/v${version}/css-editor-embed.js)
+            - [css-editor.js](${baseUrl}/releases/v${version}/css-editor.js)
+            - [css-editor.css](${baseUrl}/releases/v${version}/css-editor.css)
 
             **Latest:**
             - [css-editor-embed.js](${baseUrl}/latest/css-editor-embed.js)
@@ -164,7 +182,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "This release has been deployed to **3 locations**:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "1. **Pinned Version** (\`cxone-expert-enhancements/v${VERSION}/\`) - Immutable, cached forever" >> $GITHUB_STEP_SUMMARY
+          echo "1. **Pinned Version** (\`cxone-expert-enhancements/releases/v${VERSION}/\`) - Immutable, cached forever" >> $GITHUB_STEP_SUMMARY
           echo "2. **Latest** (\`cxone-expert-enhancements/latest/\`) - Always points to newest release" >> $GITHUB_STEP_SUMMARY
           echo "3. **Main Branch** (\`cxone-expert-enhancements/main/\`) - Current main branch state" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -177,15 +195,15 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "#### Option 2: Pinned Version (No Auto-Updates)" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`html" >> $GITHUB_STEP_SUMMARY
-          echo "<script src=\"${BASE_URL}/v${VERSION}/css-editor-embed.js\"></script>" >> $GITHUB_STEP_SUMMARY
+          echo "<script src=\"${BASE_URL}/releases/v${VERSION}/css-editor-embed.js\"></script>" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🔗 All Deployment URLs" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Pinned v${VERSION}:**" >> $GITHUB_STEP_SUMMARY
-          echo "- [css-editor-embed.js](${BASE_URL}/v${VERSION}/css-editor-embed.js)" >> $GITHUB_STEP_SUMMARY
-          echo "- [css-editor.js](${BASE_URL}/v${VERSION}/css-editor.js)" >> $GITHUB_STEP_SUMMARY
-          echo "- [css-editor.css](${BASE_URL}/v${VERSION}/css-editor.css)" >> $GITHUB_STEP_SUMMARY
+          echo "- [css-editor-embed.js](${BASE_URL}/releases/v${VERSION}/css-editor-embed.js)" >> $GITHUB_STEP_SUMMARY
+          echo "- [css-editor.js](${BASE_URL}/releases/v${VERSION}/css-editor.js)" >> $GITHUB_STEP_SUMMARY
+          echo "- [css-editor.css](${BASE_URL}/releases/v${VERSION}/css-editor.css)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Latest:**" >> $GITHUB_STEP_SUMMARY
           echo "- [css-editor-embed.js](${BASE_URL}/latest/css-editor-embed.js)" >> $GITHUB_STEP_SUMMARY

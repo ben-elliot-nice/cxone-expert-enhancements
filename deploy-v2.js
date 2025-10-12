@@ -81,7 +81,7 @@ function getDeploymentConfig() {
   if (branch === 'main') {
     targets = [
       { path: 'main', desc: 'Main branch', cache: 'no-cache' },
-      { path: `v${version}`, desc: `Version ${version}`, cache: 'immutable' },
+      { path: `releases/v${version}`, desc: `Version ${version}`, cache: 'immutable' },
       { path: 'latest', desc: 'Latest release', cache: 'no-cache' }
     ];
   } else if (branch === 'develop') {
