@@ -2,19 +2,25 @@
  * CSS Editor Embeddable Loader
  *
  * Usage: Add this script to the <head> of your CX1 site:
- * <script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/media/misc/expert-css/css-editor-embed.js"></script>
+ * <script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/latest/css-editor-embed.js"></script>
  *
  * This will create a floating toggle button in the top-right corner that opens/closes
  * a resizable, draggable CSS editor overlay.
+ *
+ * The script automatically detects its own location and loads companion files (CSS/JS)
+ * from the same directory, so it works with any deployment path.
  */
 
 (function() {
     'use strict';
 
-    // Configuration
-    const CDN_BASE = 'https://benelliot-nice.sgp1.digitaloceanspaces.com/media/misc/expert-css';
+    // Configuration - Auto-detect base URL from script location
+    const scriptUrl = document.currentScript ? document.currentScript.src : '';
+    const CDN_BASE = scriptUrl ? scriptUrl.substring(0, scriptUrl.lastIndexOf('/')) : '';
     const CSS_URL = `${CDN_BASE}/css-editor.css`;
     const JS_URL = `${CDN_BASE}/css-editor.js`;
+
+    console.log('[CSS Editor Embed] Auto-detected CDN base:', CDN_BASE);
 
     // State
     let isEditorOpen = false;
