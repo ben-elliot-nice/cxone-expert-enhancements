@@ -29,12 +29,11 @@ function error(message) {
 
 function sanitizeBranchName(branch) {
   return branch
-    .replace(/^feature\//, '')
     .replace(/[^a-zA-Z0-9-_\/]/g, '-')
     .toLowerCase();
 }
 
-function getFeaturePath() {
+function getBranchPath() {
   // Get branch from environment (GitHub Actions provides GITHUB_HEAD_REF for PRs)
   const branch = process.env.GITHUB_HEAD_REF || process.argv[2];
 
@@ -42,14 +41,15 @@ function getFeaturePath() {
     throw new Error('No branch specified. Set GITHUB_HEAD_REF or pass branch name as argument.');
   }
 
-  if (!branch.startsWith('feature/')) {
-    throw new Error(`Branch "${branch}" is not a feature branch. Only feature/* branches can be cleaned up.`);
+  // Don't allow cleanup of main or develop
+  if (branch === 'main' || branch === 'develop') {
+    throw new Error(`Branch "${branch}" is a protected branch and cannot be cleaned up.`);
   }
 
-  const featureName = sanitizeBranchName(branch);
-  const path = `${CONFIG.basePrefix}/feature/${featureName}/`;
+  const sanitizedBranch = sanitizeBranchName(branch);
+  const path = `${CONFIG.basePrefix}/${sanitizedBranch}/`;
 
-  return { branch, featureName, path };
+  return { branch, sanitizedBranch, path };
 }
 
 // ============================================================================
@@ -103,11 +103,11 @@ async function cleanup() {
   log(`Endpoint: ${CONFIG.endpoint}`);
   log('');
 
-  // Get feature path
-  const { branch, featureName, path } = getFeaturePath();
+  // Get branch path
+  const { branch, sanitizedBranch, path } = getBranchPath();
 
   log(`Branch: ${branch}`);
-  log(`Feature: ${featureName}`);
+  log(`Sanitized: ${sanitizedBranch}`);
   log(`Path to clean: ${path}`);
   log('');
 
