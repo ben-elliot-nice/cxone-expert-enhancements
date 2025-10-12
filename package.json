@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "deploy": "node deploy.js",
-    "deploy:v2": "node deploy-v2.js"
+    "deploy:v2": "node deploy-v2.js",
+    "cleanup": "node cleanup-feature.js"
   },
   "keywords": [
     "cxone",
