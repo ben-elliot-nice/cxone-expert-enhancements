@@ -1,12 +1,44 @@
-# CXone Expert CSS Editor
+# CXone Expert Enhancements
 
-A modern CSS editor interface for the CXone Expert (MindTouch) legacy control panel with toggle-based split-view editing. Now available as a **floating overlay** that can be embedded anywhere on your CX1 site!
+Extensible toolkit loader for CXone Expert with modular enhancement modules including CSS editor, live preview, and more.
 
-## Features
+## 🚀 Quick Start
 
-- **🎈 Floating Overlay Mode** - Embeddable JavaScript that creates a draggable, resizable CSS editor overlay
-- **🔴 Live CSS Preview** - See your CSS changes reflected instantly in the page (no save required!)
-- **Monaco Editor Integration** - Same editor as VS Code with full CSS syntax highlighting
+### Installation
+
+Add this script to the `<head>` of your CXone Expert site:
+
+#### Option 1: Latest Version (Recommended - Auto-Updates)
+
+```html
+<script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/latest/css-editor-embed.js"></script>
+```
+
+This URL always points to the latest released version. You'll automatically receive updates when new versions are deployed.
+
+#### Option 2: Pinned Version (No Auto-Updates)
+
+```html
+<script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/v0.0.1/css-editor-embed.js"></script>
+```
+
+Pin to a specific version to prevent automatic updates. Replace `v0.0.1` with your desired version.
+
+### What You Get
+
+Once loaded, a floating toggle button appears in the top-right corner. Click it to access:
+
+- **CSS Editor** - Live CSS editing with syntax highlighting (Monaco Editor)
+- **Role-Based Editing** - Edit CSS for different user roles independently
+- **Live Preview** - See changes in real-time before saving
+- **Auto-Complete** - Context-aware CSS suggestions based on page elements
+- **Persistent Storage** - Your changes are saved automatically
+
+## ✨ Features
+
+- **🎈 Floating Overlay Mode** - Draggable, resizable CSS editor overlay
+- **🔴 Live CSS Preview** - See your CSS changes reflected instantly (no save required!)
+- **Monaco Editor Integration** - Same editor as VS Code with full syntax highlighting
 - **Toggle-Based Split View** - Show/hide up to 3 editors simultaneously
 - **Multiple Role Support** - Edit CSS for all user roles (All Roles, Anonymous, Community Member, Pro Member, Admin, Legacy Browser)
 - **Draggable & Resizable** - Move and resize the editor window to fit your workflow
@@ -17,235 +49,237 @@ A modern CSS editor interface for the CXone Expert (MindTouch) legacy control pa
 - **Direct Save** - Saves changes directly back to the legacy control panel
 - **CSRF Protection** - Automatically handles CSRF tokens
 - **Dirty State Tracking** - Visual indicators (✓/●) show saved vs unsaved changes
+- **Context-Aware Autocomplete** - Suggests classes, IDs, and selectors from the current page
 
-## Project Structure
+## 🏗️ Development
 
-```
-expert-css-editor/
-├── css-editor.html          # Original single-file version (for reference)
-├── dist/                    # Deployable files
-│   ├── css-editor.css      # Styles
-│   ├── css-editor.js       # Application logic
-│   ├── css-editor-embed.js # 🆕 Embeddable loader (floating overlay)
-│   ├── index.html          # Full HTML page
-│   ├── cxone-embed.html    # Minimal HTML for pasting into CXone Expert
-│   └── embed-demo.html     # 🆕 Demo page showing the floating overlay
-├── deploy.js               # Deployment script for Digital Ocean Spaces
-├── .env                    # Environment variables (DO credentials)
-├── package.json            # Dependencies and scripts
-└── README.md              # This file
-```
+### Prerequisites
 
-## 🚀 Quick Start - Floating Overlay (Recommended!)
+- Node.js 18+
+- Digital Ocean Spaces credentials (for deployment)
+- Git
 
-### Option 1: Single-Line Embed (Easiest!)
+### Local Setup
 
-Add this **one line** to the `<head>` of your CX1 site:
-
-```html
-<script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/media/misc/expert-css/css-editor-embed.js"></script>
+1. Clone the repository:
+```bash
+git clone git@github.com:ben-elliot-nice/cxone-expert-enhancements.git
+cd cxone-expert-enhancements
 ```
 
-That's it! A floating CSS editor toggle button (`</>`) will appear in the top-right corner.
-
-**Try the demo**: Open `dist/embed-demo.html` in your browser to see it in action!
-
-### What you get:
-- 🔘 Floating toggle button in top-right corner
-- 📦 Draggable editor overlay
-- 📏 Resizable window (drag bottom-right corner)
-- 🔴 **Live CSS preview** - changes appear instantly!
-- 💾 Auto-saves to localStorage
-- 📱 Mobile responsive
-
-### Usage:
-1. Click the `</>` button to open the editor
-2. Click a role button (e.g., "All Roles") to activate an editor
-3. Edit CSS and watch changes apply live to the page
-4. Drag the purple header to move the window
-5. Drag the bottom-right corner to resize
-6. Click "Save All" when ready to persist changes to the server
-
----
-
-## 🛠️ Development & Deployment
-
-### 1. Installation
-
+2. Install dependencies:
 ```bash
 npm install
 ```
 
-### 2. Configuration
-
-Create a `.env` file with your Digital Ocean Spaces credentials:
-
-```env
-AWS_ACCESS_KEY_ID=your_access_key
-AWS_SECRET_ACCESS_KEY=your_secret_key
-DO_SPACES_BUCKET=benelliot-nice
-DO_SPACES_ENDPOINT=sgp1.digitaloceanspaces.com
+3. Create `.env` file (see [.env.example](.env.example)):
+```bash
+cp .env.example .env
+# Edit .env with your Digital Ocean Spaces credentials
 ```
 
-### 3. Deploy to Digital Ocean Spaces
+4. Make changes to files in `/dist/`
 
+5. Deploy to test:
 ```bash
 npm run deploy
 ```
 
-This uploads `css-editor.css` and `css-editor.js` to your DO Spaces bucket.
+This will deploy to a path based on your current git branch.
 
-**Public URLs**:
-- Embed (floating overlay): https://benelliot-nice.sgp1.digitaloceanspaces.com/media/misc/expert-css/css-editor-embed.js
-- CSS: https://benelliot-nice.sgp1.digitaloceanspaces.com/media/misc/expert-css/css-editor.css
-- JS: https://benelliot-nice.sgp1.digitaloceanspaces.com/media/misc/expert-css/css-editor.js
+### Git Workflow
 
-### 4. Use in CXone Expert
+This project uses a structured git flow with automated deployments:
 
-**Option A (Recommended):** Add the embed script to your site's `<head>` tag for a floating overlay editor.
+- **`feature/*`** → Deploy to `feature/{name}/` for testing
+- **`develop`** → Deploy to `develop/` for integration testing
+- **`main`** → Deploy to `main/`, `latest/`, and `v{version}/` + create GitHub release
 
-**Option B (Traditional):** Copy/paste the contents of `dist/cxone-embed.html` into the CXone Expert custom HTML field for an inline editor.
+See [GIT_WORKFLOW.md](GIT_WORKFLOW.md) for detailed workflow instructions.
 
-## Development Workflow
+### Branch-Specific Deployments
 
-### Making Changes
+Each branch automatically deploys to its own path on Digital Ocean Spaces:
 
-Edit the separated files in the `dist/` directory:
-- **CSS**: `dist/css-editor.css`
-- **JavaScript**: `dist/css-editor.js`
-- **HTML** (for embedding): `dist/cxone-embed.html`
+| Branch | Deployment Path | Use Case |
+|--------|----------------|----------|
+| `feature/my-feature` | `feature/my-feature/` | Feature development & testing |
+| `develop` | `develop/` | Integration testing |
+| `main` | `main/`, `latest/`, `v{version}/` | Production releases |
 
-### Deploying Updates
+**Example URLs:**
+```
+https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/
+├── feature/auto-load-css/css-editor-embed.js  (feature branch)
+├── develop/css-editor-embed.js                 (develop branch)
+├── main/css-editor-embed.js                   (main branch)
+├── latest/css-editor-embed.js                 (latest release - auto-updates)
+└── v0.0.1/css-editor-embed.js                 (pinned version - immutable)
+```
 
+## 📦 Releases
+
+### Creating a Release
+
+1. Ensure all changes are merged to `develop`
+2. Bump version in `package.json`:
 ```bash
-npm run deploy
+npm version patch  # For bug fixes (0.0.1 → 0.0.2)
+npm version minor  # For new features (0.0.1 → 0.1.0)
+npm version major  # For breaking changes (0.0.1 → 1.0.0)
 ```
 
-Once deployed, the changes are live immediately. No need to update the CXone Expert page - it automatically loads the latest from DO Spaces.
+3. Create PR from `develop` → `main`
+4. Merge PR - this triggers automatic:
+   - Git tag creation (`v0.0.X`)
+   - GitHub release with changelog
+   - Deployment to 3 locations (`main/`, `latest/`, `v{version}/`)
 
-## Usage
+### Version Pinning Strategy
 
-1. Paste `dist/cxone-embed.html` into CXone Expert custom HTML field (one-time setup)
-2. Navigate to the page in CXone Expert
-3. Enter your authentication tokens (Base URL, Auth Token, MT Session, Deki Session)
-4. Click "Load CSS from Legacy System"
-5. Toggle editors on/off (max 3 active simultaneously)
-6. Edit CSS with Monaco Editor
-7. Click "Save All Changes" to push updates back
-8. Use "Export Active" or individual export buttons to download CSS files
+Users can choose how they receive updates:
 
-## How It Works
+**Auto-update (latest) - Recommended:**
+```html
+<script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/latest/css-editor-embed.js"></script>
+```
+- Always gets the newest release automatically
+- Cached with `no-cache` headers for quick updates
+- Good for: Most users who want bug fixes and features
 
-### Loading CSS
+**Pinned version - For stability:**
+```html
+<script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/v0.0.1/css-editor-embed.js"></script>
+```
+- Stays on version 0.0.1 forever
+- Cached permanently (immutable)
+- Good for: Production sites requiring stability
 
-1. Frontend makes request to `/api/css`
-2. Server fetches HTML from legacy control panel
-3. Server parses HTML using Cheerio to extract:
-   - CSRF token from hidden input
-   - CSS content from each textarea
-4. Server returns JSON with all CSS and CSRF token
-5. Frontend initializes Monaco editors with the CSS
+**Develop - Bleeding edge:**
+```html
+<script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/develop/css-editor-embed.js"></script>
+```
+- Latest development code
+- May be unstable
+- Good for: Testing upcoming features
 
-### Saving CSS
+## 🔧 GitHub Actions Setup
 
-1. User clicks "Save All Changes"
-2. Frontend sends JSON with all CSS content + CSRF token to `/api/css` (POST)
-3. Server constructs multipart/form-data request (same format as legacy page)
-4. Server posts to legacy control panel
-5. Legacy system responds with 302 redirect (success)
-6. Frontend shows success message
+### Required Secrets
 
-## API Endpoints
+Configure these secrets in your GitHub repository (Settings → Secrets and variables → Actions):
 
-### GET /api/css
+| Secret Name | Description | Where to Get |
+|-------------|-------------|--------------|
+| `AWS_ACCESS_KEY_ID` | Digital Ocean Spaces Access Key | DO Spaces → API |
+| `AWS_SECRET_ACCESS_KEY` | Digital Ocean Spaces Secret Key | DO Spaces → API |
+| `DO_SPACES_BUCKET` | Target bucket name | `benelliot-nice` |
+| `DO_SPACES_ENDPOINT` | Region endpoint | `sgp1.digitaloceanspaces.com` |
 
-Fetches current CSS from legacy system.
+### Workflows
 
-**Response:**
-```json
-{
-  "success": true,
-  "csrf_token": "...",
-  "css": {
-    "all": "/* CSS content */",
-    "anonymous": "/* CSS content */",
-    "viewer": "/* CSS content */",
-    "seated": "/* CSS content */",
-    "admin": "/* CSS content */",
-    "grape": "/* CSS content */"
-  }
-}
+Three automated workflows handle deployments:
+
+1. **`feature-deploy.yml`** - Deploys feature branches to `feature/{name}/`
+   - Triggers: Push to `feature/**` branches
+   - Creates PR comments with deployment URLs
+
+2. **`develop-deploy.yml`** - Deploys develop branch to `develop/`
+   - Triggers: Push to `develop` branch
+   - Creates deployment summary
+
+3. **`release.yml`** - Deploys main to multiple locations + creates release
+   - Triggers: Push to `main` branch
+   - Creates git tag (e.g., `v0.0.1`)
+   - Generates GitHub release with changelog
+   - Deploys to `main/`, `latest/`, `v{version}/`
+
+## 📁 Project Structure
+
+```
+cxone-expert-enhancements/
+├── dist/
+│   ├── css-editor.css         # Styles for the editor
+│   ├── css-editor.js          # Main editor logic
+│   └── css-editor-embed.js    # Embed loader script
+├── .github/
+│   └── workflows/
+│       ├── feature-deploy.yml # Feature branch CI/CD
+│       ├── develop-deploy.yml # Develop branch CI/CD
+│       └── release.yml        # Release & main CI/CD
+├── deploy.js                  # Environment-aware deployment script
+├── package.json               # Project metadata & version
+├── .env.example               # Environment template
+├── .env                       # Local credentials (gitignored)
+├── GIT_WORKFLOW.md            # Detailed workflow guide
+└── README.md                  # This file
 ```
 
-### POST /api/css
+## 🎯 Roadmap
 
-Saves CSS to legacy system.
+This project is designed to be extensible. Future modules planned:
 
-**Request Body:**
-```json
-{
-  "csrf_token": "...",
-  "css_template_all": "/* CSS */",
-  "css_template_anonymous": "/* CSS */",
-  "css_template_viewer": "/* CSS */",
-  "css_template_seated": "/* CSS */",
-  "css_template_admin": "/* CSS */",
-  "css_template_grape": "/* CSS */"
-}
-```
+- **JavaScript Editor** - Live JS editing similar to CSS editor
+- **DOM Inspector** - Element picker and live inspection
+- **Analytics Dashboard** - Real-time usage metrics
+- **Permissions Manager** - Visual permission configuration
+- **Accessibility Checker** - WCAG compliance scanning
+- **Theme Previewer** - Live theme switching
+- **Module Loader** - Dynamic module loading system
 
-**Response:**
-```json
-{
-  "success": true,
-  "message": "CSS saved successfully"
-}
-```
-
-## Troubleshooting
+## 🐛 Troubleshooting
 
 ### Authentication Errors
-
 - Check that your tokens are current and properly copied
-- Ensure quotes are included where needed (authtoken and dekisession)
+- Ensure quotes are included where needed
 - Try logging in again and getting fresh tokens
 
-### CORS Issues
+### Deployment Fails
+- Verify GitHub secrets are configured correctly
+- Check Digital Ocean Spaces credentials
+- Ensure bucket and endpoint are correct
 
-- This tool uses a backend proxy to avoid CORS issues
-- All requests to the legacy system go through the Express server
-
-### Save Not Working
-
+### CSS Not Loading
 - Check browser console for errors
-- Verify CSRF token is being extracted correctly
-- Check that multipart boundary is being generated properly
+- Verify the embed script URL is correct
+- Ensure you have admin permissions
 
-## Future Enhancements
+### Local Deploy Issues
+- Make sure `.env` file exists with correct credentials
+- Run `npm install` to ensure dependencies are installed
+- Check that you're on a git branch (deploy.js needs branch name)
 
-- [x] ~~Live preview~~ ✅ **DONE!** (See floating overlay mode)
-- [x] ~~Draggable/resizable editor~~ ✅ **DONE!**
-- [ ] Dynamic authentication (OAuth or session management)
-- [ ] Diff view to see changes before saving
-- [ ] Enhanced CSS validation and linting
-- [ ] Version history
-- [ ] Undo/redo functionality
-- [ ] Dark/light theme toggle
-- [ ] CSS minification option
-- [ ] Fullscreen mode
-- [ ] Keyboard shortcuts (Ctrl+S to save, etc.)
-
-## Security Notes
-
-- **Never commit your authentication tokens to version control**
-- Add `server.js` to `.gitignore` after configuring, or use environment variables
-- Consider using a `.env` file for sensitive configuration
-- Tokens should be treated as passwords
-
-## License
+## 📄 License
 
 ISC
 
-## Support
+## 🤝 Contributing
 
-For issues or questions, please open an issue on the repository.
+1. Fork the repository
+2. Create a feature branch from `develop`:
+```bash
+git checkout develop
+git pull
+git checkout -b feature/amazing-feature
+```
+3. Make your changes
+4. Commit following conventional commits
+5. Push your branch
+6. Open a Pull Request to `develop`
+
+See [GIT_WORKFLOW.md](GIT_WORKFLOW.md) for detailed contribution guidelines.
+
+## 🙏 Acknowledgments
+
+- Built with [Monaco Editor](https://microsoft.github.io/monaco-editor/) - The code editor that powers VS Code
+- Deployed to [Digital Ocean Spaces](https://www.digitalocean.com/products/spaces)
+- Automated with [GitHub Actions](https://github.com/features/actions)
+
+## 📞 Support
+
+- **Issues**: https://github.com/ben-elliot-nice/cxone-expert-enhancements/issues
+- **Discussions**: https://github.com/ben-elliot-nice/cxone-expert-enhancements/discussions
+
+---
+
+🤖 Built with [Claude Code](https://claude.com/claude-code)
