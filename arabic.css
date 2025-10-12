@@ -1,0 +1,606 @@
+.mt-content-container {
+  background-color: #F5F5F5!important;
+}
+
+/* ===================================================================== */
+/* TABLE OF CONTENTS */
+/* ===================================================================== */
+
+/* Apply RTL direction to TOC container */
+aside#mt-toc-container {
+    direction: rtl !important;
+    margin-top: 0.5rem !important;
+}
+
+/* Right-justify the TOC toggle button */
+#mt-toc-container button.mt-toggle.mt-summary-toggle {
+    text-align: right !important;
+    direction: rtl !important;
+}
+
+/* Apply RTL to TOC list */
+.mt-toc-content ol {
+    direction: rtl !important;
+    text-align: right !important;
+}
+
+/* Apply RTL to TOC list items */
+.mt-toc-content ol li {
+    direction: rtl !important;
+    text-align: right !important;
+}
+
+/* Fix the ::before pseudo-element (the number) to float right in RTL */
+.mt-toc-content ol li::before {
+    float: right !important;
+    margin-right: 0 !important;
+    margin-left: 4px !important;
+}
+
+/* Apply RTL to TOC links */
+.mt-toc-content ol li a {
+    direction: rtl !important;
+    text-align: right !important;
+}
+
+/* ===================================================================== */
+/* FOOTER TAGS AND CLASSIFICATIONS */
+/* ===================================================================== */
+
+/* Reverse the order of the footer meta data list */
+ol.elm-meta-data.elm-meta-bottom {
+    display: flex !important;
+    flex-direction: row-reverse !important;
+    align-items: flex-start !important;
+    justify-content: flex-end !important;
+}
+
+/* Classifications should appear on right (order 2) */
+.elm-meta-bottom .elm-classifications {
+    order: 2 !important;
+    margin-left: 1.5em !important;
+}
+
+/* Tags should appear on left (order 1) */
+.elm-meta-bottom .elm-tags {
+    order: 1 !important;
+}
+
+/* Reverse order of dt and dd in classification */
+dl.mt-classification {
+    display: flex !important;
+    flex-direction: row-reverse !important;
+    align-items: center !important;
+    gap: 0.5em !important;
+}
+
+.mt-classification dt {
+    order: 2 !important;
+    margin: 0 !important;
+}
+
+.mt-classification dd {
+    order: 1 !important;
+    margin: 0 !important;
+}
+
+/* Reverse order of dt and dd in tags */
+dl.mt-tags {
+    display: flex !important;
+    flex-direction: row-reverse !important;
+    align-items: flex-start !important;
+    gap: 0.5em !important;
+}
+
+.mt-tags dt {
+    order: 2 !important;
+    margin: 0 !important;
+}
+
+.mt-tags dd {
+    order: 1 !important;
+    margin: 0 !important;
+}
+
+/* Tags list should be right-aligned */
+.mt-tags-list {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: flex-end !important;
+    gap: 0.5em !important;
+    margin: 0 !important;
+}
+
+/* ===================================================================== */
+/* RECOMMENDED ARTICLES */
+/* ===================================================================== */
+
+/* Make the link a flex container to control icon/text order */
+a.mt-related-listing-link {
+    display: flex !important;
+    flex-direction: row-reverse !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+}
+
+/* Icon should be on the right - use order as backup */
+.mt-related-listing-link .mt-related-listing-link-icon {
+    order: 2 !important;
+    margin-left: 0.5em !important;
+    margin-right: 0 !important;
+}
+
+/* Text should be on the left */
+.mt-related-listing-link .mt-related-listing-link-text {
+    order: 1 !important;
+    text-align: right !important;
+}
+
+/* ===================================================================== */
+/* EDIT STATUS BAR */
+/* ===================================================================== */
+
+ol.elm-meta-top {
+    display: flex !important;
+    flex-direction: row-reverse !important;
+    align-items: center !important;
+}
+
+/* Last Modified appears first in DOM but should be on right - push it there */
+.elm-meta-top .elm-last-modified {
+    order: 3 !important;
+    float: none !important;
+    margin: 0.25rem 0 0.5rem auto !important; /* 0.25rem top, 0.5rem bottom, auto left */
+}
+
+/* PDF Export appears second in DOM but should be on left */
+.elm-meta-top .elm-pdf-export {
+    order: 1 !important;
+}
+
+/* Social share - hide and put in middle order */
+.elm-meta-top .elm-social-share {
+    order: 2 !important;
+    display: none !important;
+}
+
+/* Reverse order of dt and dd in Last Modified */
+dl.mt-last-updated-container {
+    display: flex !important;
+    flex-direction: row-reverse !important;
+    align-items: center !important;
+    gap: 0.5em !important;
+}
+
+.mt-last-updated-container dt {
+    order: 2 !important;
+    margin: 0 !important;
+}
+
+.mt-last-updated-container dd {
+    order: 1 !important;
+    margin: 0 !important;
+}
+
+/* ===================================================================== */
+/* PAGINATION ARROWS */
+/* ===================================================================== */
+
+/* Previous article should show next arrow (pointing left in RTL) */
+.mt-icon-previous-article:before {
+    content: '\e8df' !important;
+}
+
+/* Next article should show previous arrow (pointing right in RTL) */
+.mt-icon-next-article:after {
+    content: '\e8dc' !important;
+}
+
+/* Move border and margin from right to left of previous button */
+.mt-article-pagination .mt-pagination-previous {
+    border-width: 0 0 0 1px !important;
+    margin-right: 0 !important;
+    margin-left: .4em !important;
+    padding: 0 0 0 .5em !important;
+}
+
+/* ===================================================================== */
+/* ARTICLE LISTING LINKS */
+/* ===================================================================== */
+
+/* Remove the existing ::after arrows */
+.mt-icon-article-topic-guide::after {
+    content: none !important;
+    display: none !important;
+}
+
+.mt-category-container .mt-listings-simple .mt-listing-detailed-subpage-title:after {
+    content: none !important;
+    display: none !important;
+}
+
+/* Add arrow to the LEFT side using ::before on the li element */
+/* Using the icomoon font that's already loaded on the site */
+li.mt-show-more-listing::before {
+    font-family: icomoon !important;
+    content: '\e72f' !important;  /* Left arrow icon */
+    display: inline-block !important;
+    margin-left: 8px !important;  /* In RTL context, this creates space on the visual RIGHT */
+    margin-right: 0 !important;
+    font-style: normal !important;
+    font-weight: 400 !important;
+    line-height: 1.5 !important;
+    -webkit-font-smoothing: antialiased !important;
+    -moz-osx-font-smoothing: grayscale !important;
+    vertical-align: middle !important;
+    flex-shrink: 0 !important;
+}
+
+/* Make the li a flex container to control layout */
+li.mt-show-more-listing {
+    display: flex !important;
+    align-items: center !important;
+    direction: rtl !important;  /* RTL direction */
+    flex-direction: row-reverse !important;  /* Reverse the order: arrow on left, text on right */
+    justify-content: space-between !important;  /* Space them apart */
+}
+
+/* Make sure the link text is aligned right */
+li.mt-show-more-listing a.mt-listing-detailed-subpage-title.internal {
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+    text-align: right !important;
+}
+
+/* Hide the icon span that's interfering */
+li.mt-show-more-listing a.mt-listing-detailed-subpage-title.internal span.mt-icon-article-topic-guide {
+    display: none !important;
+}
+
+/* ===================================================================== */
+/* PAGE HEADER ELEMENTS */
+/* ===================================================================== */
+
+/* Main page title */
+.elm-content-container h1#title {
+    direction: rtl !important;
+}
+
+/* Last modified date and metadata at top */
+.elm-content-container .elm-meta-top,
+.elm-content-container .elm-last-modified,
+.elm-content-container .mt-last-updated-container {
+    direction: rtl !important;
+}
+
+/* ===================================================================== */
+/* TABLE OF CONTENTS (GENERAL) */
+/* ===================================================================== */
+
+.elm-content-container #mt-toc-container {
+    direction: rtl !important;
+}
+
+.elm-content-container .mt-toc-content {
+    direction: rtl !important;
+}
+
+/* ===================================================================== */
+/* MAIN CONTENT SECTION */
+/* ===================================================================== */
+
+/* Main content text container */
+.elm-content-container .mt-content-container {
+    direction: rtl !important;
+}
+
+/* Content headers */
+.elm-content-container .mt-content-header {
+    direction: rtl !important;
+}
+
+/* Content sidebar */
+.elm-content-container .mt-content-side {
+    direction: rtl !important;
+}
+
+/* ===================================================================== */
+/* CATEGORY LISTINGS - TEXT ONLY */
+/* ===================================================================== */
+
+/* Category listing overview/description text */
+.elm-content-container .mt-listing-detailed-overview {
+    direction: rtl !important;
+}
+
+/* Category listing titles */
+.elm-content-container .mt-listing-detailed-title {
+    direction: rtl !important;
+}
+
+/* ===================================================================== */
+/* ARTICLE FOOTER ELEMENTS */
+/* ===================================================================== */
+
+/* Content footer */
+.elm-content-container .mt-content-footer {
+    direction: rtl !important;
+}
+
+/* Bottom metadata section */
+.elm-content-container .elm-meta-bottom {
+    direction: rtl !important;
+}
+
+/* ===================================================================== */
+/* FEEDBACK AND RATING */
+/* ===================================================================== */
+
+/* Article feedback container */
+.elm-content-container .elm-article-feedback {
+    direction: rtl !important;
+}
+
+/* Feedback rating message */
+.elm-content-container .mt-feedback-rating-message {
+    direction: rtl !important;
+}
+
+/* ===================================================================== */
+/* RELATED ARTICLES (GENERAL) */
+/* ===================================================================== */
+
+/* Related articles header */
+.elm-content-container .mt-related-articles-header {
+    direction: rtl !important;
+}
+
+/* Related article link text */
+.elm-content-container .mt-related-listing-link-text {
+    direction: rtl !important;
+}
+
+/* Related article overview text */
+.elm-content-container .mt-related-listing-link-overview {
+    direction: rtl !important;
+}
+
+/* ===================================================================== */
+/* TAGS AND CLASSIFICATIONS (GENERAL) */
+/* ===================================================================== */
+
+/* Tags section */
+.elm-content-container .elm-tags,
+.elm-content-container .mt-tags {
+    direction: rtl !important;
+}
+
+/* Tag labels and values */
+.elm-content-container .mt-tag-label,
+.elm-content-container .mt-tag-value {
+    direction: rtl !important;
+}
+
+/* Classifications section */
+.elm-content-container .elm-classifications,
+.elm-content-container .mt-classification {
+    direction: rtl !important;
+}
+
+/* Classification labels and values */
+.elm-content-container .mt-classification-label,
+.elm-content-container .mt-classification-value {
+    direction: rtl !important;
+}
+
+/* ===================================================================== */
+/* GENERAL TEXT ELEMENTS */
+/* ===================================================================== */
+
+/* All heading levels */
+.elm-content-container h1,
+.elm-content-container h2,
+.elm-content-container h3,
+.elm-content-container h4,
+.elm-content-container h5,
+.elm-content-container h6 {
+    direction: rtl !important;
+}
+
+/* Paragraphs within content */
+.elm-content-container p {
+    direction: rtl !important;
+}
+
+/* Blockquotes */
+.elm-content-container blockquote {
+    direction: rtl !important;
+}
+
+/* Pre-formatted text and code blocks */
+.elm-content-container pre {
+    direction: rtl !important;
+}
+
+/* Inline code */
+.elm-content-container code {
+    direction: rtl !important;
+}
+
+/* Lists within content */
+.elm-content-container ul:not(.mt-breadcrumbs):not(.mt-user-menu),
+.elm-content-container ol:not(.mt-breadcrumbs):not(.mt-user-menu) {
+    direction: rtl !important;
+}
+
+/* List items */
+.elm-content-container li {
+    direction: rtl !important;
+}
+
+/* Definition lists */
+.elm-content-container dl {
+    direction: rtl !important;
+}
+
+/* Definition terms and descriptions */
+.elm-content-container dt,
+.elm-content-container dd {
+    direction: rtl !important;
+}
+
+/* Span elements (inline text) */
+.elm-content-container span {
+    direction: rtl !important;
+}
+
+/* Div containers */
+.elm-content-container div {
+    direction: rtl !important;
+}
+
+/* Strong and emphasis */
+.elm-content-container strong,
+.elm-content-container em,
+.elm-content-container b,
+.elm-content-container i {
+    direction: rtl !important;
+}
+
+/* Tables */
+.elm-content-container table {
+    direction: rtl !important;
+}
+
+.elm-content-container th,
+.elm-content-container td {
+    direction: rtl !important;
+}
+
+.elm-content-container caption {
+    direction: rtl !important;
+}
+
+/* Labels and form elements text */
+.elm-content-container label {
+    direction: rtl !important;
+}
+
+/* Figure captions */
+.elm-content-container figcaption {
+    direction: rtl !important;
+}
+
+/* Sections and articles */
+.elm-content-container section,
+.elm-content-container article {
+    direction: rtl !important;
+}
+
+/* Address blocks */
+.elm-content-container address {
+    direction: rtl !important;
+}
+
+/* ===================================================================== */
+/* VIDEO WIDGETS */
+/* ===================================================================== */
+
+.elm-content-container .mt-video-widget {
+    direction: rtl !important;
+    text-align: right !important;
+    margin-left: auto !important;
+    margin-right: 0 !important;
+}
+
+.mt-content-container .mt-video-widget {
+    direction: rtl !important;
+    text-align: right !important;
+    margin-left: auto !important;
+    margin-right: 0 !important;
+}
+
+/* ===================================================================== */
+/* EMBED & CATEGORY PAGES (mt-content-container without elm-content-container) */
+/* ===================================================================== */
+
+.mt-content-container h1#title {
+    direction: rtl !important;
+}
+
+.mt-content-container h2,
+.mt-content-container h3,
+.mt-content-container h4,
+.mt-content-container h5,
+.mt-content-container h6 {
+    direction: rtl !important;
+}
+
+.mt-content-container p {
+    direction: rtl !important;
+}
+
+.mt-content-container ul,
+.mt-content-container ol {
+    direction: rtl !important;
+}
+
+.mt-content-container li {
+    direction: rtl !important;
+}
+
+.mt-content-container div {
+    direction: rtl !important;
+}
+
+.mt-content-container section {
+    direction: rtl !important;
+}
+
+.mt-content-container a {
+    direction: rtl !important;
+}
+
+.mt-content-container span {
+    direction: rtl !important;
+}
+
+.mt-content-container strong,
+.mt-content-container em,
+.mt-content-container b,
+.mt-content-container i {
+    direction: rtl !important;
+}
+
+ul.mt-sortable-listings-container {
+    direction: rtl !important;
+}
+
+.mt-listing-detailed-overview {
+    direction: rtl !important;
+    text-align: right !important;
+}
+
+/* Page directory listings - more specific rules to override general li */
+.mt-content-container ul.mt-page-directory-listings li.mt-listing-no-break {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-end !important;
+}
+
+.mt-content-container ul.mt-page-directory-listings h5 {
+    direction: rtl !important;
+    text-align: right !important;
+    display: block !important;
+    width: 100% !important;
+}
+
+.mt-content-container ul.mt-page-directory-listings .mt-listings-simple {
+    direction: rtl !important;
+    width: 100% !important;
+}
+
+.mt-content-container ul.mt-page-directory-listings .mt-listings-simple li {
+    direction: rtl !important;
+    text-align: right !important;
+}

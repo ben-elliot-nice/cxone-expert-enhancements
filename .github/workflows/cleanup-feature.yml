@@ -9,9 +9,9 @@ on:
 
 jobs:
   cleanup:
-    name: Remove Feature Deployment
+    name: Remove Branch Deployment
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true && startsWith(github.head_ref, 'feature/')
+    if: github.event.pull_request.merged == true && github.head_ref != 'main' && github.head_ref != 'develop'
 
     permissions:
       contents: read
@@ -44,13 +44,13 @@ jobs:
         with:
           script: |
             const branch = context.payload.pull_request.head.ref;
-            const featureName = branch.replace(/^feature\//, '').replace(/[^a-zA-Z0-9-_/]/g, '-').toLowerCase();
+            const sanitizedBranch = branch.replace(/[^a-zA-Z0-9-_/]/g, '-').toLowerCase();
 
-            const comment = `## 🧹 Feature Deployment Cleaned Up
+            const comment = `## 🧹 Branch Deployment Cleaned Up
 
             The deployment for \`${branch}\` has been removed from Digital Ocean Spaces.
 
-            **Removed path:** \`cxone-expert-enhancements/feature/${featureName}/\`
+            **Removed path:** \`cxone-expert-enhancements/${sanitizedBranch}/\`
 
             This cleanup happened automatically because the PR was merged to \`${context.payload.pull_request.base.ref}\`.
             `;
