@@ -11,7 +11,7 @@ Add this script to the `<head>` of your CXone Expert site:
 #### Option 1: Latest Version (Recommended - Auto-Updates)
 
 ```html
-<script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/media/misc/expert-css/latest/css-editor-embed.js"></script>
+<script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/latest/css-editor-embed.js"></script>
 ```
 
 This URL always points to the latest released version. You'll automatically receive updates when new versions are deployed.
@@ -19,7 +19,7 @@ This URL always points to the latest released version. You'll automatically rece
 #### Option 2: Pinned Version (No Auto-Updates)
 
 ```html
-<script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/media/misc/expert-css/v0.0.1/css-editor-embed.js"></script>
+<script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/v0.0.1/css-editor-embed.js"></script>
 ```
 
 Pin to a specific version to prevent automatic updates. Replace `v0.0.1` with your desired version.
@@ -109,7 +109,7 @@ Each branch automatically deploys to its own path on Digital Ocean Spaces:
 
 **Example URLs:**
 ```
-https://benelliot-nice.sgp1.digitaloceanspaces.com/media/misc/expert-css/
+https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/
 ├── feature/auto-load-css/css-editor-embed.js  (feature branch)
 ├── develop/css-editor-embed.js                 (develop branch)
 ├── main/css-editor-embed.js                   (main branch)
@@ -141,7 +141,7 @@ Users can choose how they receive updates:
 
 **Auto-update (latest) - Recommended:**
 ```html
-<script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/media/misc/expert-css/latest/css-editor-embed.js"></script>
+<script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/latest/css-editor-embed.js"></script>
 ```
 - Always gets the newest release automatically
 - Cached with `no-cache` headers for quick updates
@@ -149,7 +149,7 @@ Users can choose how they receive updates:
 
 **Pinned version - For stability:**
 ```html
-<script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/media/misc/expert-css/v0.0.1/css-editor-embed.js"></script>
+<script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/v0.0.1/css-editor-embed.js"></script>
 ```
 - Stays on version 0.0.1 forever
 - Cached permanently (immutable)
@@ -157,7 +157,7 @@ Users can choose how they receive updates:
 
 **Develop - Bleeding edge:**
 ```html
-<script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/media/misc/expert-css/develop/css-editor-embed.js"></script>
+<script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/develop/css-editor-embed.js"></script>
 ```
 - Latest development code
 - May be unstable

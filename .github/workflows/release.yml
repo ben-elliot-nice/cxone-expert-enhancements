@@ -80,7 +80,7 @@ jobs:
           DO_SPACES_ENDPOINT: ${{ secrets.DO_SPACES_ENDPOINT }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
           GITHUB_ACTIONS: 'true'
-        run: npm run deploy
+        run: npm run deploy:v2
 
       - name: Create GitHub Release
         if: steps.check-tag.outputs.exists == 'false'
@@ -100,7 +100,7 @@ jobs:
             }
 
             // Build release body
-            const baseUrl = 'https://benelliot-nice.sgp1.digitaloceanspaces.com/media/misc/expert-css';
+            const baseUrl = 'https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements';
 
             const releaseBody = `## CXone Expert Enhancements v${version}
 
@@ -156,7 +156,7 @@ jobs:
       - name: Create deployment summary
         run: |
           VERSION="${{ steps.package-version.outputs.version }}"
-          BASE_URL="https://benelliot-nice.sgp1.digitaloceanspaces.com/media/misc/expert-css"
+          BASE_URL="https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements"
 
           echo "## 🎉 Release v${VERSION} Deployed Successfully" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -164,9 +164,9 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "This release has been deployed to **3 locations**:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "1. **Pinned Version** (\`v${VERSION}/\`) - Immutable, cached forever" >> $GITHUB_STEP_SUMMARY
-          echo "2. **Latest** (\`latest/\`) - Always points to newest release" >> $GITHUB_STEP_SUMMARY
-          echo "3. **Main Branch** (\`main/\`) - Current main branch state" >> $GITHUB_STEP_SUMMARY
+          echo "1. **Pinned Version** (\`cxone-expert-enhancements/v${VERSION}/\`) - Immutable, cached forever" >> $GITHUB_STEP_SUMMARY
+          echo "2. **Latest** (\`cxone-expert-enhancements/latest/\`) - Always points to newest release" >> $GITHUB_STEP_SUMMARY
+          echo "3. **Main Branch** (\`cxone-expert-enhancements/main/\`) - Current main branch state" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📝 Usage Instructions" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
