@@ -91,11 +91,25 @@ This will deploy to a path based on your current git branch.
 
 This project uses a structured git flow with automated deployments:
 
-- **`feature/*`** → Deploy to `feature/{name}/` for testing
-- **`develop`** → Deploy to `develop/` for integration testing
 - **`main`** → Deploy to `main/`, `latest/`, and `v{version}/` + create GitHub release
+- **`develop`** → Deploy to `develop/` for integration testing
+- **Any other branch** → Deploy to `{sanitized-branch-name}/` for testing (supports feature/, hotfix/, bugfix/, refactor/, etc.)
 
 See [GIT_WORKFLOW.md](GIT_WORKFLOW.md) for detailed workflow instructions.
+
+#### Branch Naming Best Practices
+
+While the deployment system supports any branch name, we recommend following these conventions:
+
+- ✅ **Good:** `feature/user-auth`, `hotfix/bug-123`, `bugfix/issue-456`, `refactor/cleanup-css`
+- ⚠️ **Works but ugly:** `mybranch`, `test123`, `quick-fix`
+- ❌ **Avoid:** Special characters are stripped (e.g., `test@#$%` becomes `test-----`)
+
+**Rules:**
+- Branch names are sanitized: only `a-z`, `0-9`, `-`, `_`, `/` are kept
+- Other characters are replaced with `-`
+- Use descriptive, lowercase names with slashes for categorization
+- Main and develop are protected and won't be deployed as feature branches
 
 ### Branch-Specific Deployments
 
@@ -103,18 +117,23 @@ Each branch automatically deploys to its own path on Digital Ocean Spaces:
 
 | Branch | Deployment Path | Use Case |
 |--------|----------------|----------|
-| `feature/my-feature` | `feature/my-feature/` | Feature development & testing |
-| `develop` | `develop/` | Integration testing |
 | `main` | `main/`, `latest/`, `v{version}/` | Production releases |
+| `develop` | `develop/` | Integration testing |
+| `feature/my-feature` | `feature-my-feature/` | Feature development & testing |
+| `hotfix/bug-123` | `hotfix-bug-123/` | Hotfix testing |
+| `bugfix/issue-456` | `bugfix-issue-456/` | Bug fix testing |
+| Any other branch | `{sanitized-name}/` | Branch testing |
 
 **Example URLs:**
 ```
 https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/
-├── feature/auto-load-css/css-editor-embed.js  (feature branch)
+├── main/css-editor-embed.js                    (main branch)
+├── latest/css-editor-embed.js                  (latest release - auto-updates)
+├── v0.0.1/css-editor-embed.js                  (pinned version - immutable)
 ├── develop/css-editor-embed.js                 (develop branch)
-├── main/css-editor-embed.js                   (main branch)
-├── latest/css-editor-embed.js                 (latest release - auto-updates)
-└── v0.0.1/css-editor-embed.js                 (pinned version - immutable)
+├── feature-auto-load-css/css-editor-embed.js   (feature branch)
+├── hotfix-bug-123/css-editor-embed.js          (hotfix branch)
+└── bugfix-issue-456/css-editor-embed.js        (bugfix branch)
 ```
 
 ## 📦 Releases
