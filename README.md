@@ -19,10 +19,10 @@ This URL always points to the latest released version. You'll automatically rece
 #### Option 2: Pinned Version (No Auto-Updates)
 
 ```html
-<script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/v0.0.1/css-editor-embed.js"></script>
+<script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/releases/v0.0.2/css-editor-embed.js"></script>
 ```
 
-Pin to a specific version to prevent automatic updates. Replace `v0.0.1` with your desired version.
+Pin to a specific version to prevent automatic updates. Replace `v0.0.2` with your desired version.
 
 ### What You Get
 
@@ -91,7 +91,7 @@ This will deploy to a path based on your current git branch.
 
 This project uses a structured git flow with automated deployments:
 
-- **`main`** → Deploy to `main/`, `latest/`, and `v{version}/` + create GitHub release
+- **`main`** → Deploy to `main/`, `latest/`, and `releases/v{version}/` + create GitHub release
 - **`develop`** → Deploy to `develop/` for integration testing
 - **Any other branch** → Deploy to `{sanitized-branch-name}/` for testing (supports feature/, hotfix/, bugfix/, refactor/, etc.)
 
@@ -117,7 +117,7 @@ Each branch automatically deploys to its own path on Digital Ocean Spaces:
 
 | Branch | Deployment Path | Use Case |
 |--------|----------------|----------|
-| `main` | `main/`, `latest/`, `v{version}/` | Production releases |
+| `main` | `main/`, `latest/`, `releases/v{version}/` | Production releases |
 | `develop` | `develop/` | Integration testing |
 | `feature/my-feature` | `feature-my-feature/` | Feature development & testing |
 | `hotfix/bug-123` | `hotfix-bug-123/` | Hotfix testing |
@@ -129,7 +129,8 @@ Each branch automatically deploys to its own path on Digital Ocean Spaces:
 https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/
 ├── main/css-editor-embed.js                    (main branch)
 ├── latest/css-editor-embed.js                  (latest release - auto-updates)
-├── v0.0.1/css-editor-embed.js                  (pinned version - immutable)
+├── releases/
+│   └── v0.0.2/css-editor-embed.js              (pinned version - immutable)
 ├── develop/css-editor-embed.js                 (develop branch)
 ├── feature-auto-load-css/css-editor-embed.js   (feature branch)
 ├── hotfix-bug-123/css-editor-embed.js          (hotfix branch)
@@ -152,7 +153,7 @@ npm version major  # For breaking changes (0.0.1 → 1.0.0)
 4. Merge PR - this triggers automatic:
    - Git tag creation (`v0.0.X`)
    - GitHub release with changelog
-   - Deployment to 3 locations (`main/`, `latest/`, `v{version}/`)
+   - Deployment to 3 locations (`main/`, `latest/`, `releases/v{version}/`)
 
 ### Version Pinning Strategy
 
@@ -168,9 +169,9 @@ Users can choose how they receive updates:
 
 **Pinned version - For stability:**
 ```html
-<script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/v0.0.1/css-editor-embed.js"></script>
+<script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/releases/v0.0.2/css-editor-embed.js"></script>
 ```
-- Stays on version 0.0.1 forever
+- Stays on version 0.0.2 forever
 - Cached permanently (immutable)
 - Good for: Production sites requiring stability
 
@@ -211,7 +212,7 @@ Three automated workflows handle deployments:
    - Triggers: Push to `main` branch
    - Creates git tag (e.g., `v0.0.1`)
    - Generates GitHub release with changelog
-   - Deploys to `main/`, `latest/`, `v{version}/`
+   - Deploys to `main/`, `latest/`, `releases/v{version}/`
 
 ## 📁 Project Structure
 
