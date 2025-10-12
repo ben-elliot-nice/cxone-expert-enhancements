@@ -4,38 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CXone Expert CSS Editor</title>
-    <link rel="stylesheet" href="https://www.benelliot-nice.com/media/misc/expert-css/css-editor.css">
+    <link rel="stylesheet" href="https://benelliot-nice.sgp1.digitaloceanspaces.com/media/misc/expert-css/css-editor.css">
 </head>
 <body>
-    <div class="header">
-        <h1>CXone Expert CSS Editor</h1>
-    </div>
-
-    <div class="config-section">
-        <h2>Configuration</h2>
-        <div class="config-grid">
-            <label for="base-url">Base URL:</label>
-            <input type="text" id="base-url" value="https://help.benelliot-nice.com"
-                placeholder="https://help.benelliot-nice.com">
-
-            <label for="auth-token">Auth Token:</label>
-            <input type="text" id="auth-token"
-                value=""
-                placeholder="eyJhbGciOiJIUzI1NiIsImtpZCI6Imh0dHBzOi...">
-
-            <label for="mt-session">MT Web Session:</label>
-            <input type="text" id="mt-session" value=""
-                placeholder="6a177e120b810f25a448c78def371d54">
-
-            <label for="deki-session">Deki Session:</label>
-            <input type="text" id="deki-session"
-                value=""
-                placeholder="OGFlY2UxZWQtODliNi00OGU5LWExNTQtMGY2NzNjODg5ZDE3...">
-        </div>
-        <button class="btn btn-primary" id="load-btn">Load CSS from Legacy System</button>
-    </div>
-
-    <div class="container">
+    <div id="css-editor-app" class="container">
         <div id="message-area"></div>
         <div id="loading" class="loading" style="display: none;">Loading CSS from legacy system...</div>
         <div id="editor-container" style="display: none;">
@@ -46,20 +18,18 @@
                 <button class="toggle-btn" data-role="seated">Pro Member</button>
                 <button class="toggle-btn" data-role="admin">Admin</button>
                 <button class="toggle-btn" data-role="grape">Legacy Browser</button>
-            </div>
-            <div class="editor-actions-bar">
-                <button class="export-btn-small" id="export-active-btn">Export Active</button>
-                <span class="active-count">No editors active</span>
+                <div class="save-dropdown">
+                    <button class="btn btn-primary" id="save-btn">Save All</button>
+                    <button class="btn btn-dropdown-toggle" id="save-dropdown-toggle">▼</button>
+                    <div class="dropdown-menu" id="save-dropdown-menu">
+                        <button class="dropdown-item" id="discard-btn">Revert All</button>
+                    </div>
+                </div>
             </div>
             <div id="editors-grid" class="editors-grid"></div>
         </div>
     </div>
 
-    <div class="actions" id="actions" style="display: none;">
-        <button class="btn btn-secondary" id="reload-btn">Reload Page</button>
-        <button class="btn btn-primary" id="save-btn">Save All Changes</button>
-    </div>
-
-    <script src="https://www.benelliot-nice.com/media/misc/expert-css/css-editor.js"></script>
+    <script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/media/misc/expert-css/css-editor.js"></script>
 </body>
 </html>
