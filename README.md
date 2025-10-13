@@ -11,7 +11,7 @@ Add this script to the `<head>` of your CXone Expert site:
 #### Option 1: Latest Version (Recommended - Auto-Updates)
 
 ```html
-<script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/latest/css-editor-embed.js"></script>
+<script src="https://releases.benelliot-nice.com/cxone-expert-enhancements/latest/css-editor-embed.js"></script>
 ```
 
 This URL always points to the latest released version. You'll automatically receive updates when new versions are deployed.
@@ -19,7 +19,7 @@ This URL always points to the latest released version. You'll automatically rece
 #### Option 2: Pinned Version (No Auto-Updates)
 
 ```html
-<script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/releases/v0.1.2/css-editor-embed.js"></script>
+<script src="https://releases.benelliot-nice.com/cxone-expert-enhancements/releases/v0.1.2/css-editor-embed.js"></script>
 ```
 
 Pin to a specific version to prevent automatic updates. Replace `vX.X.X` with your desired version (e.g., `v0.0.7`).
@@ -126,7 +126,7 @@ Each branch automatically deploys to its own path on Digital Ocean Spaces:
 
 **Example URLs:**
 ```
-https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/
+https://releases.benelliot-nice.com/cxone-expert-enhancements/
 ├── main/css-editor-embed.js                    (main branch)
 ├── latest/css-editor-embed.js                  (latest release - auto-updates)
 ├── releases/
@@ -162,7 +162,7 @@ Users can choose how they receive updates:
 
 **Auto-update (latest) - Recommended:**
 ```html
-<script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/latest/css-editor-embed.js"></script>
+<script src="https://releases.benelliot-nice.com/cxone-expert-enhancements/latest/css-editor-embed.js"></script>
 ```
 - Always gets the newest release automatically
 - Cached with `no-cache` headers for quick updates
@@ -170,7 +170,7 @@ Users can choose how they receive updates:
 
 **Pinned version - For stability:**
 ```html
-<script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/releases/v0.1.2/css-editor-embed.js"></script>
+<script src="https://releases.benelliot-nice.com/cxone-expert-enhancements/releases/v0.1.2/css-editor-embed.js"></script>
 ```
 - Stays on that specific version forever
 - Cached permanently (immutable)
@@ -179,7 +179,7 @@ Users can choose how they receive updates:
 
 **Develop - Bleeding edge:**
 ```html
-<script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/develop/css-editor-embed.js"></script>
+<script src="https://releases.benelliot-nice.com/cxone-expert-enhancements/develop/css-editor-embed.js"></script>
 ```
 - Latest development code
 - May be unstable
@@ -196,7 +196,7 @@ Configure these secrets in your GitHub repository (Settings → Secrets and vari
 | `AWS_ACCESS_KEY_ID` | Digital Ocean Spaces Access Key | DO Spaces → API |
 | `AWS_SECRET_ACCESS_KEY` | Digital Ocean Spaces Secret Key | DO Spaces → API |
 | `DO_SPACES_BUCKET` | Target bucket name | `benelliot-nice` |
-| `DO_SPACES_ENDPOINT` | Region endpoint | `sgp1.digitaloceanspaces.com` |
+| `DO_SPACES_ENDPOINT` | Region endpoint | `syd1.digitaloceanspaces.com` |
 
 ### Workflows
 
