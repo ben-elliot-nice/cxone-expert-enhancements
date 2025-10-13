@@ -211,7 +211,7 @@ The workflows require these GitHub repository settings:
 | Variable | Purpose | Example |
 |----------|---------|---------|
 | `DO_SPACES_BUCKET` | Bucket name | `benelliot-nice` |
-| `DO_SPACES_ENDPOINT` | Region endpoint | `sgp1.digitaloceanspaces.com` |
+| `DO_SPACES_ENDPOINT` | Region endpoint | `syd1.digitaloceanspaces.com` |
 
 **Why variables instead of secrets?** Secrets are automatically redacted in logs and outputs, which would hide deployment URLs in PR comments and workflow summaries. Since bucket names and endpoints are public (visible in URLs), they should be stored as variables.
 

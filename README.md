@@ -196,7 +196,7 @@ Configure these secrets in your GitHub repository (Settings → Secrets and vari
 | `AWS_ACCESS_KEY_ID` | Digital Ocean Spaces Access Key | DO Spaces → API |
 | `AWS_SECRET_ACCESS_KEY` | Digital Ocean Spaces Secret Key | DO Spaces → API |
 | `DO_SPACES_BUCKET` | Target bucket name | `benelliot-nice` |
-| `DO_SPACES_ENDPOINT` | Region endpoint | `sgp1.digitaloceanspaces.com` |
+| `DO_SPACES_ENDPOINT` | Region endpoint | `syd1.digitaloceanspaces.com` |
 
 ### Workflows
 
