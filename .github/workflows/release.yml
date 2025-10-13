@@ -49,10 +49,8 @@ jobs:
         if: steps.check-tag.outputs.exists == 'false'
         run: |
           VERSION="${{ steps.package-version.outputs.version }}"
-          # Update pinned version example in README
+          # Update pinned version references in README
           sed -i "s|cxone-expert-enhancements/releases/v[0-9]*\.[0-9]*\.[0-9]*/|cxone-expert-enhancements/releases/v${VERSION}/|g" README.md
-          # Also update any v0.0.X references
-          sed -i "s|/v[0-9]*\.[0-9]*\.[0-9]*/|/releases/v${VERSION}/|g" README.md
 
           # Commit if there are changes
           if [[ -n $(git status -s README.md) ]]; then
