@@ -11,7 +11,7 @@ import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
 const CONFIG = {
   bucket: process.env.DO_SPACES_BUCKET || 'benelliot-nice',
-  endpoint: process.env.DO_SPACES_ENDPOINT || 'sgp1.digitaloceanspaces.com',
+  endpoint: process.env.DO_SPACES_ENDPOINT || 'syd1.digitaloceanspaces.com',
   region: 'us-east-1',
   basePrefix: 'cxone-expert-enhancements',
   files: [

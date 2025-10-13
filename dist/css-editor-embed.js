@@ -378,7 +378,6 @@
      * Load the CSS editor content into the overlay
      */
     function loadEditorContent() {
-        // Read the cxone-embed.html structure and inject it
         overlayContent.innerHTML = `
             <div id="css-editor-app" class="container" style="padding: 0; max-width: none; margin: 0;">
                 <div id="message-area"></div>
