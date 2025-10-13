@@ -26,27 +26,38 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          DO_SPACES_BUCKET: ${{ secrets.DO_SPACES_BUCKET }}
-          DO_SPACES_ENDPOINT: ${{ secrets.DO_SPACES_ENDPOINT }}
+          DO_SPACES_BUCKET: ${{ vars.DO_SPACES_BUCKET }}
+          DO_SPACES_ENDPOINT: ${{ vars.DO_SPACES_ENDPOINT }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
           GITHUB_ACTIONS: 'true'
         run: npm run deploy:v2
 
       - name: Create deployment summary
         run: |
-          echo "## 🚀 Develop Branch Deployed" >> $GITHUB_STEP_SUMMARY
+          BASE_URL="https://${{ vars.DO_SPACES_BUCKET }}.${{ vars.DO_SPACES_ENDPOINT }}/cxone-expert-enhancements"
+
+          echo "## 🚀 Develop Branch Deployed Successfully" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Branch:** develop" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Deployment Information" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** \`develop\`" >> $GITHUB_STEP_SUMMARY
           echo "**Deployment Path:** \`cxone-expert-enhancements/develop/\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Usage" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 Deployment URLs" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Main embed script:**" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`html" >> $GITHUB_STEP_SUMMARY
-          echo "<script src=\"https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/develop/css-editor-embed.js\"></script>" >> $GITHUB_STEP_SUMMARY
+          echo "<script src=\"${BASE_URL}/develop/css-editor-embed.js\"></script>" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### All Files" >> $GITHUB_STEP_SUMMARY
+          echo "**Direct file links:**" >> $GITHUB_STEP_SUMMARY
+          echo "- [css-editor-embed.js](${BASE_URL}/develop/css-editor-embed.js)" >> $GITHUB_STEP_SUMMARY
+          echo "- [css-editor.js](${BASE_URL}/develop/css-editor.js)" >> $GITHUB_STEP_SUMMARY
+          echo "- [css-editor.css](${BASE_URL}/develop/css-editor.css)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- [css-editor-embed.js](https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/develop/css-editor-embed.js)" >> $GITHUB_STEP_SUMMARY
-          echo "- [css-editor.js](https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/develop/css-editor.js)" >> $GITHUB_STEP_SUMMARY
-          echo "- [css-editor.css](https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/develop/css-editor.css)" >> $GITHUB_STEP_SUMMARY
+          echo "### 📝 Testing Instructions" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "1. Copy the embed script above" >> $GITHUB_STEP_SUMMARY
+          echo "2. Add it to the \`<head>\` of your CXone Expert site" >> $GITHUB_STEP_SUMMARY
+          echo "3. Refresh the page to see the CSS editor toggle button" >> $GITHUB_STEP_SUMMARY
+          echo "4. Test the latest development features!" >> $GITHUB_STEP_SUMMARY

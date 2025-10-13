@@ -27,8 +27,8 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          DO_SPACES_BUCKET: ${{ secrets.DO_SPACES_BUCKET }}
-          DO_SPACES_ENDPOINT: ${{ secrets.DO_SPACES_ENDPOINT }}
+          DO_SPACES_BUCKET: ${{ vars.DO_SPACES_BUCKET }}
+          DO_SPACES_ENDPOINT: ${{ vars.DO_SPACES_ENDPOINT }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
           GITHUB_ACTIONS: 'true'
         run: npm run deploy:v2
@@ -37,7 +37,7 @@ jobs:
         run: |
           BRANCH="${{ github.ref_name }}"
           SANITIZED_BRANCH=$(echo "$BRANCH" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9\-_\/]/-/g')
-          BASE_URL="https://cxone-expert-enhancements.syd1.cdn.digitaloceanspaces.com/cxone-expert-enhancements"
+          BASE_URL="https://${{ vars.DO_SPACES_BUCKET }}.${{ vars.DO_SPACES_ENDPOINT }}/cxone-expert-enhancements"
 
           echo "## 🚀 Feature Branch Deployed Successfully" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -72,7 +72,7 @@ jobs:
           script: |
             const branch = context.ref.replace('refs/heads/', '');
             const sanitizedBranch = branch.replace(/[^a-zA-Z0-9-_/]/g, '-').toLowerCase();
-            const baseUrl = 'https://cxone-expert-enhancements.syd1.cdn.digitaloceanspaces.com/cxone-expert-enhancements';
+            const baseUrl = 'https://${{ vars.DO_SPACES_BUCKET }}.${{ vars.DO_SPACES_ENDPOINT }}/cxone-expert-enhancements';
             const embedUrl = `${baseUrl}/${sanitizedBranch}/css-editor-embed.js`;
 
             const comment = `## 🚀 Branch Deployment Successful
