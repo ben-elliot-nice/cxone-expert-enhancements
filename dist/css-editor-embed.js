@@ -2,7 +2,7 @@
  * CSS Editor Embeddable Loader
  *
  * Usage: Add this script to the <head> of your CX1 site:
- * <script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/latest/css-editor-embed.js"></script>
+ * <script src="https://releases.benelliot-nice.com/cxone-expert-enhancements/latest/css-editor-embed.js"></script>
  *
  * This will create a floating toggle button in the top-right corner that opens/closes
  * a resizable, draggable CSS editor overlay.
@@ -378,7 +378,6 @@
      * Load the CSS editor content into the overlay
      */
     function loadEditorContent() {
-        // Read the cxone-embed.html structure and inject it
         overlayContent.innerHTML = `
             <div id="css-editor-app" class="container" style="padding: 0; max-width: none; margin: 0;">
                 <div id="message-area"></div>
