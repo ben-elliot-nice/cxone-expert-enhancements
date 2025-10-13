@@ -208,3 +208,21 @@ jobs:
           echo "- [css-editor-embed.js](${BASE_URL}/latest/css-editor-embed.js)" >> $GITHUB_STEP_SUMMARY
           echo "- [css-editor.js](${BASE_URL}/latest/css-editor.js)" >> $GITHUB_STEP_SUMMARY
           echo "- [css-editor.css](${BASE_URL}/latest/css-editor.css)" >> $GITHUB_STEP_SUMMARY
+
+      - name: Sync README changes back to develop
+        if: steps.check-tag.outputs.exists == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Fetch latest develop
+          git fetch origin develop
+
+          # Checkout develop (PAT credentials from initial checkout are still active)
+          git checkout develop
+
+          # Merge main into develop (this will be a fast-forward or merge commit)
+          git merge origin/main -m "chore: Sync README updates from main after v${{ steps.package-version.outputs.version }} release [skip ci]"
+
+          # Push back to develop (uses PAT credentials to bypass branch protection)
+          git push origin develop
