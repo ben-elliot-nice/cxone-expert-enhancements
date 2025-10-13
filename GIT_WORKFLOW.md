@@ -9,14 +9,21 @@ This project uses a standard git flow with automated CI/CD via GitHub Actions.
 | `main` | Production releases only, tagged | Yes |
 | `develop` | Integration branch, builds run here | Yes |
 | `feature/*` | Feature development branches | No |
+| `hotfix/*` | Hotfix branches | No |
+| `bugfix/*` | Bug fix branches | No |
+| Any other | Ad-hoc testing branches | No |
+
+**Note:** Any branch except `main` and `develop` will be automatically deployed for testing.
 
 ## GitHub Actions Workflows
 
 | Workflow | Trigger | What It Does |
 |----------|---------|--------------|
-| **feature-deploy.yml** | Push to `feature/**` | Deploys to `feature/{name}/` path, comments on PRs |
+| **feature-deploy.yml** | Push to any branch except `main`/`develop` | Deploys to `{sanitized-branch-name}/` path, comments on PRs |
 | **develop-deploy.yml** | Push to `develop` | Deploys to `develop/` path |
-| **release.yml** | Push to `main` | Creates tag, GitHub release, deploys to 3 locations |
+| **release.yml** | Push to `main` | Creates tag, updates README, deploys to 3 locations, syncs back to develop |
+| **cleanup-feature.yml** | PR merged to `develop`/`main` | Removes feature branch deployment from S3 |
+| **version-check.yml** | PR to `develop` | Ensures version was bumped in package.json |
 
 ## Standard Development Workflow
 
@@ -79,7 +86,11 @@ npm version patch  # For bug fixes (0.0.1 → 0.0.2)
 npm version minor  # For new features (0.0.1 → 0.1.0)
 npm version major  # For breaking changes (0.0.1 → 1.0.0)
 
-# This updates package.json and creates a version commit
+# This automatically:
+# - Updates package.json and package-lock.json
+# - Creates commit: "chore: Bump version to vX.X.X" (configured in .npmrc)
+# - Creates local git tag vX.X.X (not pushed - GitHub Actions creates remote tags)
+
 git push
 
 # Now create PR to main
@@ -87,6 +98,16 @@ gh pr create --base main --head develop \
   --title "Release v0.0.X" \
   --body "..."
 ```
+
+### .npmrc Configuration
+
+The project uses `.npmrc` to standardize version commit messages:
+```ini
+message=chore: Bump version to v%s
+tag-version-prefix=v
+```
+
+This ensures consistent commit messages and tag prefixes across all version bumps.
 
 ### Why Version Bumping is Required
 
@@ -108,15 +129,53 @@ Each branch deploys to a unique path on Digital Ocean Spaces:
 
 | Branch | Deployment Path(s) | Cache Strategy |
 |--------|-------------------|----------------|
-| `feature/xyz` | `feature/xyz/` | no-cache |
+| `feature/xyz` | `feature-xyz/` | no-cache |
+| `hotfix/bug-123` | `hotfix-bug-123/` | no-cache |
 | `develop` | `develop/` | no-cache |
-| `main` | `main/`, `latest/`, `v{version}/` | `v*` cached forever, others no-cache |
+| `main` | `main/`, `latest/`, `releases/v{version}/` | `releases/v*` cached forever, others no-cache |
 
 **Example URLs:**
-- Feature: `https://benelliot-nice.sgp1.digitaloceanspaces.com/media/misc/expert-css/feature/auto-load-css/css-editor-embed.js`
-- Develop: `https://benelliot-nice.sgp1.digitaloceanspaces.com/media/misc/expert-css/develop/css-editor-embed.js`
-- Latest: `https://benelliot-nice.sgp1.digitaloceanspaces.com/media/misc/expert-css/latest/css-editor-embed.js`
-- Pinned: `https://benelliot-nice.sgp1.digitaloceanspaces.com/media/misc/expert-css/v0.0.1/css-editor-embed.js`
+- Feature: `https://cxone-expert-enhancements.syd1.cdn.digitaloceanspaces.com/cxone-expert-enhancements/feature-auto-load-css/css-editor-embed.js`
+- Hotfix: `https://cxone-expert-enhancements.syd1.cdn.digitaloceanspaces.com/cxone-expert-enhancements/hotfix-bug-123/css-editor-embed.js`
+- Develop: `https://cxone-expert-enhancements.syd1.cdn.digitaloceanspaces.com/cxone-expert-enhancements/develop/css-editor-embed.js`
+- Latest: `https://cxone-expert-enhancements.syd1.cdn.digitaloceanspaces.com/cxone-expert-enhancements/latest/css-editor-embed.js`
+- Pinned: `https://cxone-expert-enhancements.syd1.cdn.digitaloceanspaces.com/cxone-expert-enhancements/releases/v0.0.8/css-editor-embed.js`
+
+**Note:** Versioned releases are deployed to `releases/v{version}/` subdirectory to avoid polluting the S3 bucket root.
+
+## Release Workflow Automation
+
+When a PR is merged from `develop` to `main`, the release workflow automatically:
+
+1. **Detects Version** - Reads version from `package.json`
+2. **Checks for Existing Tag** - Skips release if tag `v{version}` already exists
+3. **Updates README** - Replaces version URLs in README.md with new version
+4. **Commits README** - Pushes README update to main (using PAT to bypass branch protection)
+5. **Generates Changelog** - Extracts commits since last tag
+6. **Creates Git Tag** - Tags commit as `v{version}`
+7. **Deploys to S3** - Uploads to 3 locations: `main/`, `latest/`, `releases/v{version}/`
+8. **Creates GitHub Release** - With changelog and deployment URLs
+9. **Syncs to Develop** - Automatically merges main back into develop (prevents merge conflicts on next release)
+
+### Why Auto-Sync to Develop?
+
+The README update on main would normally cause main and develop to diverge, creating merge conflicts on the next release. The auto-sync step:
+- Merges main → develop after each release
+- Keeps branches in sync
+- Prevents merge conflicts
+- Uses `[skip ci]` to avoid triggering develop deployment
+
+### Required Secrets
+
+The release workflow requires these GitHub repository secrets:
+
+| Secret | Purpose |
+|--------|---------|
+| `PAT_TOKEN` | Personal Access Token with `repo` scope - bypasses branch protection for README commits |
+| `AWS_ACCESS_KEY_ID` | Digital Ocean Spaces access key |
+| `AWS_SECRET_ACCESS_KEY` | Digital Ocean Spaces secret key |
+| `DO_SPACES_BUCKET` | Bucket name (e.g., `benelliot-nice`) |
+| `DO_SPACES_ENDPOINT` | Region endpoint (e.g., `sgp1.digitaloceanspaces.com`) |
 
 ## Quick Reference Commands
 
@@ -148,7 +207,7 @@ npm version major   # Breaking change
 
 ## Branch Protection
 
-Recommended branch protection rules:
+Branch protection rules are enabled for both `main` and `develop`:
 
 ### `main` branch:
 - ✅ Require pull request before merging
@@ -156,14 +215,18 @@ Recommended branch protection rules:
 - ✅ Require status checks to pass
 - ✅ Require conversation resolution before merging
 - ✅ Do not allow bypassing the above settings
-- ❌ Do not allow force pushes
+- ❌ Do not allow force pushes (except from GitHub Actions via PAT)
 - ❌ Do not allow deletions
+
+**Note:** GitHub Actions uses `PAT_TOKEN` secret to bypass "Require pull request" protection for automated README commits during releases.
 
 ### `develop` branch:
 - ✅ Require pull request before merging
 - ✅ Require status checks to pass (if any)
-- ❌ Do not allow force pushes
+- ❌ Do not allow force pushes (except from GitHub Actions via PAT)
 - ❌ Do not allow deletions
+
+**Note:** GitHub Actions uses `PAT_TOKEN` to push auto-sync merge commits from main after releases.
 
 ## Troubleshooting
 
@@ -234,6 +297,60 @@ git branch --show-current
 cat .env
 ```
 
+### Release workflow doesn't trigger on main
+
+**Problem:** Merged PR to main but release workflow didn't run.
+
+**Cause:** GitHub Actions doesn't run workflows when they're modified in the same commit/PR as a security measure.
+
+**Fix:**
+```bash
+# Make an empty commit to trigger workflow
+git checkout main
+git pull
+git commit --allow-empty -m "chore: Trigger release workflow"
+git push
+```
+
+### Auto-sync to develop fails
+
+**Problem:** Release workflow completes but doesn't merge main back to develop.
+
+**Check:**
+1. `PAT_TOKEN` secret is configured in repository settings
+2. PAT has `repo` scope
+3. PAT hasn't expired
+4. Check Actions tab for error details
+
+**Fix:**
+```bash
+# Manually sync develop with main
+git checkout develop
+git pull
+git merge main -m "chore: Manual sync from main"
+git push
+```
+
+### README not updating during release
+
+**Problem:** Release created but README still has old version.
+
+**Check:**
+1. README contains version URLs matching pattern: `releases/v[0-9]*\.[0-9]*\.[0-9]*/`
+2. Tag doesn't already exist (workflow skips if tag exists)
+3. `PAT_TOKEN` secret is configured
+
+**Fix:**
+```bash
+# Manually update README on main
+git checkout main
+git pull
+# Edit README.md to update version URLs
+git add README.md
+git commit -m "docs: Update README with v0.0.X pinned version [skip ci]"
+git push
+```
+
 ## Testing Deployments
 
 ### Test a Feature Branch
@@ -254,7 +371,9 @@ git push -u origin feature/test-deploy
 # Go to: https://github.com/{user}/{repo}/actions
 
 # 5. Verify deployment
-# URL: https://{bucket}.{endpoint}/media/misc/expert-css/feature/test-deploy/css-editor-embed.js
+# URL: https://cxone-expert-enhancements.syd1.cdn.digitaloceanspaces.com/cxone-expert-enhancements/feature-test-deploy/css-editor-embed.js
+
+# 6. Check PR comment for deployment URLs (if PR was created)
 ```
 
 ### Test Develop Deployment
@@ -280,10 +399,17 @@ gh pr create --base main --title "Release v0.0.2"
 
 # 3. Merge PR
 
-# 4. Verify:
+# 4. Verify workflow completes:
+# - Check Actions tab for "Release and Deploy Main"
 # - Tag created: v0.0.2
 # - Release created on GitHub
-# - Deployed to: main/, latest/, v0.0.2/
+# - README updated with v0.0.2 URLs
+# - Deployed to: main/, latest/, releases/v0.0.2/
+# - Develop branch synced with main (no conflicts)
+
+# 5. Test deployments:
+# https://cxone-expert-enhancements.syd1.cdn.digitaloceanspaces.com/cxone-expert-enhancements/latest/css-editor-embed.js
+# https://cxone-expert-enhancements.syd1.cdn.digitaloceanspaces.com/cxone-expert-enhancements/releases/v0.0.2/css-editor-embed.js
 ```
 
 ## Advanced: Manual Deployment
