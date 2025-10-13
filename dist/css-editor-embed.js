@@ -312,6 +312,9 @@
         document.addEventListener('mousemove', handleResize);
         document.addEventListener('mouseup', stopResize);
 
+        // Attach window resize listener to constrain overlay
+        window.addEventListener('resize', constrainOverlayToViewport);
+
         console.log('[CSS Editor Embed] Overlay created');
     }
 
@@ -423,6 +426,75 @@
     }
 
     /**
+     * Get viewport dimensions accounting for scrollbars
+     */
+    function getViewportDimensions() {
+        return {
+            width: document.documentElement.clientWidth,
+            height: document.documentElement.clientHeight
+        };
+    }
+
+    /**
+     * Show toast notification
+     */
+    function showToast(message, duration = 4000) {
+        // Remove existing toast if any
+        const existing = document.getElementById('css-editor-toast');
+        if (existing) {
+            existing.remove();
+        }
+
+        const toast = document.createElement('div');
+        toast.id = 'css-editor-toast';
+        toast.textContent = message;
+        toast.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(102, 126, 234, 0.95);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 1000000;
+            animation: slideUp 0.3s ease-out;
+        `;
+
+        // Add keyframe animation
+        if (!document.getElementById('css-editor-toast-style')) {
+            const style = document.createElement('style');
+            style.id = 'css-editor-toast-style';
+            style.textContent = `
+                @keyframes slideUp {
+                    from {
+                        opacity: 0;
+                        transform: translateX(-50%) translateY(20px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateX(-50%) translateY(0);
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        document.body.appendChild(toast);
+
+        // Auto-remove after duration
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.3s ease-out';
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    }
+
+    /**
      * Restore overlay dimensions from localStorage
      */
     function restoreOverlayDimensions() {
@@ -432,13 +504,41 @@
                 const dimensions = JSON.parse(saved);
                 console.log('[CSS Editor Embed] Restoring overlay dimensions:', dimensions);
 
-                if (dimensions.width) overlay.style.width = dimensions.width;
-                if (dimensions.height) overlay.style.height = dimensions.height;
-                if (dimensions.left) overlay.style.left = dimensions.left;
-                if (dimensions.top) overlay.style.top = dimensions.top;
+                // Parse saved dimensions
+                const savedWidth = parseInt(dimensions.width) || 1200;
+                const savedHeight = parseInt(dimensions.height) || 800;
+                const savedLeft = parseInt(dimensions.left) || 40;
+                const savedTop = parseInt(dimensions.top) || 80;
+
+                // Constrain to current viewport size (accounting for scrollbars)
+                const viewport = getViewportDimensions();
+                const maxWidth = viewport.width;
+                const maxHeight = viewport.height;
+                const minWidth = 420;
+                const minHeight = 300;
+
+                // Ensure width and height fit in viewport
+                const constrainedWidth = Math.min(Math.max(savedWidth, minWidth), maxWidth);
+                const constrainedHeight = Math.min(Math.max(savedHeight, minHeight), maxHeight);
+
+                // Ensure position keeps overlay on screen
+                const constrainedLeft = Math.max(0, Math.min(savedLeft, maxWidth - constrainedWidth));
+                const constrainedTop = Math.max(0, Math.min(savedTop, maxHeight - constrainedHeight));
+
+                overlay.style.width = constrainedWidth + 'px';
+                overlay.style.height = constrainedHeight + 'px';
+                overlay.style.left = constrainedLeft + 'px';
+                overlay.style.top = constrainedTop + 'px';
 
                 // Clear right positioning when restoring left
                 overlay.style.right = 'auto';
+
+                console.log('[CSS Editor Embed] Constrained overlay to viewport:', {
+                    width: constrainedWidth,
+                    height: constrainedHeight,
+                    left: constrainedLeft,
+                    top: constrainedTop
+                });
 
                 return true;
             }
@@ -446,6 +546,90 @@
             console.warn('[CSS Editor Embed] Failed to restore overlay dimensions:', error);
         }
         return false;
+    }
+
+    /**
+     * Constrain overlay to current viewport size (called on window resize)
+     */
+    function constrainOverlayToViewport() {
+        if (!overlay || overlay.style.display === 'none') return;
+
+        const viewport = getViewportDimensions();
+        const minWidth = 420;
+        const minHeight = 300;
+
+        // Check if viewport is too small for minimum usable size
+        if (viewport.width < minWidth || viewport.height < minHeight) {
+            console.log('[CSS Editor Embed] Viewport too small, auto-minimizing overlay');
+
+            // Close the overlay
+            if (isEditorOpen) {
+                toggleEditor();
+            }
+
+            // Show toast notification
+            showToast('CSS Editor minimized - window is too small');
+            return;
+        }
+
+        const rect = overlay.getBoundingClientRect();
+
+        const currentWidth = rect.width;
+        const currentHeight = rect.height;
+        const currentLeft = rect.left;
+        const currentTop = rect.top;
+
+        let needsResize = false;
+        let newWidth = currentWidth;
+        let newHeight = currentHeight;
+        let newLeft = currentLeft;
+        let newTop = currentTop;
+
+        // Check if overlay is too large for viewport
+        if (currentWidth > viewport.width || currentHeight > viewport.height) {
+            needsResize = true;
+            // Set to 90% of viewport
+            newWidth = Math.max(viewport.width * 0.9, minWidth);
+            newHeight = Math.max(viewport.height * 0.9, minHeight);
+
+            // Center the overlay
+            newLeft = (viewport.width - newWidth) / 2;
+            newTop = (viewport.height - newHeight) / 2;
+        } else {
+            // Check if overlay is off-screen
+            if (currentLeft + currentWidth > viewport.width ||
+                currentTop + currentHeight > viewport.height ||
+                currentLeft < 0 || currentTop < 0) {
+                needsResize = true;
+
+                // Keep current size but adjust position
+                newWidth = Math.min(currentWidth, viewport.width);
+                newHeight = Math.min(currentHeight, viewport.height);
+                newLeft = Math.max(0, Math.min(currentLeft, viewport.width - newWidth));
+                newTop = Math.max(0, Math.min(currentTop, viewport.height - newHeight));
+            }
+        }
+
+        if (needsResize) {
+            overlay.style.width = newWidth + 'px';
+            overlay.style.height = newHeight + 'px';
+            overlay.style.left = newLeft + 'px';
+            overlay.style.top = newTop + 'px';
+            overlay.style.right = 'auto';
+            overlay.style.bottom = 'auto';
+
+            console.log('[CSS Editor Embed] Constrained overlay on window resize:', {
+                viewport,
+                oldDimensions: { width: currentWidth, height: currentHeight, left: currentLeft, top: currentTop },
+                newDimensions: { width: newWidth, height: newHeight, left: newLeft, top: newTop }
+            });
+
+            // Update editor heights
+            updateEditorHeights();
+
+            // Save new dimensions
+            saveOverlayDimensions();
+        }
     }
 
     /**
@@ -512,6 +696,18 @@
         isEditorOpen = !isEditorOpen;
 
         if (isEditorOpen) {
+            // Check if viewport is large enough before opening
+            const viewport = getViewportDimensions();
+            const minWidth = 420;
+            const minHeight = 300;
+
+            if (viewport.width < minWidth || viewport.height < minHeight) {
+                console.log('[CSS Editor Embed] Viewport too small to open editor');
+                isEditorOpen = false; // Revert state
+                showToast('CSS Editor requires a larger window to open');
+                return;
+            }
+
             overlay.style.display = 'flex';
             toggleButton.style.opacity = '0.7';
             console.log('[CSS Editor Embed] Editor opened');
@@ -570,9 +766,10 @@
         const newX = overlayStartX + deltaX;
         const newY = overlayStartY + deltaY;
 
-        // Constrain to viewport
-        const maxX = window.innerWidth - overlay.offsetWidth;
-        const maxY = window.innerHeight - overlay.offsetHeight;
+        // Constrain to viewport (accounting for scrollbars)
+        const viewport = getViewportDimensions();
+        const maxX = viewport.width - overlay.offsetWidth;
+        const maxY = viewport.height - overlay.offsetHeight;
 
         overlay.style.left = Math.max(0, Math.min(newX, maxX)) + 'px';
         overlay.style.top = Math.max(0, Math.min(newY, maxY)) + 'px';
@@ -613,8 +810,13 @@
         const deltaX = e.clientX - resizeStartX;
         const deltaY = e.clientY - resizeStartY;
 
-        const minWidth = 600;
-        const minHeight = 600;
+        const minWidth = 420;
+        const minHeight = 300;
+
+        // Use viewport dimensions (accounting for scrollbars)
+        const viewport = getViewportDimensions();
+        const maxWidth = viewport.width;
+        const maxHeight = viewport.height;
 
         let newWidth = overlayStartWidth;
         let newHeight = overlayStartHeight;
@@ -623,16 +825,16 @@
 
         // Calculate new dimensions based on resize direction
         if (resizeDirection.includes('e')) {
-            // East - increase width
-            newWidth = Math.max(minWidth, overlayStartWidth + deltaX);
+            // East - increase width (constrain to viewport)
+            newWidth = Math.max(minWidth, Math.min(overlayStartWidth + deltaX, maxWidth - newX));
         }
         if (resizeDirection.includes('w')) {
             // West - decrease width and move left
             const targetWidth = overlayStartWidth - deltaX;
             if (targetWidth >= minWidth) {
                 // Can resize - adjust both width and position
-                newWidth = targetWidth;
-                newX = overlayStartX + deltaX;
+                newWidth = Math.min(targetWidth, maxWidth); // Constrain to viewport width
+                newX = Math.max(0, overlayStartX + deltaX); // Constrain position to viewport
             } else {
                 // Hit minimum - keep at min width but don't move position
                 newWidth = minWidth;
@@ -640,16 +842,16 @@
             }
         }
         if (resizeDirection.includes('s')) {
-            // South - increase height
-            newHeight = Math.max(minHeight, overlayStartHeight + deltaY);
+            // South - increase height (constrain to viewport)
+            newHeight = Math.max(minHeight, Math.min(overlayStartHeight + deltaY, maxHeight - newY));
         }
         if (resizeDirection.includes('n')) {
             // North - decrease height and move up
             const targetHeight = overlayStartHeight - deltaY;
             if (targetHeight >= minHeight) {
                 // Can resize - adjust both height and position
-                newHeight = targetHeight;
-                newY = overlayStartY + deltaY;
+                newHeight = Math.min(targetHeight, maxHeight); // Constrain to viewport height
+                newY = Math.max(0, overlayStartY + deltaY); // Constrain position to viewport
             } else {
                 // Hit minimum - keep at min height but don't move position
                 newHeight = minHeight;
@@ -657,9 +859,13 @@
             }
         }
 
-        // Constrain to viewport
-        const maxX = window.innerWidth - newWidth;
-        const maxY = window.innerHeight - newHeight;
+        // Final constraint: ensure overlay doesn't exceed viewport bounds
+        newWidth = Math.min(newWidth, maxWidth);
+        newHeight = Math.min(newHeight, maxHeight);
+
+        // Constrain position to keep overlay fully visible
+        const maxX = maxWidth - newWidth;
+        const maxY = maxHeight - newHeight;
         newX = Math.max(0, Math.min(newX, maxX));
         newY = Math.max(0, Math.min(newY, maxY));
 

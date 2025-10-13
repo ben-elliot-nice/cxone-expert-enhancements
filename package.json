@@ -1,6 +1,6 @@
 {
   "name": "cxone-expert-enhancements",
-  "version": "0.0.8",
+  "version": "0.1.0",
   "description": "Extensible toolkit loader for CXone Expert with modular enhancement modules including CSS editor, live preview, and more",
   "type": "module",
   "scripts": {
