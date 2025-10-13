@@ -33,6 +33,38 @@ jobs:
           GITHUB_ACTIONS: 'true'
         run: npm run deploy:v2
 
+      - name: Create deployment summary
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          SANITIZED_BRANCH=$(echo "$BRANCH" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9\-_\/]/-/g')
+          BASE_URL="https://cxone-expert-enhancements.syd1.cdn.digitaloceanspaces.com/cxone-expert-enhancements"
+
+          echo "## 🚀 Feature Branch Deployed Successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Deployment Information" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** \`${BRANCH}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployment Path:** \`cxone-expert-enhancements/${SANITIZED_BRANCH}/\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 Deployment URLs" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Main embed script:**" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`html" >> $GITHUB_STEP_SUMMARY
+          echo "<script src=\"${BASE_URL}/${SANITIZED_BRANCH}/css-editor-embed.js\"></script>" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Direct file links:**" >> $GITHUB_STEP_SUMMARY
+          echo "- [css-editor-embed.js](${BASE_URL}/${SANITIZED_BRANCH}/css-editor-embed.js)" >> $GITHUB_STEP_SUMMARY
+          echo "- [css-editor.js](${BASE_URL}/${SANITIZED_BRANCH}/css-editor.js)" >> $GITHUB_STEP_SUMMARY
+          echo "- [css-editor.css](${BASE_URL}/${SANITIZED_BRANCH}/css-editor.css)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📝 Testing Instructions" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "1. Copy the embed script above" >> $GITHUB_STEP_SUMMARY
+          echo "2. Add it to the \`<head>\` of your CXone Expert site" >> $GITHUB_STEP_SUMMARY
+          echo "3. Refresh the page to see the CSS editor toggle button" >> $GITHUB_STEP_SUMMARY
+          echo "4. Test your changes!" >> $GITHUB_STEP_SUMMARY
+
       - name: Comment on PR
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
@@ -40,7 +72,7 @@ jobs:
           script: |
             const branch = context.ref.replace('refs/heads/', '');
             const sanitizedBranch = branch.replace(/[^a-zA-Z0-9-_/]/g, '-').toLowerCase();
-            const baseUrl = 'https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements';
+            const baseUrl = 'https://cxone-expert-enhancements.syd1.cdn.digitaloceanspaces.com/cxone-expert-enhancements';
             const embedUrl = `${baseUrl}/${sanitizedBranch}/css-editor-embed.js`;
 
             const comment = `## 🚀 Branch Deployment Successful
