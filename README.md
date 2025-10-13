@@ -19,10 +19,10 @@ This URL always points to the latest released version. You'll automatically rece
 #### Option 2: Pinned Version (No Auto-Updates)
 
 ```html
-<script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/releases/vX.X.X/css-editor-embed.js"></script>
+<script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/releases/v0.0.7/css-editor-embed.js"></script>
 ```
 
-Pin to a specific version to prevent automatic updates. Replace `vX.X.X` with your desired version (e.g., `v0.0.5`).
+Pin to a specific version to prevent automatic updates. Replace `vX.X.X` with your desired version (e.g., `v0.0.7`).
 
 ### What You Get
 
@@ -170,12 +170,12 @@ Users can choose how they receive updates:
 
 **Pinned version - For stability:**
 ```html
-<script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/releases/vX.X.X/css-editor-embed.js"></script>
+<script src="https://benelliot-nice.sgp1.digitaloceanspaces.com/cxone-expert-enhancements/releases/v0.0.7/css-editor-embed.js"></script>
 ```
 - Stays on that specific version forever
 - Cached permanently (immutable)
 - Good for: Production sites requiring stability
-- Replace `vX.X.X` with your desired version (e.g., `v0.0.5`)
+- Replace `vX.X.X` with your desired version (e.g., `v0.0.7`)
 
 **Develop - Bleeding edge:**
 ```html
