@@ -432,13 +432,40 @@
                 const dimensions = JSON.parse(saved);
                 console.log('[CSS Editor Embed] Restoring overlay dimensions:', dimensions);
 
-                if (dimensions.width) overlay.style.width = dimensions.width;
-                if (dimensions.height) overlay.style.height = dimensions.height;
-                if (dimensions.left) overlay.style.left = dimensions.left;
-                if (dimensions.top) overlay.style.top = dimensions.top;
+                // Parse saved dimensions
+                const savedWidth = parseInt(dimensions.width) || 1200;
+                const savedHeight = parseInt(dimensions.height) || 800;
+                const savedLeft = parseInt(dimensions.left) || 40;
+                const savedTop = parseInt(dimensions.top) || 80;
+
+                // Constrain to current viewport size
+                const maxWidth = window.innerWidth;
+                const maxHeight = window.innerHeight;
+                const minWidth = 600;
+                const minHeight = 600;
+
+                // Ensure width and height fit in viewport
+                const constrainedWidth = Math.min(Math.max(savedWidth, minWidth), maxWidth);
+                const constrainedHeight = Math.min(Math.max(savedHeight, minHeight), maxHeight);
+
+                // Ensure position keeps overlay on screen
+                const constrainedLeft = Math.max(0, Math.min(savedLeft, maxWidth - constrainedWidth));
+                const constrainedTop = Math.max(0, Math.min(savedTop, maxHeight - constrainedHeight));
+
+                overlay.style.width = constrainedWidth + 'px';
+                overlay.style.height = constrainedHeight + 'px';
+                overlay.style.left = constrainedLeft + 'px';
+                overlay.style.top = constrainedTop + 'px';
 
                 // Clear right positioning when restoring left
                 overlay.style.right = 'auto';
+
+                console.log('[CSS Editor Embed] Constrained overlay to viewport:', {
+                    width: constrainedWidth,
+                    height: constrainedHeight,
+                    left: constrainedLeft,
+                    top: constrainedTop
+                });
 
                 return true;
             }
@@ -615,6 +642,8 @@
 
         const minWidth = 600;
         const minHeight = 600;
+        const maxWidth = window.innerWidth;
+        const maxHeight = window.innerHeight;
 
         let newWidth = overlayStartWidth;
         let newHeight = overlayStartHeight;
@@ -623,16 +652,16 @@
 
         // Calculate new dimensions based on resize direction
         if (resizeDirection.includes('e')) {
-            // East - increase width
-            newWidth = Math.max(minWidth, overlayStartWidth + deltaX);
+            // East - increase width (constrain to viewport)
+            newWidth = Math.max(minWidth, Math.min(overlayStartWidth + deltaX, maxWidth - newX));
         }
         if (resizeDirection.includes('w')) {
             // West - decrease width and move left
             const targetWidth = overlayStartWidth - deltaX;
             if (targetWidth >= minWidth) {
                 // Can resize - adjust both width and position
-                newWidth = targetWidth;
-                newX = overlayStartX + deltaX;
+                newWidth = Math.min(targetWidth, maxWidth); // Constrain to viewport width
+                newX = Math.max(0, overlayStartX + deltaX); // Constrain position to viewport
             } else {
                 // Hit minimum - keep at min width but don't move position
                 newWidth = minWidth;
@@ -640,16 +669,16 @@
             }
         }
         if (resizeDirection.includes('s')) {
-            // South - increase height
-            newHeight = Math.max(minHeight, overlayStartHeight + deltaY);
+            // South - increase height (constrain to viewport)
+            newHeight = Math.max(minHeight, Math.min(overlayStartHeight + deltaY, maxHeight - newY));
         }
         if (resizeDirection.includes('n')) {
             // North - decrease height and move up
             const targetHeight = overlayStartHeight - deltaY;
             if (targetHeight >= minHeight) {
                 // Can resize - adjust both height and position
-                newHeight = targetHeight;
-                newY = overlayStartY + deltaY;
+                newHeight = Math.min(targetHeight, maxHeight); // Constrain to viewport height
+                newY = Math.max(0, overlayStartY + deltaY); // Constrain position to viewport
             } else {
                 // Hit minimum - keep at min height but don't move position
                 newHeight = minHeight;
@@ -657,9 +686,13 @@
             }
         }
 
-        // Constrain to viewport
-        const maxX = window.innerWidth - newWidth;
-        const maxY = window.innerHeight - newHeight;
+        // Final constraint: ensure overlay doesn't exceed viewport bounds
+        newWidth = Math.min(newWidth, maxWidth);
+        newHeight = Math.min(newHeight, maxHeight);
+
+        // Constrain position to keep overlay fully visible
+        const maxX = maxWidth - newWidth;
+        const maxY = maxHeight - newHeight;
         newX = Math.max(0, Math.min(newX, maxX));
         newY = Math.max(0, Math.min(newY, maxY));
 
