@@ -78,26 +78,55 @@ gh pr create --base main --head develop \
 
 ## Version Bumping
 
-**IMPORTANT:** Always bump version in `package.json` BEFORE creating PR to main
+**IMPORTANT:** Version bumping should happen at the RIGHT time in your workflow:
+
+### ✅ When to Bump Version
+
+**For feature branches → develop:**
+- Bump version **AFTER** you've completed development, tested, and created the PR to develop
+- This avoids unnecessary version bumps during development just to satisfy CI checks
+- Only bump when you're confident the feature is ready to merge
+
+**For develop → main (releases):**
+- Bump version **AFTER** the PR to develop is merged and you're ready to create a release
+- This ensures the version bump is the last commit before the release
+
+### Workflow Example
 
 ```bash
-# On develop branch, after all features are merged:
+# 1. Complete feature development
+git checkout -b feature/my-feature
+# ... make changes ...
+git commit -m "feat: Add my feature"
+git push
+
+# 2. Create PR to develop (no version bump yet)
+gh pr create --base develop --title "Add my feature"
+
+# 3. AFTER PR is created and CI passes, bump version
 npm version patch  # For bug fixes (0.0.1 → 0.0.2)
 npm version minor  # For new features (0.0.1 → 0.1.0)
 npm version major  # For breaking changes (0.0.1 → 1.0.0)
-
-# This automatically:
-# - Updates package.json and package-lock.json
-# - Creates commit: "chore: Bump version to vX.X.X" (configured in .npmrc)
-# - Creates local git tag vX.X.X (not pushed - GitHub Actions creates remote tags)
-
 git push
 
-# Now create PR to main
-gh pr create --base main --head develop \
-  --title "Release v0.0.X" \
-  --body "..."
+# 4. Merge PR to develop
+
+# 5. When ready to release, create PR from develop to main
+gh pr create --base main --head develop --title "Release v0.0.X"
 ```
+
+### What npm version Does
+
+```bash
+npm version patch  # Bug fix: 0.0.1 → 0.0.2
+npm version minor  # New feature: 0.0.1 → 0.1.0
+npm version major  # Breaking change: 0.0.1 → 1.0.0
+```
+
+This automatically:
+- Updates package.json and package-lock.json
+- Creates commit: "chore: Bump version to vX.X.X" (configured in .npmrc)
+- Creates local git tag vX.X.X (not pushed - GitHub Actions creates remote tags)
 
 ### .npmrc Configuration
 
@@ -165,17 +194,26 @@ The README update on main would normally cause main and develop to diverge, crea
 - Prevents merge conflicts
 - Uses `[skip ci]` to avoid triggering develop deployment
 
-### Required Secrets
+### Required Configuration
 
-The release workflow requires these GitHub repository secrets:
+The workflows require these GitHub repository settings:
+
+#### Secrets (sensitive values)
 
 | Secret | Purpose |
 |--------|---------|
 | `PAT_TOKEN` | Personal Access Token with `repo` scope - bypasses branch protection for README commits |
 | `AWS_ACCESS_KEY_ID` | Digital Ocean Spaces access key |
 | `AWS_SECRET_ACCESS_KEY` | Digital Ocean Spaces secret key |
-| `DO_SPACES_BUCKET` | Bucket name (e.g., `benelliot-nice`) |
-| `DO_SPACES_ENDPOINT` | Region endpoint (e.g., `sgp1.digitaloceanspaces.com`) |
+
+#### Variables (non-sensitive values)
+
+| Variable | Purpose | Example |
+|----------|---------|---------|
+| `DO_SPACES_BUCKET` | Bucket name | `benelliot-nice` |
+| `DO_SPACES_ENDPOINT` | Region endpoint | `sgp1.digitaloceanspaces.com` |
+
+**Why variables instead of secrets?** Secrets are automatically redacted in logs and outputs, which would hide deployment URLs in PR comments and workflow summaries. Since bucket names and endpoints are public (visible in URLs), they should be stored as variables.
 
 ## Quick Reference Commands
 
@@ -197,12 +235,26 @@ npm version major   # Breaking change
 
 ## Important Rules
 
+### Branching & Merging
 - ✅ **Always** create features off `develop`, not `main`
-- ✅ **Always** bump version before merging to `main`
 - ✅ **Always** test feature deployments before merging
 - ✅ **Never** force push to `main` or `develop`
 - ✅ **Never** merge feature branches directly to `main`
+
+### Merge Strategies
+- ✅ **Squash merge** feature/hotfix/bugfix branches INTO `develop` (keeps history clean)
+- ✅ **Regular merge** (NOT squash) when merging `develop` INTO `main` (preserves shared history)
+- ⚠️ **Why?** Squashing develop→main creates divergent history and breaks:
+  - Release workflow automation
+  - Auto-sync from main back to develop
+  - Future merge operations (causes conflicts)
+
+### Versioning
+- ✅ **Always** bump version after PR is created and tested (not during development)
+- ✅ **Always** bump version before merging to `main`
 - ❌ **Don't** skip the version bump - releases require it
+
+### Security
 - ❌ **Don't** commit `.env` file (credentials)
 
 ## Branch Protection
