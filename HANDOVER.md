@@ -236,8 +236,8 @@ This uploads to Digital Ocean Spaces:
 - `dist/css-editor.js` → `media/misc/expert-css/css-editor.js`
 
 **CDN URLs:**
-- `https://benelliot-nice.sgp1.digitaloceanspaces.com/media/misc/expert-css/css-editor.css`
-- `https://benelliot-nice.sgp1.digitaloceanspaces.com/media/misc/expert-css/css-editor.js`
+- `https://releases.benelliot-nice.com/cxone-expert-enhancements/latest/css-editor.css`
+- `https://releases.benelliot-nice.com/cxone-expert-enhancements/latest/css-editor.js`
 
 **Cache Control:** `no-cache, no-store, must-revalidate`
 
