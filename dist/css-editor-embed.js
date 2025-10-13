@@ -455,8 +455,8 @@
                 const viewport = getViewportDimensions();
                 const maxWidth = viewport.width;
                 const maxHeight = viewport.height;
-                const minWidth = 600;
-                const minHeight = 600;
+                const minWidth = 10;
+                const minHeight = 10;
 
                 // Ensure width and height fit in viewport
                 const constrainedWidth = Math.min(Math.max(savedWidth, minWidth), maxWidth);
@@ -503,8 +503,8 @@
         const currentLeft = rect.left;
         const currentTop = rect.top;
 
-        const minWidth = 600;
-        const minHeight = 600;
+        const minWidth = 10;
+        const minHeight = 10;
 
         let needsResize = false;
         let newWidth = currentWidth;
@@ -725,8 +725,8 @@
         const deltaX = e.clientX - resizeStartX;
         const deltaY = e.clientY - resizeStartY;
 
-        const minWidth = 600;
-        const minHeight = 600;
+        const minWidth = 10;
+        const minHeight = 10;
 
         // Use viewport dimensions (accounting for scrollbars)
         const viewport = getViewportDimensions();
