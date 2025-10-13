@@ -436,6 +436,65 @@
     }
 
     /**
+     * Show toast notification
+     */
+    function showToast(message, duration = 4000) {
+        // Remove existing toast if any
+        const existing = document.getElementById('css-editor-toast');
+        if (existing) {
+            existing.remove();
+        }
+
+        const toast = document.createElement('div');
+        toast.id = 'css-editor-toast';
+        toast.textContent = message;
+        toast.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(102, 126, 234, 0.95);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 1000000;
+            animation: slideUp 0.3s ease-out;
+        `;
+
+        // Add keyframe animation
+        if (!document.getElementById('css-editor-toast-style')) {
+            const style = document.createElement('style');
+            style.id = 'css-editor-toast-style';
+            style.textContent = `
+                @keyframes slideUp {
+                    from {
+                        opacity: 0;
+                        transform: translateX(-50%) translateY(20px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateX(-50%) translateY(0);
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        document.body.appendChild(toast);
+
+        // Auto-remove after duration
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.3s ease-out';
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    }
+
+    /**
      * Restore overlay dimensions from localStorage
      */
     function restoreOverlayDimensions() {
@@ -455,8 +514,8 @@
                 const viewport = getViewportDimensions();
                 const maxWidth = viewport.width;
                 const maxHeight = viewport.height;
-                const minWidth = 10;
-                const minHeight = 10;
+                const minWidth = 420;
+                const minHeight = 300;
 
                 // Ensure width and height fit in viewport
                 const constrainedWidth = Math.min(Math.max(savedWidth, minWidth), maxWidth);
@@ -496,15 +555,29 @@
         if (!overlay || overlay.style.display === 'none') return;
 
         const viewport = getViewportDimensions();
+        const minWidth = 420;
+        const minHeight = 300;
+
+        // Check if viewport is too small for minimum usable size
+        if (viewport.width < minWidth || viewport.height < minHeight) {
+            console.log('[CSS Editor Embed] Viewport too small, auto-minimizing overlay');
+
+            // Close the overlay
+            if (isEditorOpen) {
+                toggleEditor();
+            }
+
+            // Show toast notification
+            showToast('CSS Editor minimized - window is too small');
+            return;
+        }
+
         const rect = overlay.getBoundingClientRect();
 
         const currentWidth = rect.width;
         const currentHeight = rect.height;
         const currentLeft = rect.left;
         const currentTop = rect.top;
-
-        const minWidth = 10;
-        const minHeight = 10;
 
         let needsResize = false;
         let newWidth = currentWidth;
@@ -623,6 +696,18 @@
         isEditorOpen = !isEditorOpen;
 
         if (isEditorOpen) {
+            // Check if viewport is large enough before opening
+            const viewport = getViewportDimensions();
+            const minWidth = 420;
+            const minHeight = 300;
+
+            if (viewport.width < minWidth || viewport.height < minHeight) {
+                console.log('[CSS Editor Embed] Viewport too small to open editor');
+                isEditorOpen = false; // Revert state
+                showToast('CSS Editor requires a larger window to open');
+                return;
+            }
+
             overlay.style.display = 'flex';
             toggleButton.style.opacity = '0.7';
             console.log('[CSS Editor Embed] Editor opened');
@@ -725,8 +810,8 @@
         const deltaX = e.clientX - resizeStartX;
         const deltaY = e.clientY - resizeStartY;
 
-        const minWidth = 10;
-        const minHeight = 10;
+        const minWidth = 420;
+        const minHeight = 300;
 
         // Use viewport dimensions (accounting for scrollbars)
         const viewport = getViewportDimensions();
