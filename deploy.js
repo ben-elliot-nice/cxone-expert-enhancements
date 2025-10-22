@@ -27,6 +27,9 @@ const distFiles = [
   { local: 'dist/css-editor.css', filename: 'css-editor.css', contentType: 'text/css' },
   { local: 'dist/css-editor.js', filename: 'css-editor.js', contentType: 'application/javascript' },
   { local: 'dist/css-editor-embed.js', filename: 'css-editor-embed.js', contentType: 'application/javascript' },
+  { local: 'dist/html-editor.css', filename: 'html-editor.css', contentType: 'text/css' },
+  { local: 'dist/html-editor.js', filename: 'html-editor.js', contentType: 'application/javascript' },
+  { local: 'dist/html-editor-embed.js', filename: 'html-editor-embed.js', contentType: 'application/javascript' },
 ];
 
 // ============================================================================

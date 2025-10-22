@@ -18,6 +18,9 @@ const CONFIG = {
     { local: 'dist/css-editor.css', remote: 'css-editor.css', contentType: 'text/css' },
     { local: 'dist/css-editor.js', remote: 'css-editor.js', contentType: 'application/javascript' },
     { local: 'dist/css-editor-embed.js', remote: 'css-editor-embed.js', contentType: 'application/javascript' },
+    { local: 'dist/html-editor.css', remote: 'html-editor.css', contentType: 'text/css' },
+    { local: 'dist/html-editor.js', remote: 'html-editor.js', contentType: 'application/javascript' },
+    { local: 'dist/html-editor-embed.js', remote: 'html-editor-embed.js', contentType: 'application/javascript' },
   ]
 };
 
@@ -193,7 +196,7 @@ async function deploy() {
           cacheControl
         );
 
-        if (file.remote === 'css-editor-embed.js') {
+        if (file.remote === 'css-editor-embed.js' || file.remote === 'html-editor-embed.js') {
           deployedUrls.push({ desc: target.desc, url });
         }
       } catch (err) {
