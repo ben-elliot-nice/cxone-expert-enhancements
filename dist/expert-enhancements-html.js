@@ -719,6 +719,9 @@
                     field.isDirty = false;
 
                     this.updateToggleButtons();
+
+                    // Persist updated state to localStorage
+                    this.saveState();
                 } else {
                     throw new Error(`HTTP ${response.status}`);
                 }
@@ -777,6 +780,9 @@
                     });
 
                     this.updateToggleButtons();
+
+                    // Persist updated state to localStorage
+                    this.saveState();
                 } else {
                     throw new Error(`HTTP ${response.status}`);
                 }
