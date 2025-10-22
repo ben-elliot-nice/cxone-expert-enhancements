@@ -1,0 +1,710 @@
+/**
+ * CXone Expert Enhancements - Core System
+ *
+ * Provides common utilities and app management for all enhancement apps.
+ * Apps register themselves and receive a context object with shared utilities.
+ *
+ * @version 1.0.0
+ */
+
+(function() {
+    'use strict';
+
+    console.log('[Enhancements Core] Initializing...');
+
+    // ============================================================================
+    // App Registry & Manager
+    // ============================================================================
+
+    const apps = new Map();
+    let currentApp = null;
+    let appContainer = null;
+
+    const AppManager = {
+        /**
+         * Register an app
+         */
+        register(app) {
+            if (!app.id || !app.name || !app.init || !app.mount || !app.unmount) {
+                throw new Error('Invalid app interface. Required: id, name, init, mount, unmount');
+            }
+            apps.set(app.id, app);
+            console.log(`[App Manager] Registered app: ${app.name} (${app.id})`);
+        },
+
+        /**
+         * Get all registered apps
+         */
+        getApps() {
+            return Array.from(apps.values());
+        },
+
+        /**
+         * Switch to a different app
+         */
+        async switchTo(appId) {
+            const app = apps.get(appId);
+            if (!app) {
+                console.error(`[App Manager] App not found: ${appId}`);
+                return false;
+            }
+
+            try {
+                // Unmount current app
+                if (currentApp) {
+                    console.log(`[App Manager] Unmounting: ${currentApp.name}`);
+                    await currentApp.unmount();
+
+                    // Save state
+                    if (currentApp.getState) {
+                        const state = currentApp.getState();
+                        Storage.setAppState(currentApp.id, state);
+                    }
+                }
+
+                // Clear container
+                if (appContainer) {
+                    appContainer.innerHTML = '';
+                }
+
+                // Mount new app
+                console.log(`[App Manager] Mounting: ${app.name}`);
+                await app.mount(appContainer);
+                currentApp = app;
+
+                // Save as last active app
+                Storage.setCommonState({ lastActiveApp: appId });
+
+                console.log(`[App Manager] Switched to: ${app.name}`);
+                return true;
+
+            } catch (error) {
+                console.error(`[App Manager] Failed to switch to ${appId}:`, error);
+                UI.showMessage(`Failed to load ${app.name}: ${error.message}`, 'error');
+                return false;
+            }
+        },
+
+        /**
+         * Get current app
+         */
+        getCurrentApp() {
+            return currentApp;
+        },
+
+        /**
+         * Set app container
+         */
+        setContainer(container) {
+            appContainer = container;
+        }
+    };
+
+    // ============================================================================
+    // Monaco Editor Utilities
+    // ============================================================================
+
+    let monacoReady = false;
+    let monacoInitCallbacks = [];
+
+    const Monaco = {
+        /**
+         * Initialize Monaco Editor (once)
+         */
+        async init() {
+            if (monacoReady) {
+                return true;
+            }
+
+            return new Promise((resolve, reject) => {
+                console.log('[Monaco] Initializing...');
+
+                if (typeof window.monacoRequire === 'undefined') {
+                    reject(new Error('Monaco require not found'));
+                    return;
+                }
+
+                window.monacoRequire.config({
+                    paths: {
+                        'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs'
+                    }
+                });
+
+                window.monacoRequire(['vs/editor/editor.main'], function() {
+                    console.log('[Monaco] Initialized successfully');
+                    monacoReady = true;
+
+                    // Call any waiting callbacks
+                    monacoInitCallbacks.forEach(cb => cb());
+                    monacoInitCallbacks = [];
+
+                    resolve(true);
+                }, function(error) {
+                    console.error('[Monaco] Failed to initialize:', error);
+                    reject(error);
+                });
+            });
+        },
+
+        /**
+         * Check if Monaco is ready
+         */
+        isReady() {
+            return monacoReady;
+        },
+
+        /**
+         * Execute callback when Monaco is ready
+         */
+        onReady(callback) {
+            if (monacoReady) {
+                callback();
+            } else {
+                monacoInitCallbacks.push(callback);
+            }
+        },
+
+        /**
+         * Get monaco global
+         */
+        get() {
+            return window.monaco;
+        }
+    };
+
+    // ============================================================================
+    // API Utilities
+    // ============================================================================
+
+    const API = {
+        /**
+         * Parse HTML response to extract CSRF token and form data
+         */
+        parseFormHTML(html) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+
+            const data = { csrf_token: '', fields: {} };
+
+            // Extract CSRF token
+            const csrfInput = doc.querySelector('input[name="csrf_token"]');
+            if (csrfInput) {
+                data.csrf_token = csrfInput.value;
+            }
+
+            return { doc, data };
+        },
+
+        /**
+         * Build multipart form body
+         */
+        buildMultipartBody(data) {
+            const boundary = '----WebKitFormBoundary' + Math.random().toString(36).substring(2);
+            let body = '';
+
+            Object.entries(data).forEach(([name, value]) => {
+                body += `--${boundary}\r\n`;
+                body += `Content-Disposition: form-data; name="${name}"\r\n\r\n`;
+                body += `${value}\r\n`;
+            });
+
+            body += `--${boundary}--\r\n`;
+
+            return { body, boundary };
+        },
+
+        /**
+         * Fetch with credentials
+         */
+        async fetch(url, options = {}) {
+            return fetch(url, {
+                credentials: 'include',
+                ...options
+            });
+        }
+    };
+
+    // ============================================================================
+    // Storage Utilities
+    // ============================================================================
+
+    const STORAGE_PREFIX = 'expertEnhancements';
+
+    const Storage = {
+        /**
+         * Get common state (shared across all apps)
+         */
+        getCommonState() {
+            try {
+                const saved = localStorage.getItem(`${STORAGE_PREFIX}:common`);
+                return saved ? JSON.parse(saved) : {};
+            } catch (error) {
+                console.warn('[Storage] Failed to get common state:', error);
+                return {};
+            }
+        },
+
+        /**
+         * Set common state
+         */
+        setCommonState(state) {
+            try {
+                const current = this.getCommonState();
+                const updated = { ...current, ...state };
+                localStorage.setItem(`${STORAGE_PREFIX}:common`, JSON.stringify(updated));
+            } catch (error) {
+                console.warn('[Storage] Failed to set common state:', error);
+            }
+        },
+
+        /**
+         * Get app-specific state
+         */
+        getAppState(appId) {
+            try {
+                const saved = localStorage.getItem(`${STORAGE_PREFIX}:app:${appId}`);
+                return saved ? JSON.parse(saved) : null;
+            } catch (error) {
+                console.warn(`[Storage] Failed to get state for ${appId}:`, error);
+                return null;
+            }
+        },
+
+        /**
+         * Set app-specific state
+         */
+        setAppState(appId, state) {
+            try {
+                localStorage.setItem(`${STORAGE_PREFIX}:app:${appId}`, JSON.stringify(state));
+            } catch (error) {
+                console.warn(`[Storage] Failed to set state for ${appId}:`, error);
+            }
+        },
+
+        /**
+         * Clear app-specific state
+         */
+        clearAppState(appId) {
+            try {
+                localStorage.removeItem(`${STORAGE_PREFIX}:app:${appId}`);
+            } catch (error) {
+                console.warn(`[Storage] Failed to clear state for ${appId}:`, error);
+            }
+        }
+    };
+
+    // ============================================================================
+    // UI Utilities
+    // ============================================================================
+
+    const UI = {
+        /**
+         * Show message in the message area
+         */
+        showMessage(text, type = 'info') {
+            const messageArea = document.getElementById('message-area');
+            if (!messageArea) {
+                console.warn('[UI] Message area not found');
+                return;
+            }
+
+            const message = document.createElement('div');
+            message.className = `message ${type}`;
+
+            const textSpan = document.createElement('span');
+            textSpan.className = 'message-text';
+            textSpan.textContent = text;
+
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'message-close';
+            closeBtn.innerHTML = '×';
+            closeBtn.addEventListener('click', () => message.remove());
+
+            message.appendChild(textSpan);
+            message.appendChild(closeBtn);
+            messageArea.appendChild(message);
+
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (message.parentElement) {
+                    message.remove();
+                }
+            }, 5000);
+        },
+
+        /**
+         * Show toast notification (floating)
+         */
+        showToast(text, duration = 4000) {
+            const existing = document.getElementById('enhancements-toast');
+            if (existing) {
+                existing.remove();
+            }
+
+            const toast = document.createElement('div');
+            toast.id = 'enhancements-toast';
+            toast.textContent = text;
+            toast.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                background: rgba(50, 50, 50, 0.95);
+                color: white;
+                padding: 12px 20px;
+                border-radius: 6px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                z-index: 100000;
+                font-size: 14px;
+                animation: slideUp 0.3s ease-out;
+            `;
+
+            // Add keyframe animation if not exists
+            if (!document.getElementById('enhancements-toast-style')) {
+                const style = document.createElement('style');
+                style.id = 'enhancements-toast-style';
+                style.textContent = `
+                    @keyframes slideUp {
+                        from { opacity: 0; transform: translateY(20px); }
+                        to { opacity: 1; transform: translateY(0); }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.transition = 'opacity 0.3s';
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        },
+
+        /**
+         * Scan DOM for classes, IDs, data attributes
+         */
+        scanDOM(excludeSelector = '#expert-enhancements-overlay *') {
+            const data = {
+                classes: new Map(),
+                ids: new Set(),
+                dataAttributes: new Set()
+            };
+
+            const selector = `*:not(${excludeSelector})`;
+            const elements = document.querySelectorAll(selector);
+
+            elements.forEach(el => {
+                // Classes
+                if (el.classList && el.classList.length > 0) {
+                    el.classList.forEach(className => {
+                        const count = data.classes.get(className) || 0;
+                        data.classes.set(className, count + 1);
+                    });
+                }
+
+                // IDs
+                if (el.id && el.id.length > 0) {
+                    data.ids.add(el.id);
+                }
+
+                // Data attributes
+                if (el.attributes) {
+                    Array.from(el.attributes).forEach(attr => {
+                        if (attr.name.startsWith('data-')) {
+                            data.dataAttributes.add(attr.name);
+                        }
+                    });
+                }
+            });
+
+            return data;
+        }
+    };
+
+    // ============================================================================
+    // DOM Utilities
+    // ============================================================================
+
+    const DOM = {
+        /**
+         * Create element with attributes
+         */
+        create(tag, attributes = {}, children = []) {
+            const el = document.createElement(tag);
+
+            Object.entries(attributes).forEach(([key, value]) => {
+                if (key === 'style' && typeof value === 'object') {
+                    Object.assign(el.style, value);
+                } else if (key === 'className') {
+                    el.className = value;
+                } else {
+                    el.setAttribute(key, value);
+                }
+            });
+
+            children.forEach(child => {
+                if (typeof child === 'string') {
+                    el.appendChild(document.createTextNode(child));
+                } else if (child instanceof HTMLElement) {
+                    el.appendChild(child);
+                }
+            });
+
+            return el;
+        }
+    };
+
+    // ============================================================================
+    // Overlay Management
+    // ============================================================================
+
+    let overlay = null;
+    let overlayHeader = null;
+    let overlayContent = null;
+    let isDragging = false;
+    let isResizing = false;
+    let dragStartX = 0, dragStartY = 0;
+    let overlayStartX = 0, overlayStartY = 0;
+    let resizeStartWidth = 0, resizeStartHeight = 0;
+    let resizeStartX = 0, resizeStartY = 0;
+    let currentResizeHandle = null;
+
+    const Overlay = {
+        /**
+         * Create overlay structure
+         */
+        create() {
+            // Main overlay
+            overlay = DOM.create('div', { id: 'expert-enhancements-overlay' });
+
+            // Header
+            overlayHeader = DOM.create('div', { id: 'expert-enhancements-overlay-header' });
+
+            const headerLeft = DOM.create('div', { className: 'header-left' });
+            const headerTitle = DOM.create('span', { className: 'header-title' }, ['CXone Expert Enhancements']);
+
+            // App switcher dropdown
+            const appSwitcher = DOM.create('select', { className: 'app-switcher', id: 'app-switcher' });
+            appSwitcher.addEventListener('change', (e) => {
+                AppManager.switchTo(e.target.value);
+            });
+
+            headerLeft.appendChild(headerTitle);
+            headerLeft.appendChild(appSwitcher);
+
+            const headerButtons = DOM.create('div', { className: 'header-buttons' });
+            const minimizeBtn = DOM.create('button', {
+                className: 'header-btn',
+                title: 'Minimize',
+                innerHTML: '−'
+            });
+            minimizeBtn.addEventListener('click', () => this.toggle());
+
+            headerButtons.appendChild(minimizeBtn);
+            overlayHeader.appendChild(headerLeft);
+            overlayHeader.appendChild(headerButtons);
+
+            // Content area
+            overlayContent = DOM.create('div', { id: 'expert-enhancements-overlay-content' });
+
+            // Resize handles
+            const rightHandle = DOM.create('div', { className: 'enhancements-resize-handle right' });
+            const bottomHandle = DOM.create('div', { className: 'enhancements-resize-handle bottom' });
+            const cornerHandle = DOM.create('div', { className: 'enhancements-resize-handle corner' });
+
+            overlay.appendChild(overlayHeader);
+            overlay.appendChild(overlayContent);
+            overlay.appendChild(rightHandle);
+            overlay.appendChild(bottomHandle);
+            overlay.appendChild(cornerHandle);
+
+            document.body.appendChild(overlay);
+
+            // Set app container
+            AppManager.setContainer(overlayContent);
+
+            // Attach event listeners
+            this.attachDragListeners();
+            this.attachResizeListeners(rightHandle, bottomHandle, cornerHandle);
+
+            // Restore dimensions
+            this.restoreDimensions();
+
+            console.log('[Overlay] Created');
+        },
+
+        /**
+         * Attach drag listeners
+         */
+        attachDragListeners() {
+            overlayHeader.addEventListener('mousedown', (e) => {
+                if (e.target.tagName === 'BUTTON' || e.target.tagName === 'SELECT') return;
+
+                isDragging = true;
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+
+                const rect = overlay.getBoundingClientRect();
+                overlayStartX = rect.left;
+                overlayStartY = rect.top;
+
+                overlayHeader.style.cursor = 'grabbing';
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+
+                const deltaX = e.clientX - dragStartX;
+                const deltaY = e.clientY - dragStartY;
+
+                overlay.style.left = (overlayStartX + deltaX) + 'px';
+                overlay.style.top = (overlayStartY + deltaY) + 'px';
+                overlay.style.transform = 'none';
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    overlayHeader.style.cursor = 'move';
+                    this.saveDimensions();
+                }
+            });
+        },
+
+        /**
+         * Attach resize listeners
+         */
+        attachResizeListeners(rightHandle, bottomHandle, cornerHandle) {
+            const startResize = (e, handle) => {
+                isResizing = true;
+                currentResizeHandle = handle;
+                resizeStartX = e.clientX;
+                resizeStartY = e.clientY;
+
+                const rect = overlay.getBoundingClientRect();
+                resizeStartWidth = rect.width;
+                resizeStartHeight = rect.height;
+
+                e.preventDefault();
+            };
+
+            rightHandle.addEventListener('mousedown', (e) => startResize(e, 'right'));
+            bottomHandle.addEventListener('mousedown', (e) => startResize(e, 'bottom'));
+            cornerHandle.addEventListener('mousedown', (e) => startResize(e, 'corner'));
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isResizing) return;
+
+                const deltaX = e.clientX - resizeStartX;
+                const deltaY = e.clientY - resizeStartY;
+
+                if (currentResizeHandle === 'right' || currentResizeHandle === 'corner') {
+                    const newWidth = Math.max(600, resizeStartWidth + deltaX);
+                    overlay.style.width = newWidth + 'px';
+                }
+
+                if (currentResizeHandle === 'bottom' || currentResizeHandle === 'corner') {
+                    const newHeight = Math.max(400, resizeStartHeight + deltaY);
+                    overlay.style.height = newHeight + 'px';
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isResizing) {
+                    isResizing = false;
+                    currentResizeHandle = null;
+                    this.saveDimensions();
+                }
+            });
+        },
+
+        /**
+         * Toggle overlay visibility
+         */
+        toggle() {
+            if (!overlay) return;
+
+            const isVisible = overlay.style.display === 'flex';
+            overlay.style.display = isVisible ? 'none' : 'flex';
+
+            // Save state
+            Storage.setCommonState({ overlayOpen: !isVisible });
+        },
+
+        /**
+         * Save overlay dimensions
+         */
+        saveDimensions() {
+            if (!overlay) return;
+
+            const dimensions = {
+                width: overlay.style.width,
+                height: overlay.style.height,
+                left: overlay.style.left,
+                top: overlay.style.top
+            };
+
+            Storage.setCommonState({ overlayDimensions: dimensions });
+        },
+
+        /**
+         * Restore overlay dimensions
+         */
+        restoreDimensions() {
+            if (!overlay) return;
+
+            const state = Storage.getCommonState();
+            const dims = state.overlayDimensions;
+
+            if (dims) {
+                if (dims.width) overlay.style.width = dims.width;
+                if (dims.height) overlay.style.height = dims.height;
+                if (dims.left) {
+                    overlay.style.left = dims.left;
+                    overlay.style.transform = 'none';
+                }
+                if (dims.top) {
+                    overlay.style.top = dims.top;
+                    overlay.style.transform = 'none';
+                }
+            }
+        },
+
+        /**
+         * Update app switcher options
+         */
+        updateAppSwitcher() {
+            const switcher = document.getElementById('app-switcher');
+            if (!switcher) return;
+
+            switcher.innerHTML = '';
+            AppManager.getApps().forEach(app => {
+                const option = DOM.create('option', { value: app.id }, [app.name]);
+                switcher.appendChild(option);
+            });
+
+            const currentApp = AppManager.getCurrentApp();
+            if (currentApp) {
+                switcher.value = currentApp.id;
+            }
+        }
+    };
+
+    // ============================================================================
+    // Export Global Context
+    // ============================================================================
+
+    window.ExpertEnhancements = {
+        AppManager,
+        Monaco,
+        API,
+        Storage,
+        UI,
+        DOM,
+        Overlay,
+        version: '1.0.0'
+    };
+
+    console.log('[Enhancements Core] Initialized successfully');
+})();

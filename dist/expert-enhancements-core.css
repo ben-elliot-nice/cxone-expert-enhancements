@@ -1,0 +1,359 @@
+/*
+ * CXone Expert Enhancements - Core Styles
+ * Common styles for the overlay shell and all apps
+ */
+
+/* ============================================================================
+   Global Reset for Overlay
+   ============================================================================ */
+
+#expert-enhancements-overlay * {
+    box-sizing: border-box;
+}
+
+/* ============================================================================
+   Overlay Shell
+   ============================================================================ */
+
+#expert-enhancements-overlay {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 1400px;
+    height: 800px;
+    max-width: 95vw;
+    max-height: 95vh;
+    background: #1e1e1e;
+    border: 1px solid #444;
+    border-radius: 8px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    z-index: 999999;
+    display: none;
+    flex-direction: column;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    overflow: hidden;
+}
+
+/* ============================================================================
+   Overlay Header
+   ============================================================================ */
+
+#expert-enhancements-overlay-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 12px 16px;
+    cursor: move;
+    user-select: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 8px 8px 0 0;
+    flex-shrink: 0;
+}
+
+#expert-enhancements-overlay-header .header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+#expert-enhancements-overlay-header .header-title {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+#expert-enhancements-overlay-header .app-switcher {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    color: #333;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.2s;
+    min-width: 120px;
+}
+
+#expert-enhancements-overlay-header .app-switcher:hover {
+    background: white;
+}
+
+#expert-enhancements-overlay-header .header-buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+#expert-enhancements-overlay-header .header-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 20px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+#expert-enhancements-overlay-header .header-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* ============================================================================
+   Overlay Content (App Container)
+   ============================================================================ */
+
+#expert-enhancements-overlay-content {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    background: #1e1e1e;
+}
+
+/* ============================================================================
+   Resize Handles
+   ============================================================================ */
+
+.enhancements-resize-handle {
+    position: absolute;
+    background: transparent;
+    z-index: 10;
+}
+
+.enhancements-resize-handle.right {
+    right: 0;
+    top: 0;
+    width: 8px;
+    height: 100%;
+    cursor: ew-resize;
+}
+
+.enhancements-resize-handle.bottom {
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 8px;
+    cursor: ns-resize;
+}
+
+.enhancements-resize-handle.corner {
+    bottom: 0;
+    right: 0;
+    width: 16px;
+    height: 16px;
+    cursor: nwse-resize;
+}
+
+.enhancements-resize-handle.corner::after {
+    content: '';
+    position: absolute;
+    right: 2px;
+    bottom: 2px;
+    width: 12px;
+    height: 12px;
+    background: linear-gradient(-45deg, transparent 0%, transparent 40%, rgba(255,255,255,0.2) 40%, rgba(255,255,255,0.2) 45%, transparent 45%, transparent 55%, rgba(255,255,255,0.2) 55%, rgba(255,255,255,0.2) 60%, transparent 60%);
+}
+
+/* ============================================================================
+   Toggle Button (Floating)
+   ============================================================================ */
+
+#expert-enhancements-toggle {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999998;
+    transition: all 0.3s ease;
+}
+
+#expert-enhancements-toggle:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+#expert-enhancements-toggle:active {
+    transform: scale(0.95);
+}
+
+/* ============================================================================
+   Message Area (In-App Messages)
+   ============================================================================ */
+
+#message-area {
+    position: absolute;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2000;
+    max-width: 600px;
+    width: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    pointer-events: none;
+}
+
+#message-area .message {
+    pointer-events: auto;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#message-area .message.error {
+    background: rgba(255, 235, 238, 0.95);
+    border-left: 4px solid #e74c3c;
+    color: #c62828;
+}
+
+#message-area .message.success {
+    background: rgba(232, 245, 233, 0.95);
+    border-left: 4px solid #27ae60;
+    color: #2e7d32;
+}
+
+#message-area .message.info {
+    background: rgba(232, 240, 254, 0.95);
+    border-left: 4px solid #2196f3;
+    color: #1565c0;
+}
+
+#message-area .message-text {
+    flex: 1;
+}
+
+#message-area .message-close {
+    background: transparent;
+    border: none;
+    color: inherit;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    opacity: 0.6;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+#message-area .message-close:hover {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* ============================================================================
+   Common App Container
+   ============================================================================ */
+
+.enhancements-app-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    color: #e9ecef;
+    position: relative;
+}
+
+.enhancements-app-container .loading {
+    text-align: center;
+    padding: 4rem;
+    font-size: 1.3rem;
+    color: #999;
+}
+
+/* ============================================================================
+   Common Button Styles
+   ============================================================================ */
+
+.btn {
+    border: none;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 600;
+    padding: 0.4rem 1rem;
+    border-radius: 4px;
+}
+
+.btn-primary {
+    background: #0d6efd;
+    color: white;
+    border: 1px solid #0d6efd;
+    box-shadow: 0 1px 3px rgba(13, 110, 253, 0.2);
+}
+
+.btn-primary:hover {
+    background: #0b5ed7;
+    border-color: #0a58ca;
+}
+
+.btn-primary:active {
+    background: #0a58ca;
+}
+
+.btn-primary:disabled {
+    background: #6c757d;
+    border-color: #6c757d;
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+/* ============================================================================
+   Monaco Editor Widget Z-Index Fixes
+   ============================================================================ */
+
+.monaco-editor .suggest-widget,
+.monaco-editor .colorpicker-widget,
+.monaco-editor .parameter-hints-widget,
+.monaco-editor .monaco-hover,
+.monaco-editor .find-widget,
+.monaco-editor .context-view {
+    z-index: 10000 !important;
+}
+
+.monaco-editor .monaco-list-row {
+    z-index: 10001 !important;
+}
