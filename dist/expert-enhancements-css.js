@@ -441,12 +441,23 @@
             const monaco = context.Monaco.get();
 
             // Wait for container to have dimensions
+            let attempts = 0;
+            const maxAttempts = 20; // 1 second max wait
+
             const checkDimensions = () => {
                 const rect = container.getBoundingClientRect();
-                if (rect.height < 10) {
+                attempts++;
+
+                console.log(`[CSS Editor] Checking dimensions for ${roleId}: ${rect.width}x${rect.height} (attempt ${attempts})`);
+
+                if (rect.height < 10 && attempts < maxAttempts) {
                     // Container doesn't have proper dimensions yet, wait more
                     setTimeout(checkDimensions, 50);
                     return;
+                }
+
+                if (rect.height < 10) {
+                    console.warn(`[CSS Editor] Container still too small after ${attempts} attempts, creating anyway`);
                 }
 
                 // Container has dimensions, create editor
@@ -473,7 +484,7 @@
                 // Force layout after creation
                 setTimeout(() => {
                     editor.layout();
-                }, 10);
+                }, 100);
 
                 console.log(`[CSS Editor] Created Monaco editor for: ${roleId} (${rect.width}x${rect.height})`);
             };
