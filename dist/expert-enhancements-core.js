@@ -520,9 +520,9 @@
             const headerButtons = DOM.create('div', { className: 'header-buttons' });
             const minimizeBtn = DOM.create('button', {
                 className: 'header-btn',
-                title: 'Minimize',
-                innerHTML: '−'
+                title: 'Minimize'
             });
+            minimizeBtn.textContent = '−';
             minimizeBtn.addEventListener('click', () => this.toggle());
 
             headerButtons.appendChild(minimizeBtn);
