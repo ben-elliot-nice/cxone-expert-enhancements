@@ -91,14 +91,19 @@
 
             // Restore state if available
             const savedState = context.Storage.getAppState(this.id);
+            let hasDirtyEdits = false;
 
             if (savedState) {
                 console.log('[CSS Editor] Restoring state:', savedState);
                 this.setState(savedState);
+
+                // Check if any fields are dirty
+                hasDirtyEdits = savedState.isDirty && Object.values(savedState.isDirty).some(dirty => dirty);
+                console.log('[CSS Editor] Has dirty edits in saved state:', hasDirtyEdits);
             }
 
-            // Load CSS data
-            await this.loadData();
+            // Load CSS data - skip full fetch if we have dirty edits (checkpoint protection)
+            await this.loadData(hasDirtyEdits);
 
             // Build toggle bar
             this.buildToggleBar();
@@ -191,8 +196,9 @@
 
         /**
          * Load CSS data from API
+         * @param {boolean} skipContent - If true, only fetch CSRF token (checkpoint protection)
          */
-        async loadData() {
+        async loadData(skipContent = false) {
             try {
                 const url = '/deki/cp/custom_css.php?params=%2F';
                 const response = await context.API.fetch(url);
@@ -204,32 +210,36 @@
                 const html = await response.text();
                 const { doc, data } = context.API.parseFormHTML(html);
 
-                // Extract CSRF token
+                // Always extract CSRF token
                 csrfToken = data.csrf_token;
+                console.log('[CSS Editor] CSRF token extracted');
 
-                // Extract CSS from textareas
-                const textareas = {
-                    'css_template_all': 'all',
-                    'css_template_anonymous': 'anonymous',
-                    'css_template_viewer': 'viewer',
-                    'css_template_seated': 'seated',
-                    'css_template_admin': 'admin',
-                    'css_template_grape': 'grape'
-                };
+                if (skipContent) {
+                    // Checkpoint protection: we have dirty edits, so don't fetch CSS content
+                    // This prevents other people's changes from overwriting work-in-progress
+                    console.log('[CSS Editor] Skipping content fetch - using saved edits (checkpoint protection)');
+                } else {
+                    // No dirty edits - safe to fetch fresh CSS from server
+                    console.log('[CSS Editor] Fetching fresh CSS content from server');
 
-                Object.entries(textareas).forEach(([name, roleId]) => {
-                    const textarea = doc.querySelector(`textarea[name="${name}"]`);
-                    if (textarea) {
-                        const content = textarea.textContent;
-                        // Only update content if role doesn't have unsaved edits
-                        // This preserves edited content across page refreshes
-                        if (!editorState[roleId].isDirty) {
+                    const textareas = {
+                        'css_template_all': 'all',
+                        'css_template_anonymous': 'anonymous',
+                        'css_template_viewer': 'viewer',
+                        'css_template_seated': 'seated',
+                        'css_template_admin': 'admin',
+                        'css_template_grape': 'grape'
+                    };
+
+                    Object.entries(textareas).forEach(([name, roleId]) => {
+                        const textarea = doc.querySelector(`textarea[name="${name}"]`);
+                        if (textarea) {
+                            const content = textarea.textContent;
                             editorState[roleId].content = content;
+                            originalContent[roleId] = content;
                         }
-                        // Always update originalContent with server state
-                        originalContent[roleId] = content;
-                    }
-                });
+                    });
+                }
 
                 // Hide loading, show editor
                 document.getElementById('loading').style.display = 'none';

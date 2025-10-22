@@ -86,14 +86,19 @@
 
             // Restore state if available
             const savedState = context.Storage.getAppState(this.id);
+            let hasDirtyEdits = false;
 
             if (savedState) {
                 console.log('[HTML Editor] Restoring state:', savedState);
                 this.setState(savedState);
+
+                // Check if any fields are dirty
+                hasDirtyEdits = savedState.isDirty && Object.values(savedState.isDirty).some(dirty => dirty);
+                console.log('[HTML Editor] Has dirty edits in saved state:', hasDirtyEdits);
             }
 
-            // Load HTML data
-            await this.loadData();
+            // Load HTML data - skip full fetch if we have dirty edits (checkpoint protection)
+            await this.loadData(hasDirtyEdits);
 
             // Build toggle bar
             this.buildToggleBar();
@@ -186,8 +191,9 @@
 
         /**
          * Load HTML data from API
+         * @param {boolean} skipContent - If true, only fetch CSRF token (checkpoint protection)
          */
-        async loadData() {
+        async loadData(skipContent = false) {
             try {
                 const url = '/deki/cp/custom_html.php?params=%2F';
                 const response = await context.API.fetch(url);
@@ -199,28 +205,32 @@
                 const html = await response.text();
                 const { doc, data } = context.API.parseFormHTML(html);
 
-                // Extract CSRF token
+                // Always extract CSRF token
                 csrfToken = data.csrf_token;
+                console.log('[HTML Editor] CSRF token extracted');
 
-                // Extract HTML from textareas
-                const textareas = {
-                    'html_template_head': 'head',
-                    'html_template_tail': 'tail'
-                };
+                if (skipContent) {
+                    // Checkpoint protection: we have dirty edits, so don't fetch HTML content
+                    // This prevents other people's changes from overwriting work-in-progress
+                    console.log('[HTML Editor] Skipping content fetch - using saved edits (checkpoint protection)');
+                } else {
+                    // No dirty edits - safe to fetch fresh HTML from server
+                    console.log('[HTML Editor] Fetching fresh HTML content from server');
 
-                Object.entries(textareas).forEach(([name, fieldId]) => {
-                    const textarea = doc.querySelector(`textarea[name="${name}"]`);
-                    if (textarea) {
-                        const content = textarea.textContent;
-                        // Only update content if field doesn't have unsaved edits
-                        // This preserves edited content across page refreshes
-                        if (!editorState[fieldId].isDirty) {
+                    const textareas = {
+                        'html_template_head': 'head',
+                        'html_template_tail': 'tail'
+                    };
+
+                    Object.entries(textareas).forEach(([name, fieldId]) => {
+                        const textarea = doc.querySelector(`textarea[name="${name}"]`);
+                        if (textarea) {
+                            const content = textarea.textContent;
                             editorState[fieldId].content = content;
+                            originalContent[fieldId] = content;
                         }
-                        // Always update originalContent with server state
-                        originalContent[fieldId] = content;
-                    }
-                });
+                    });
+                }
 
                 // Hide loading, show editor
                 document.getElementById('loading').style.display = 'none';
