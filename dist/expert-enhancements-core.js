@@ -20,6 +20,8 @@
     let currentApp = null;
     let appContainer = null;
 
+    const initializedApps = new Set();
+
     const AppManager = {
         /**
          * Register an app
@@ -50,6 +52,20 @@
             }
 
             try {
+                // Initialize app if not already initialized
+                if (!initializedApps.has(appId)) {
+                    console.log(`[App Manager] Initializing: ${app.name}`);
+                    const context = {
+                        Monaco,
+                        API,
+                        Storage,
+                        UI,
+                        DOM
+                    };
+                    await app.init(context);
+                    initializedApps.add(appId);
+                }
+
                 // Unmount current app
                 if (currentApp) {
                     console.log(`[App Manager] Unmounting: ${currentApp.name}`);
