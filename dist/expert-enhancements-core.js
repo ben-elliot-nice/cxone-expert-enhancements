@@ -657,6 +657,13 @@
 
             // Save state
             Storage.setCommonState({ overlayOpen: !isVisible });
+
+            // If showing, notify app to re-layout (editors created while hidden have 0 height)
+            if (!isVisible) {
+                setTimeout(() => {
+                    AppManager.notifyResize();
+                }, 50);
+            }
         },
 
         /**
