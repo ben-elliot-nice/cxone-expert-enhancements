@@ -143,13 +143,15 @@
             const state = {
                 activeFields: Object.keys(editorState).filter(field => editorState[field].active),
                 content: {},
-                isDirty: {}
+                isDirty: {},
+                originalContent: {}
             };
 
             Object.keys(editorState).forEach(field => {
                 const fieldState = editorState[field];
                 state.content[field] = fieldState.content;
                 state.isDirty[field] = fieldState.isDirty;
+                state.originalContent[field] = originalContent[field];
             });
 
             return state;
@@ -185,6 +187,13 @@
                     if (editorState[field]) {
                         editorState[field].isDirty = state.isDirty[field];
                     }
+                });
+            }
+
+            // Restore original content (server baseline)
+            if (state.originalContent) {
+                Object.keys(state.originalContent).forEach(field => {
+                    originalContent[field] = state.originalContent[field];
                 });
             }
         },

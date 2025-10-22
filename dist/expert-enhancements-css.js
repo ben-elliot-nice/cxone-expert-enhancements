@@ -148,13 +148,15 @@
             const state = {
                 activeRoles: Object.keys(editorState).filter(role => editorState[role].active),
                 content: {},
-                isDirty: {}
+                isDirty: {},
+                originalContent: {}
             };
 
             Object.keys(editorState).forEach(role => {
                 const roleState = editorState[role];
                 state.content[role] = roleState.content;
                 state.isDirty[role] = roleState.isDirty;
+                state.originalContent[role] = originalContent[role];
             });
 
             return state;
@@ -190,6 +192,13 @@
                     if (editorState[role]) {
                         editorState[role].isDirty = state.isDirty[role];
                     }
+                });
+            }
+
+            // Restore original content (server baseline)
+            if (state.originalContent) {
+                Object.keys(state.originalContent).forEach(role => {
+                    originalContent[role] = state.originalContent[role];
                 });
             }
         },
