@@ -605,8 +605,13 @@
         /**
          * Discard all changes (revert to original)
          */
-        discardAll() {
-            if (!confirm('Discard all changes and revert to last saved state?')) {
+        async discardAll() {
+            const confirmed = await context.UI.confirm(
+                'Discard all changes and revert to last saved state?',
+                { confirmText: 'Discard', cancelText: 'Cancel', type: 'danger' }
+            );
+
+            if (!confirmed) {
                 return;
             }
 
@@ -627,11 +632,16 @@
         /**
          * Discard changes for a specific role
          */
-        discardRole(roleId) {
+        async discardRole(roleId) {
             const role = editorState[roleId];
             if (!role) return;
 
-            if (!confirm(`Discard changes to ${role.label}?`)) {
+            const confirmed = await context.UI.confirm(
+                `Discard changes to ${role.label}?`,
+                { confirmText: 'Discard', cancelText: 'Cancel', type: 'danger' }
+            );
+
+            if (!confirmed) {
                 return;
             }
 

@@ -409,6 +409,174 @@
         },
 
         /**
+         * Show custom confirmation dialog
+         * @param {string} message - The confirmation message
+         * @param {object} options - Options { confirmText, cancelText, type }
+         * @returns {Promise<boolean>} - Resolves to true if confirmed, false if cancelled
+         */
+        async confirm(message, options = {}) {
+            const {
+                confirmText = 'Confirm',
+                cancelText = 'Cancel',
+                type = 'danger' // 'danger' for red confirm button, 'primary' for blue
+            } = options;
+
+            return new Promise((resolve) => {
+                // Create modal overlay
+                const overlay = document.createElement('div');
+                overlay.className = 'enhancements-confirm-overlay';
+                overlay.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0, 0, 0, 0.5);
+                    z-index: 1000000;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    animation: fadeIn 0.2s ease-out;
+                `;
+
+                // Create dialog
+                const dialog = document.createElement('div');
+                dialog.className = 'enhancements-confirm-dialog';
+                dialog.style.cssText = `
+                    background: #2d2d30;
+                    border: 1px solid #444;
+                    border-radius: 8px;
+                    padding: 24px;
+                    min-width: 400px;
+                    max-width: 500px;
+                    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+                    animation: slideDown 0.2s ease-out;
+                `;
+
+                // Message
+                const messageEl = document.createElement('div');
+                messageEl.textContent = message;
+                messageEl.style.cssText = `
+                    color: #e9ecef;
+                    font-size: 16px;
+                    margin-bottom: 24px;
+                    line-height: 1.5;
+                `;
+
+                // Buttons container
+                const buttons = document.createElement('div');
+                buttons.style.cssText = `
+                    display: flex;
+                    gap: 12px;
+                    justify-content: flex-end;
+                `;
+
+                // Cancel button
+                const cancelBtn = document.createElement('button');
+                cancelBtn.textContent = cancelText;
+                cancelBtn.style.cssText = `
+                    background: transparent;
+                    border: 1px solid #555;
+                    color: #e9ecef;
+                    padding: 8px 20px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    font-weight: 500;
+                    transition: all 0.2s;
+                `;
+                cancelBtn.onmouseover = () => {
+                    cancelBtn.style.background = '#3a3a3a';
+                };
+                cancelBtn.onmouseout = () => {
+                    cancelBtn.style.background = 'transparent';
+                };
+
+                // Confirm button
+                const confirmBtn = document.createElement('button');
+                confirmBtn.textContent = confirmText;
+                const bgColor = type === 'danger' ? '#dc3545' : '#0d6efd';
+                const hoverColor = type === 'danger' ? '#bb2d3b' : '#0b5ed7';
+                confirmBtn.style.cssText = `
+                    background: ${bgColor};
+                    border: 1px solid ${bgColor};
+                    color: white;
+                    padding: 8px 20px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    font-weight: 500;
+                    transition: all 0.2s;
+                `;
+                confirmBtn.onmouseover = () => {
+                    confirmBtn.style.background = hoverColor;
+                    confirmBtn.style.borderColor = hoverColor;
+                };
+                confirmBtn.onmouseout = () => {
+                    confirmBtn.style.background = bgColor;
+                    confirmBtn.style.borderColor = bgColor;
+                };
+
+                // Add animations if not exists
+                if (!document.getElementById('enhancements-confirm-style')) {
+                    const style = document.createElement('style');
+                    style.id = 'enhancements-confirm-style';
+                    style.textContent = `
+                        @keyframes fadeIn {
+                            from { opacity: 0; }
+                            to { opacity: 1; }
+                        }
+                        @keyframes slideDown {
+                            from { opacity: 0; transform: translateY(-20px); }
+                            to { opacity: 1; transform: translateY(0); }
+                        }
+                        @keyframes fadeOut {
+                            from { opacity: 1; }
+                            to { opacity: 0; }
+                        }
+                    `;
+                    document.head.appendChild(style);
+                }
+
+                // Close function with animation
+                const close = (result) => {
+                    overlay.style.animation = 'fadeOut 0.15s ease-out';
+                    setTimeout(() => {
+                        overlay.remove();
+                        resolve(result);
+                    }, 150);
+                };
+
+                // Event listeners
+                cancelBtn.addEventListener('click', () => close(false));
+                confirmBtn.addEventListener('click', () => close(true));
+                overlay.addEventListener('click', (e) => {
+                    if (e.target === overlay) close(false);
+                });
+
+                // ESC key to cancel
+                const escHandler = (e) => {
+                    if (e.key === 'Escape') {
+                        document.removeEventListener('keydown', escHandler);
+                        close(false);
+                    }
+                };
+                document.addEventListener('keydown', escHandler);
+
+                // Assemble dialog
+                buttons.appendChild(cancelBtn);
+                buttons.appendChild(confirmBtn);
+                dialog.appendChild(messageEl);
+                dialog.appendChild(buttons);
+                overlay.appendChild(dialog);
+                document.body.appendChild(overlay);
+
+                // Focus confirm button
+                confirmBtn.focus();
+            });
+        },
+
+        /**
          * Scan DOM for classes, IDs, data attributes
          */
         scanDOM(excludeSelector = '#expert-enhancements-overlay *') {

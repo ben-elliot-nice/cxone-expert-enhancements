@@ -596,8 +596,13 @@
         /**
          * Discard all changes (revert to original)
          */
-        discardAll() {
-            if (!confirm('Discard all changes and revert to last saved state?')) {
+        async discardAll() {
+            const confirmed = await context.UI.confirm(
+                'Discard all changes and revert to last saved state?',
+                { confirmText: 'Discard', cancelText: 'Cancel', type: 'danger' }
+            );
+
+            if (!confirmed) {
                 return;
             }
 
@@ -618,11 +623,16 @@
         /**
          * Discard changes for a specific field
          */
-        discardField(fieldId) {
+        async discardField(fieldId) {
             const field = editorState[fieldId];
             if (!field) return;
 
-            if (!confirm(`Discard changes to ${field.label}?`)) {
+            const confirmed = await context.UI.confirm(
+                `Discard changes to ${field.label}?`,
+                { confirmText: 'Discard', cancelText: 'Cancel', type: 'danger' }
+            );
+
+            if (!confirmed) {
                 return;
             }
 
