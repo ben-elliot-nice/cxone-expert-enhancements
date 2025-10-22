@@ -91,6 +91,9 @@
                 // Save as last active app
                 Storage.setCommonState({ lastActiveApp: appId });
 
+                // Update app switcher to reflect current app
+                Overlay.updateAppSwitcher();
+
                 console.log(`[App Manager] Switched to: ${app.name}`);
                 return true;
 
