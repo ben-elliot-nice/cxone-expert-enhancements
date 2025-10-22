@@ -123,12 +123,8 @@
          * Handle resize events
          */
         onResize() {
-            // Re-layout all Monaco editors
-            Object.values(monacoEditors).forEach(editor => {
-                if (editor) {
-                    editor.layout();
-                }
-            });
+            // Recalculate heights and re-layout
+            this.updateHeights();
         },
 
         /**
@@ -343,14 +339,51 @@
                 grid.appendChild(pane);
             });
 
-            // Force layout on all Monaco editors after grid update
+            // Calculate and set explicit heights
             setTimeout(() => {
-                Object.values(monacoEditors).forEach(editor => {
-                    if (editor) {
-                        editor.layout();
-                    }
-                });
+                this.updateHeights();
             }, 50);
+        },
+
+        /**
+         * Calculate and set explicit pixel heights for editors
+         */
+        updateHeights() {
+            const container = document.getElementById('css-editor-container');
+            const toggleBar = document.querySelector('.toggle-bar');
+            const grid = document.getElementById('editors-grid');
+
+            if (!container || !toggleBar || !grid) return;
+
+            // Calculate available height
+            const containerHeight = container.offsetHeight;
+            const toggleBarHeight = toggleBar.offsetHeight;
+            const availableHeight = containerHeight - toggleBarHeight;
+
+            // Set grid height explicitly
+            grid.style.height = availableHeight + 'px';
+
+            // Set each pane height explicitly
+            const panes = grid.querySelectorAll('.editor-pane');
+            panes.forEach(pane => {
+                pane.style.height = availableHeight + 'px';
+
+                const paneHeader = pane.querySelector('.editor-pane-header');
+                const editorInstance = pane.querySelector('.editor-instance');
+
+                if (paneHeader && editorInstance) {
+                    const paneHeaderHeight = paneHeader.offsetHeight;
+                    const editorHeight = availableHeight - paneHeaderHeight;
+                    editorInstance.style.height = editorHeight + 'px';
+                }
+            });
+
+            // Force layout on all Monaco editors
+            Object.values(monacoEditors).forEach(editor => {
+                if (editor) {
+                    editor.layout();
+                }
+            });
         },
 
         /**
