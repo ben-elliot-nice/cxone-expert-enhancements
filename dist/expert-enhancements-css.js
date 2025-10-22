@@ -41,6 +41,12 @@
         id: 'css-editor',
         name: 'CSS Editor',
 
+        // App-specific constraints for overlay sizing
+        constraints: {
+            minWidth: 900,
+            minHeight: 600
+        },
+
         /**
          * Initialize the app with context
          */

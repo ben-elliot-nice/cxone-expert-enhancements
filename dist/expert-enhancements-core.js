@@ -778,6 +778,13 @@
         attachResizeListeners(leftHandle, rightHandle, bottomHandle, cornerRightHandle, cornerLeftHandle) {
             let resizeStartLeft = 0;
 
+            // Helper to get current app's constraints
+            const getConstraints = () => {
+                const app = AppManager.getCurrentApp();
+                const defaults = { minWidth: 600, minHeight: 400 };
+                return app?.constraints ? { ...defaults, ...app.constraints } : defaults;
+            };
+
             const startResize = (e, handle) => {
                 isResizing = true;
                 currentResizeHandle = handle;
@@ -806,12 +813,13 @@
 
                 const viewportWidth = window.innerWidth;
                 const viewportHeight = window.innerHeight;
+                const constraints = getConstraints();
 
                 // Right side resize
                 if (currentResizeHandle === 'right' || currentResizeHandle === 'corner-right') {
                     const rect = overlay.getBoundingClientRect();
                     const maxWidth = viewportWidth - rect.left;
-                    const newWidth = Math.max(600, Math.min(resizeStartWidth + deltaX, maxWidth));
+                    const newWidth = Math.max(constraints.minWidth, Math.min(resizeStartWidth + deltaX, maxWidth));
                     overlay.style.width = newWidth + 'px';
                 }
 
@@ -825,15 +833,15 @@
                     const rightEdge = resizeStartLeft + resizeStartWidth;
 
                     // Clamp left edge to viewport
-                    newLeft = Math.max(0, Math.min(newLeft, rightEdge - 600));
+                    newLeft = Math.max(0, Math.min(newLeft, rightEdge - constraints.minWidth));
 
                     // Recalculate width based on clamped left position
                     newWidth = rightEdge - newLeft;
 
                     // Ensure minimum width
-                    if (newWidth < 600) {
-                        newWidth = 600;
-                        newLeft = rightEdge - 600;
+                    if (newWidth < constraints.minWidth) {
+                        newWidth = constraints.minWidth;
+                        newLeft = rightEdge - constraints.minWidth;
                     }
 
                     overlay.style.width = newWidth + 'px';
@@ -845,7 +853,7 @@
                 if (currentResizeHandle === 'bottom' || currentResizeHandle === 'corner-right' || currentResizeHandle === 'corner-left') {
                     const rect = overlay.getBoundingClientRect();
                     const maxHeight = viewportHeight - rect.top;
-                    const newHeight = Math.max(400, Math.min(resizeStartHeight + deltaY, maxHeight));
+                    const newHeight = Math.max(constraints.minHeight, Math.min(resizeStartHeight + deltaY, maxHeight));
                     overlay.style.height = newHeight + 'px';
                 }
             });

@@ -36,6 +36,12 @@
         id: 'html-editor',
         name: 'HTML Editor',
 
+        // App-specific constraints for overlay sizing
+        constraints: {
+            minWidth: 800,
+            minHeight: 500
+        },
+
         /**
          * Initialize the app with context
          */
