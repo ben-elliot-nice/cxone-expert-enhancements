@@ -686,16 +686,16 @@
                     role.content = editor.getValue();
                 }
 
-                // Build form data - ALWAYS send ALL fields with current content
-                // The API does a total replace, so we need all current values
+                // Build form data - send the edited field + original content for others
+                // This ensures only the specific field is saved, not all edited fields
                 const formData = {
                     csrf_token: csrfToken,
-                    css_template_all: editorState.all.content,
-                    css_template_anonymous: editorState.anonymous.content,
-                    css_template_viewer: editorState.viewer.content,
-                    css_template_seated: editorState.seated.content,
-                    css_template_admin: editorState.admin.content,
-                    css_template_grape: editorState.grape.content
+                    css_template_all: roleId === 'all' ? editorState.all.content : originalContent.all,
+                    css_template_anonymous: roleId === 'anonymous' ? editorState.anonymous.content : originalContent.anonymous,
+                    css_template_viewer: roleId === 'viewer' ? editorState.viewer.content : originalContent.viewer,
+                    css_template_seated: roleId === 'seated' ? editorState.seated.content : originalContent.seated,
+                    css_template_admin: roleId === 'admin' ? editorState.admin.content : originalContent.admin,
+                    css_template_grape: roleId === 'grape' ? editorState.grape.content : originalContent.grape
                 };
 
                 const { body, boundary } = context.API.buildMultipartBody(formData);

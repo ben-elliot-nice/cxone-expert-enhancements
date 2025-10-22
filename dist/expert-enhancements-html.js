@@ -677,12 +677,12 @@
                     field.content = editor.getValue();
                 }
 
-                // Build form data - ALWAYS send ALL fields with current content
-                // The API does a total replace, so we need all current values
+                // Build form data - send the edited field + original content for others
+                // This ensures only the specific field is saved, not all edited fields
                 const formData = {
                     csrf_token: csrfToken,
-                    html_template_head: editorState.head.content,
-                    html_template_tail: editorState.tail.content
+                    html_template_head: fieldId === 'head' ? editorState.head.content : originalContent.head,
+                    html_template_tail: fieldId === 'tail' ? editorState.tail.content : originalContent.tail
                 };
 
                 const { body, boundary } = context.API.buildMultipartBody(formData);
