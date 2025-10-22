@@ -2312,6 +2312,57 @@ function attachEventListeners() {
         });
     });
 
+    // Add keyboard shortcuts for save functionality
+    document.addEventListener('keydown', (e) => {
+        // Check for Ctrl+S (Windows/Linux) or Cmd+S (Mac)
+        const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+
+        // Ctrl+Shift+S or Cmd+Shift+S: Save all tabs
+        if (isCtrlOrCmd && e.shiftKey && e.key === 's') {
+            e.preventDefault();
+            console.log('[Keyboard Shortcut] Ctrl+Shift+S detected - saving all tabs');
+            saveCSS();
+            return;
+        }
+
+        // Ctrl+S or Cmd+S: Save current focused tab
+        if (isCtrlOrCmd && !e.shiftKey && e.key === 's') {
+            e.preventDefault();
+            console.log('[Keyboard Shortcut] Ctrl+S detected - saving current tab');
+
+            // Find which editor currently has focus
+            let focusedRole = null;
+            for (const role in editorState) {
+                const state = editorState[role];
+                if (state.active && state.editor && state.editor.hasTextFocus()) {
+                    focusedRole = role;
+                    break;
+                }
+            }
+
+            if (focusedRole) {
+                console.log(`[Keyboard Shortcut] Saving focused editor: ${focusedRole}`);
+                saveSinglePane(focusedRole);
+            } else {
+                // No editor has focus - check if any editor is dirty and save the first dirty one
+                const dirtyRole = Object.keys(editorState).find(role =>
+                    editorState[role].active && editorState[role].isDirty
+                );
+
+                if (dirtyRole) {
+                    console.log(`[Keyboard Shortcut] No focused editor, saving first dirty editor: ${dirtyRole}`);
+                    saveSinglePane(dirtyRole);
+                } else {
+                    // No dirty editors - just save all
+                    console.log('[Keyboard Shortcut] No focused or dirty editor, saving all');
+                    saveCSS();
+                }
+            }
+            return;
+        }
+    });
+    console.log('[attachEventListeners] Keyboard shortcuts registered (Ctrl+S, Ctrl+Shift+S)');
+
     console.log('[CSS Editor] All event listeners registered');
 }
 // Expose for overlay embed to call after injecting HTML
