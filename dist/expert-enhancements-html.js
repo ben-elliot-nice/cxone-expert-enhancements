@@ -677,12 +677,12 @@
                     field.content = editor.getValue();
                 }
 
-                // Build form data - send all fields but only save changes for this one
-                // Other fields use their original content to avoid overwriting
+                // Build form data - ALWAYS send ALL fields with current content
+                // The API does a total replace, so we need all current values
                 const formData = {
                     csrf_token: csrfToken,
-                    html_template_head: fieldId === 'head' ? field.content : originalContent.head,
-                    html_template_tail: fieldId === 'tail' ? field.content : originalContent.tail
+                    html_template_head: editorState.head.content,
+                    html_template_tail: editorState.tail.content
                 };
 
                 const { body, boundary } = context.API.buildMultipartBody(formData);
@@ -691,8 +691,12 @@
                 const response = await context.API.fetch(url, {
                     method: 'POST',
                     headers: {
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Cache-Control': 'max-age=0',
                         'Content-Type': `multipart/form-data; boundary=${boundary}`
                     },
+                    credentials: 'include',
                     body: body
                 });
 
@@ -742,8 +746,12 @@
                 const response = await context.API.fetch(url, {
                     method: 'POST',
                     headers: {
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Cache-Control': 'max-age=0',
                         'Content-Type': `multipart/form-data; boundary=${boundary}`
                     },
+                    credentials: 'include',
                     body: body
                 });
 

@@ -686,16 +686,16 @@
                     role.content = editor.getValue();
                 }
 
-                // Build form data - send all fields but only save changes for this one
-                // Other fields use their original content to avoid overwriting
+                // Build form data - ALWAYS send ALL fields with current content
+                // The API does a total replace, so we need all current values
                 const formData = {
                     csrf_token: csrfToken,
-                    css_template_all: roleId === 'all' ? role.content : originalContent.all,
-                    css_template_anonymous: roleId === 'anonymous' ? role.content : originalContent.anonymous,
-                    css_template_viewer: roleId === 'viewer' ? role.content : originalContent.viewer,
-                    css_template_seated: roleId === 'seated' ? role.content : originalContent.seated,
-                    css_template_admin: roleId === 'admin' ? role.content : originalContent.admin,
-                    css_template_grape: roleId === 'grape' ? role.content : originalContent.grape
+                    css_template_all: editorState.all.content,
+                    css_template_anonymous: editorState.anonymous.content,
+                    css_template_viewer: editorState.viewer.content,
+                    css_template_seated: editorState.seated.content,
+                    css_template_admin: editorState.admin.content,
+                    css_template_grape: editorState.grape.content
                 };
 
                 const { body, boundary } = context.API.buildMultipartBody(formData);
@@ -704,8 +704,12 @@
                 const response = await context.API.fetch(url, {
                     method: 'POST',
                     headers: {
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Cache-Control': 'max-age=0',
                         'Content-Type': `multipart/form-data; boundary=${boundary}`
                     },
+                    credentials: 'include',
                     body: body
                 });
 
@@ -759,8 +763,12 @@
                 const response = await context.API.fetch(url, {
                     method: 'POST',
                     headers: {
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Cache-Control': 'max-age=0',
                         'Content-Type': `multipart/form-data; boundary=${boundary}`
                     },
+                    credentials: 'include',
                     body: body
                 });
 
