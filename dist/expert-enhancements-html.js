@@ -115,6 +115,18 @@
         },
 
         /**
+         * Handle resize events
+         */
+        onResize() {
+            // Re-layout all Monaco editors
+            Object.values(monacoEditors).forEach(editor => {
+                if (editor) {
+                    editor.layout();
+                }
+            });
+        },
+
+        /**
          * Get current state for persistence
          */
         getState() {
@@ -321,6 +333,15 @@
                 const pane = this.createEditorPane(fieldId);
                 grid.appendChild(pane);
             });
+
+            // Force layout on all Monaco editors after grid update
+            setTimeout(() => {
+                Object.values(monacoEditors).forEach(editor => {
+                    if (editor) {
+                        editor.layout();
+                    }
+                });
+            }, 50);
         },
 
         /**
@@ -414,7 +435,7 @@
                 value: field.content || '',
                 language: 'html',
                 theme: 'vs-dark',
-                automaticLayout: true,
+                automaticLayout: false,
                 minimap: { enabled: true },
                 fontSize: 14,
                 wordWrap: 'on',
@@ -429,6 +450,11 @@
                 field.isDirty = field.content !== originalContent[fieldId];
                 this.updateToggleButtons();
             });
+
+            // Force layout after creation
+            setTimeout(() => {
+                editor.layout();
+            }, 10);
 
             console.log(`[HTML Editor] Created Monaco editor for: ${fieldId}`);
         },

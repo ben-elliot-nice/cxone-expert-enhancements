@@ -109,6 +109,15 @@
         },
 
         /**
+         * Notify current app of resize
+         */
+        notifyResize() {
+            if (currentApp && typeof currentApp.onResize === 'function') {
+                currentApp.onResize();
+            }
+        },
+
+        /**
          * Set app container
          */
         setContainer(container) {
@@ -631,6 +640,8 @@
                     isResizing = false;
                     currentResizeHandle = null;
                     this.saveDimensions();
+                    // Notify app of resize
+                    AppManager.notifyResize();
                 }
             });
         },
