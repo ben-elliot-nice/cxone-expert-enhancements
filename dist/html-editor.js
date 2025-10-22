@@ -33,7 +33,6 @@ console.log('[HTML Editor] Script loaded, preparing Monaco initialization');
     document.head.appendChild(loaderScript);
 })();
 
-
 // State management for editors
 const editorState = {
     head: { active: false, editor: null, content: '', label: 'Page HTML Head', isDirty: false },
@@ -47,12 +46,12 @@ const MAX_ACTIVE_EDITORS = 2;
 let csrfToken = '';
 let monacoReady = false;
 let linterReady = false;
-let originalContent = {}; // Store original CSS from API
+let originalContent = {}; // Store original HTML from API
 let isMobileView = false; // Track if we're in mobile view (< 1080px)
 let saveToLocalStorageDebounceTimer = null; // Debounce timer for localStorage saves
-// DISABLED FOR SECURITY: let livePreviewStyleTag = null; // Style tag for live CSS preview injection
-// DISABLED FOR SECURITY: let livePreviewDebounceTimer = null; // Debounce timer for live preview updates
-// Note: Live preview flag is now stored in window.cssEditorEnableLivePreview (controlled by overlay toggle button)
+let livePreviewStyleTag = null; // Style tag for live HTML preview injection (disabled for security)
+let livePreviewDebounceTimer = null; // Debounce timer for live preview updates
+// Note: Live preview flag is now stored in window.htmlEditorEnableLivePreview (controlled by overlay toggle button)
 
 // Autocomplete data storage
 let autocompleteData = {
@@ -68,7 +67,7 @@ let autocompleteData = {
 
 /**
  * Scan the DOM for classes, IDs, and data-* attributes
- * Excludes the CSS editor overlay to avoid suggesting editor UI classes
+ * Excludes the HTML editor overlay to avoid suggesting editor UI classes
  */
 function scanDOMForAutocomplete() {
     console.log('[scanDOMForAutocomplete] Starting DOM scan');
@@ -210,7 +209,7 @@ function getActiveCount() {
 function saveActiveEditors() {
     const activeRoles = Object.keys(editorState).filter(role => editorState[role].active);
     try {
-        localStorage.setItem('cssEditorActiveRoles', JSON.stringify(activeRoles));
+        localStorage.setItem('htmlEditorActiveRoles', JSON.stringify(activeRoles));
         console.log('[saveActiveEditors] Saved active roles to localStorage:', activeRoles);
     } catch (error) {
         console.warn('[saveActiveEditors] Failed to save to localStorage:', error);
@@ -219,7 +218,7 @@ function saveActiveEditors() {
 
 function loadActiveEditors() {
     try {
-        const saved = localStorage.getItem('cssEditorActiveRoles');
+        const saved = localStorage.getItem('htmlEditorActiveRoles');
         if (saved) {
             const activeRoles = JSON.parse(saved);
             console.log('[loadActiveEditors] Loaded active roles from localStorage:', activeRoles);
@@ -250,8 +249,8 @@ function saveCSSToLocalStorage() {
             data.modified[role] = editorState[role].content;
             data.original[role] = originalContent[role];
         });
-        localStorage.setItem('cssEditorContent', JSON.stringify(data));
-        console.log('[saveCSSToLocalStorage] Saved CSS content and original baseline to localStorage');
+        localStorage.setItem('htmlEditorContent', JSON.stringify(data));
+        console.log('[saveCSSToLocalStorage] Saved HTML content and original baseline to localStorage');
     } catch (error) {
         console.warn('[saveCSSToLocalStorage] Failed to save to localStorage:', error);
     }
@@ -272,17 +271,17 @@ function debouncedSaveCSSToLocalStorage() {
 
 function loadCSSFromLocalStorage() {
     try {
-        const saved = localStorage.getItem('cssEditorContent');
+        const saved = localStorage.getItem('htmlEditorContent');
         if (saved) {
             const data = JSON.parse(saved);
 
             // Handle legacy format (plain object) or new format (modified/original)
             if (data.modified && data.original) {
-                console.log('[loadCSSFromLocalStorage] Found CSS content with original baseline in localStorage');
+                console.log('[loadCSSFromLocalStorage] Found HTML content with original baseline in localStorage');
                 return data;
             } else {
                 // Legacy format - treat as modified content only
-                console.log('[loadCSSFromLocalStorage] Found legacy CSS content in localStorage (no baseline)');
+                console.log('[loadCSSFromLocalStorage] Found legacy HTML content in localStorage (no baseline)');
                 return { modified: data, original: null };
             }
         }
@@ -294,8 +293,8 @@ function loadCSSFromLocalStorage() {
 
 function clearCSSFromLocalStorage() {
     try {
-        localStorage.removeItem('cssEditorContent');
-        console.log('[clearCSSFromLocalStorage] Cleared CSS content from localStorage');
+        localStorage.removeItem('htmlEditorContent');
+        console.log('[clearCSSFromLocalStorage] Cleared HTML content from localStorage');
     } catch (error) {
         console.warn('[clearCSSFromLocalStorage] Failed to clear localStorage:', error);
     }
@@ -304,111 +303,111 @@ function clearCSSFromLocalStorage() {
 /**
  * Initialize or get the live preview style tag
  */
-// function getLivePreviewStyleTag() {
-//     if (!livePreviewStyleTag) {
-//         livePreviewStyleTag = document.createElement('style');
-//         livePreviewStyleTag.id = 'html-editor-live-preview';
-//         livePreviewStyleTag.setAttribute('data-source', 'HTML Editor Live Preview');
-//         document.head.appendChild(livePreviewStyleTag);
-//         console.log('[getLivePreviewStyleTag] Created live preview style tag');
-//     }
-//     return livePreviewStyleTag;
-// }
+function getLivePreviewStyleTag() {
+    if (!livePreviewStyleTag) {
+        livePreviewStyleTag = document.createElement('style');
+        livePreviewStyleTag.id = 'css-editor-live-preview';
+        livePreviewStyleTag.setAttribute('data-source', 'CSS Editor Live Preview');
+        document.head.appendChild(livePreviewStyleTag);
+        console.log('[getLivePreviewStyleTag] Created live preview style tag');
+    }
+    return livePreviewStyleTag;
+}
 
 /**
  * Update live CSS preview in the page (debounced)
  */
-// function updateLivePreview() {
-//     // Check the dynamic flag (can be toggled by overlay button)
-//     const isEnabled = window.cssEditorEnableLivePreview || false;
-// 
-//     // Only update if live preview is enabled
-//     if (!isEnabled) {
-//         console.log('[updateLivePreview] Live preview disabled, skipping');
-//         return;
-//     }
-// 
-//     console.log('[updateLivePreview] Scheduling live preview update');
-// 
-//     // Clear existing timer
-//     if (livePreviewDebounceTimer) {
-//         clearTimeout(livePreviewDebounceTimer);
-//     }
-// 
-//     // Set new timer - update after 300ms of inactivity
-//     livePreviewDebounceTimer = setTimeout(() => {
-//         performLivePreviewUpdate();
-//         livePreviewDebounceTimer = null;
-//     }, 300);
-// }
+function updateLivePreview() {
+    // Check the dynamic flag (can be toggled by overlay button)
+    const isEnabled = window.htmlEditorEnableLivePreview || false;
+
+    // Only update if live preview is enabled
+    if (!isEnabled) {
+        console.log('[updateLivePreview] Live preview disabled, skipping');
+        return;
+    }
+
+    console.log('[updateLivePreview] Scheduling live preview update');
+
+    // Clear existing timer
+    if (livePreviewDebounceTimer) {
+        clearTimeout(livePreviewDebounceTimer);
+    }
+
+    // Set new timer - update after 300ms of inactivity
+    livePreviewDebounceTimer = setTimeout(() => {
+        performLivePreviewUpdate();
+        livePreviewDebounceTimer = null;
+    }, 300);
+}
 
 /**
  * Actually perform the live preview update
  */
-// function performLivePreviewUpdate() {
-//     try {
-//         const styleTag = getLivePreviewStyleTag();
-// 
-//         // Get the selected preview role (defaults to 'anonymous')
-//         const selectedRole = window.cssEditorPreviewRole || 'anonymous';
-//         console.log('[performLivePreviewUpdate] Preview role:', selectedRole);
-// 
-//         // Build CSS combination based on selected role
-//         // Rules:
-//         // - anonymous: all + anonymous
-//         // - viewer (community): all + viewer
-//         // - seated (pro): all + seated
-//         // - admin: all + seated + admin
-//         // - grape (legacy): all + grape
-//         let combinedCSS = '';
-//         const rolesToInclude = [];
-// 
-//         // All roles get "all"
-//         rolesToInclude.push('all');
-// 
-//         // Add specific roles based on selection
-//         if (selectedRole === 'anonymous') {
-//             rolesToInclude.push('anonymous');
-//         } else if (selectedRole === 'viewer') {
-//             rolesToInclude.push('viewer');
-//         } else if (selectedRole === 'seated') {
-//             rolesToInclude.push('seated');
-//         } else if (selectedRole === 'admin') {
-//             // Admins inherit pro (seated) permissions
-//             rolesToInclude.push('seated');
-//             rolesToInclude.push('admin');
-//         } else if (selectedRole === 'grape') {
-//             rolesToInclude.push('grape');
-//         }
-// 
-//         console.log('[performLivePreviewUpdate] Including roles:', rolesToInclude);
-// 
-//         // Combine CSS in order
-//         rolesToInclude.forEach(role => {
-//             const state = editorState[role];
-//             if (state && state.content && state.content.trim()) {
-//                 combinedCSS += `\n/* HTML Editor Preview: ${state.label} */\n`;
-//                 combinedCSS += state.content;
-//                 combinedCSS += '\n';
-//             }
-//         });
-// 
-//         styleTag.textContent = combinedCSS;
-//         console.log(`[performLivePreviewUpdate] Updated live preview: ${combinedCSS.length} characters for role "${selectedRole}"`);
-//     } catch (error) {
-//         console.warn('[performLivePreviewUpdate] Failed to update live preview:', error);
-//     }
-// }
+function performLivePreviewUpdate() {
+    try {
+        const styleTag = getLivePreviewStyleTag();
+
+        // Get the selected preview role (defaults to 'anonymous')
+        const selectedRole = window.htmlEditorPreviewRole || 'anonymous';
+        console.log('[performLivePreviewUpdate] Preview role:', selectedRole);
+
+        // Build CSS combination based on selected role
+        // Rules:
+        // - anonymous: all + anonymous
+        // - viewer (community): all + viewer
+        // - seated (pro): all + seated
+        // - admin: all + seated + admin
+        // - grape (legacy): all + grape
+        let combinedCSS = '';
+        const rolesToInclude = [];
+
+        // All roles get "all"
+        rolesToInclude.push('all');
+
+        // Add specific roles based on selection
+        if (selectedRole === 'anonymous') {
+            rolesToInclude.push('anonymous');
+        } else if (selectedRole === 'viewer') {
+            rolesToInclude.push('viewer');
+        } else if (selectedRole === 'seated') {
+            rolesToInclude.push('seated');
+        } else if (selectedRole === 'admin') {
+            // Admins inherit pro (seated) permissions
+            rolesToInclude.push('seated');
+            rolesToInclude.push('admin');
+        } else if (selectedRole === 'grape') {
+            rolesToInclude.push('grape');
+        }
+
+        console.log('[performLivePreviewUpdate] Including roles:', rolesToInclude);
+
+        // Combine CSS in order
+        rolesToInclude.forEach(role => {
+            const state = editorState[role];
+            if (state && state.content && state.content.trim()) {
+                combinedCSS += `\n/* CSS Editor Preview: ${state.label} */\n`;
+                combinedCSS += state.content;
+                combinedCSS += '\n';
+            }
+        });
+
+        styleTag.textContent = combinedCSS;
+        console.log(`[performLivePreviewUpdate] Updated live preview: ${combinedCSS.length} characters for role "${selectedRole}"`);
+    } catch (error) {
+        console.warn('[performLivePreviewUpdate] Failed to update live preview:', error);
+    }
+}
 
 /**
  * Clear live preview CSS
  */
-// function clearLivePreview() {
-//     if (livePreviewStyleTag) {
-//         livePreviewStyleTag.textContent = '';
-//         console.log('[clearLivePreview] Cleared live preview');
-//     }
-// }
+function clearLivePreview() {
+    if (livePreviewStyleTag) {
+        livePreviewStyleTag.textContent = '';
+        console.log('[clearLivePreview] Cleared live preview');
+    }
+}
 
 // Expose functions for embed script
 window.updateLivePreview = updateLivePreview;
@@ -772,10 +771,10 @@ function updateGrid() {
     // If in overlay mode, trigger height recalculation
     const editorApp = document.getElementById('html-editor-app');
     const isInOverlay = editorApp && editorApp.closest('#html-editor-overlay');
-    if (isInOverlay && typeof window.cssEditorUpdateHeights === 'function') {
+    if (isInOverlay && typeof window.htmlEditorUpdateHeights === 'function') {
         // Delay slightly to let DOM settle
         setTimeout(() => {
-            window.cssEditorUpdateHeights();
+            window.htmlEditorUpdateHeights();
         }, 50);
     }
 }
@@ -974,7 +973,7 @@ function exportActiveEditors() {
         exportCSS(role);
     });
 
-    showMessage(`Exported ${activeRoles.length} CSS file${activeRoles.length === 1 ? '' : 's'}`, 'success');
+    showMessage(`Exported ${activeRoles.length} HTML file${activeRoles.length === 1 ? '' : 's'}`, 'success');
 }
 window.exportActiveEditors = exportActiveEditors;
 
@@ -1022,13 +1021,13 @@ function showMessage(message, type = 'error') {
     }, { once: true });
 }
 
-function exportHTML(role) {
-    console.log(`[exportHTML] Exporting CSS for role: ${role}`);
+function exportCSS(role) {
+    console.log(`[exportCSS] Exporting HTML for role: ${role}`);
     try {
         const state = editorState[role];
         // Get content from editor if active, otherwise from state
         const content = state.editor ? state.editor.getValue() : state.content;
-        console.log(`[exportHTML] Content length: ${content.length} characters`);
+        console.log(`[exportCSS] Content length: ${content.length} characters`);
         const blob = new Blob([content], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -1036,9 +1035,9 @@ function exportHTML(role) {
         a.download = `html_template_${role}.html`;
         a.click();
         URL.revokeObjectURL(url);
-        console.log(`[exportHTML] Export complete for ${role}`);
+        console.log(`[exportCSS] Export complete for ${role}`);
     } catch (error) {
-        console.error(`[exportHTML] Error exporting ${role}:`, error);
+        console.error(`[exportCSS] Error exporting ${role}:`, error);
         showMessage(`Failed to export ${role}: ${error.message}`, 'error');
     }
 }
@@ -1088,7 +1087,7 @@ function parseHTML(html) {
         }
     });
 
-    console.log('[parseHTML] Parsing complete. CSS sections found:', Object.keys(cssData.css).filter(k => cssData.css[k].length > 0));
+    console.log('[parseHTML] Parsing complete. HTML sections found:', Object.keys(cssData.css).filter(k => cssData.css[k].length > 0));
     return cssData;
 }
 
@@ -1464,7 +1463,7 @@ function initializeEditors(cssData) {
     }
 
     // STEP 5: Initialize live preview with current content (only if enabled)
-    const isLivePreviewEnabled = window.cssEditorEnableLivePreview || false;
+    const isLivePreviewEnabled = window.htmlEditorEnableLivePreview || false;
     if (isLivePreviewEnabled) {
         performLivePreviewUpdate();
     }
@@ -1476,7 +1475,7 @@ function initializeEditors(cssData) {
 }
 
 async function loadCSS() {
-    console.log('[loadCSS] ===== LOAD CSS STARTED =====');
+    console.log('[loadCSS] ===== LOAD HTML STARTED =====');
 
     document.getElementById('loading').style.display = 'block';
     document.getElementById('message-area').innerHTML = '';
@@ -1484,7 +1483,7 @@ async function loadCSS() {
     // Check localStorage first
     const localData = loadCSSFromLocalStorage();
     if (localData) {
-        console.log('[loadCSS] Found CSS in localStorage, using cached content');
+        console.log('[loadCSS] Found HTML in localStorage, using cached content');
 
         // If we have original baseline in localStorage, use it. Otherwise fetch from API.
         let apiOriginalContent = localData.original;
@@ -1568,7 +1567,7 @@ async function loadCSS() {
     }
 
     // No localStorage data, fetch from API
-    const url = '/deki/cp/custom_html.php?params=%2F';
+    const url = '/deki/cp/custom_css.php?params=%2F';
     console.log('[loadCSS] No localStorage data, fetching from URL:', url);
 
     try {
@@ -1626,11 +1625,11 @@ async function loadCSS() {
         console.error('[loadCSS] Error details:', error);
         console.error('[loadCSS] Error stack:', error.stack);
         document.getElementById('loading').style.display = 'none';
-        showMessage('Error loading CSS: ' + error.message, 'error');
+        showMessage('Error loading HTML: ' + error.message, 'error');
     }
 }
 window.loadCSS = loadCSS;
-console.log('[HTML Editor] loadCSS assigned to window, typeof window.loadCSS:', typeof window.loadCSS);
+console.log('[CSS Editor] loadCSS assigned to window, typeof window.loadCSS:', typeof window.loadCSS);
 
 function buildMultipartBody(cssData) {
     console.log('[buildMultipartBody] Building multipart form data');
@@ -1644,7 +1643,6 @@ function buildMultipartBody(cssData) {
     body += `${cssData.csrf_token}\r\n`;
     console.log('[buildMultipartBody] Added CSRF token');
 
-    // Add CSS templates
     // Add HTML templates
     const fields = {
         'html_template_head': cssData.html_template_head,
@@ -1701,7 +1699,7 @@ async function saveSinglePane(role) {
             console.log(`[saveSinglePane] Synced ${role} from editor to state: ${state.content.length} chars`);
         }
 
-        // Build HTML data
+        // Build HTML data with both fields (only updating the specific field)
         const cssData = {
             csrf_token: csrfToken,
             html_template_head: editorState.head.content,
@@ -1709,6 +1707,9 @@ async function saveSinglePane(role) {
         };
 
         console.log(`[saveSinglePane] Saving ${role} with ${cssData[`html_template_${role}`]?.length || 0} chars`);
+
+        const { body, boundary } = buildMultipartBody(cssData);
+
         const url = '/deki/cp/custom_html.php?params=%2F';
         console.log(`[saveSinglePane] Posting to URL:`, url);
 
@@ -1767,7 +1768,7 @@ async function saveCSS() {
 
     if (!csrfToken) {
         console.error('[saveCSS] No CSRF token available');
-        showMessage('Please load CSS first before saving', 'error');
+        showMessage('Please load HTML first before saving', 'error');
         return;
     }
 
@@ -1835,7 +1836,7 @@ async function saveCSS() {
             // Clear localStorage since everything is now saved
             clearCSSFromLocalStorage();
 
-            showMessage('CSS saved successfully!', 'success');
+            showMessage('HTML saved successfully!', 'success');
         } else {
             throw new Error(`Failed to save: ${response.status} ${response.statusText}`);
         }
@@ -1846,7 +1847,7 @@ async function saveCSS() {
         console.error('[saveCSS] ===== ERROR =====');
         console.error('[saveCSS] Error details:', error);
         console.error('[saveCSS] Error stack:', error.stack);
-        showMessage('Error saving CSS: ' + error.message, 'error');
+        showMessage('Error saving HTML: ' + error.message, 'error');
     } finally {
         saveBtn.disabled = false;
         saveBtn.textContent = 'Save All';
@@ -1993,7 +1994,7 @@ function performDiscardChanges() {
     if (dropdownMenu) dropdownMenu.classList.remove('show');
     if (dropdown) dropdown.classList.remove('open');
 
-    showMessage('All changes discarded. CSS reverted to original content.', 'success');
+    showMessage('All changes discarded. HTML reverted to original content.', 'success');
     console.log('[performDiscardChanges] Discard complete');
 }
 window.discardChanges = discardChanges;
@@ -2339,7 +2340,7 @@ function attachEventListeners() {
     });
     console.log('[attachEventListeners] Keyboard shortcuts registered (Ctrl+S, Ctrl+Shift+S)');
 
-    console.log('[HTML Editor] All event listeners registered');
+    console.log('[CSS Editor] All event listeners registered');
 }
 // Expose for overlay embed to call after injecting HTML
 window.attachEventListeners = attachEventListeners;
@@ -2392,7 +2393,7 @@ window.addEventListener('DOMContentLoaded', () => {
         isMobileView = window.innerWidth < 1080;
         console.log(`[DOMContentLoaded] Initial view mode (page): ${isMobileView ? 'mobile' : 'desktop'}`);
         console.log(`[DOMContentLoaded] Direct embed mode detected - clearing any existing live preview`);
-        const existingPreviewTag = document.getElementById('html-editor-live-preview');
+        const existingPreviewTag = document.getElementById('css-editor-live-preview');
         if (existingPreviewTag) {
             existingPreviewTag.remove();
             console.log(`[DOMContentLoaded] Removed existing live preview style tag`);

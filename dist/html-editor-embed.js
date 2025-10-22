@@ -186,7 +186,7 @@
         livePreviewBtn.innerHTML = '👁️';
 
         // Initialize button appearance based on current state (will be set after preferences load)
-        const initialState = window.cssEditorEnableLivePreview || false;
+        const initialState = window.htmlEditorEnableLivePreview || false;
         livePreviewBtn.title = `Toggle Live Preview (currently ${initialState ? 'ON' : 'OFF'})`;
         livePreviewBtn.style.cssText = `
             background: ${initialState ? 'rgba(76, 175, 80, 0.3)' : 'rgba(244, 67, 54, 0.3)'};
@@ -203,11 +203,11 @@
             transition: all 0.2s;
         `;
         livePreviewBtn.addEventListener('mouseenter', () => {
-            const isEnabled = window.cssEditorEnableLivePreview;
+            const isEnabled = window.htmlEditorEnableLivePreview;
             livePreviewBtn.style.background = isEnabled ? 'rgba(76, 175, 80, 0.4)' : 'rgba(244, 67, 54, 0.4)';
         });
         livePreviewBtn.addEventListener('mouseleave', () => {
-            const isEnabled = window.cssEditorEnableLivePreview;
+            const isEnabled = window.htmlEditorEnableLivePreview;
             livePreviewBtn.style.background = isEnabled ? 'rgba(76, 175, 80, 0.3)' : 'rgba(244, 67, 54, 0.3)';
         });
         livePreviewBtn.addEventListener('click', (e) => {
@@ -238,7 +238,7 @@
         `;
         // Load saved role preference
         try {
-            const savedRole = localStorage.getItem('cssEditorPreviewRole') || 'anonymous';
+            const savedRole = localStorage.getItem('htmlEditorPreviewRole') || 'anonymous';
             roleSelector.value = savedRole;
             console.log('[HTML Editor Embed] Loaded preview role from localStorage:', savedRole);
         } catch (error) {
@@ -340,7 +340,7 @@
 
         handles.forEach(config => {
             const handle = document.createElement('div');
-            handle.className = 'html-editor-resize-handle';
+            handle.className = 'css-editor-resize-handle';
             handle.dataset.direction = config.dir;
 
             let styles = `
@@ -371,7 +371,7 @@
             resizeHandles[config.dir] = handle;
         });
 
-        console.log('[HTML Editor Embed] Created resize handles:', Object.keys(resizeHandles));
+        console.log('[CSS Editor Embed] Created resize handles:', Object.keys(resizeHandles));
     }
 
     /**
@@ -379,7 +379,7 @@
      */
     function loadEditorContent() {
         overlayContent.innerHTML = `
-            <div id="html-editor-app" class="container" style="padding: 0; max-width: none; margin: 0;">
+            <div id="css-editor-app" class="container" style="padding: 0; max-width: none; margin: 0;">
                 <div id="message-area"></div>
                 <div id="loading" class="loading" style="display: none;">Loading CSS from legacy system...</div>
                 <div id="editor-container" style="display: none;">
@@ -403,7 +403,7 @@
             </div>
         `;
 
-        console.log('[HTML Editor Embed] Editor content loaded');
+        console.log('[CSS Editor Embed] Editor content loaded');
     }
 
     /**
@@ -418,9 +418,9 @@
                 top: overlay.style.top
             };
             localStorage.setItem('cssEditorOverlayDimensions', JSON.stringify(dimensions));
-            console.log('[HTML Editor Embed] Saved overlay dimensions:', dimensions);
+            console.log('[CSS Editor Embed] Saved overlay dimensions:', dimensions);
         } catch (error) {
-            console.warn('[HTML Editor Embed] Failed to save overlay dimensions:', error);
+            console.warn('[CSS Editor Embed] Failed to save overlay dimensions:', error);
         }
     }
 
@@ -439,13 +439,13 @@
      */
     function showToast(message, duration = 4000) {
         // Remove existing toast if any
-        const existing = document.getElementById('html-editor-toast');
+        const existing = document.getElementById('css-editor-toast');
         if (existing) {
             existing.remove();
         }
 
         const toast = document.createElement('div');
-        toast.id = 'html-editor-toast';
+        toast.id = 'css-editor-toast';
         toast.textContent = message;
         toast.style.cssText = `
             position: fixed;
@@ -465,9 +465,9 @@
         `;
 
         // Add keyframe animation
-        if (!document.getElementById('html-editor-toast-style')) {
+        if (!document.getElementById('css-editor-toast-style')) {
             const style = document.createElement('style');
-            style.id = 'html-editor-toast-style';
+            style.id = 'css-editor-toast-style';
             style.textContent = `
                 @keyframes slideUp {
                     from {
@@ -501,7 +501,7 @@
             const saved = localStorage.getItem('cssEditorOverlayDimensions');
             if (saved) {
                 const dimensions = JSON.parse(saved);
-                console.log('[HTML Editor Embed] Restoring overlay dimensions:', dimensions);
+                console.log('[CSS Editor Embed] Restoring overlay dimensions:', dimensions);
 
                 // Parse saved dimensions
                 const savedWidth = parseInt(dimensions.width) || 1200;
@@ -532,7 +532,7 @@
                 // Clear right positioning when restoring left
                 overlay.style.right = 'auto';
 
-                console.log('[HTML Editor Embed] Constrained overlay to viewport:', {
+                console.log('[CSS Editor Embed] Constrained overlay to viewport:', {
                     width: constrainedWidth,
                     height: constrainedHeight,
                     left: constrainedLeft,
@@ -542,7 +542,7 @@
                 return true;
             }
         } catch (error) {
-            console.warn('[HTML Editor Embed] Failed to restore overlay dimensions:', error);
+            console.warn('[CSS Editor Embed] Failed to restore overlay dimensions:', error);
         }
         return false;
     }
@@ -559,7 +559,7 @@
 
         // Check if viewport is too small for minimum usable size
         if (viewport.width < minWidth || viewport.height < minHeight) {
-            console.log('[HTML Editor Embed] Viewport too small, auto-minimizing overlay');
+            console.log('[CSS Editor Embed] Viewport too small, auto-minimizing overlay');
 
             // Close the overlay
             if (isEditorOpen) {
@@ -567,7 +567,7 @@
             }
 
             // Show toast notification
-            showToast('HTML Editor minimized - window is too small');
+            showToast('CSS Editor minimized - window is too small');
             return;
         }
 
@@ -617,7 +617,7 @@
             overlay.style.right = 'auto';
             overlay.style.bottom = 'auto';
 
-            console.log('[HTML Editor Embed] Constrained overlay on window resize:', {
+            console.log('[CSS Editor Embed] Constrained overlay on window resize:', {
                 viewport,
                 oldDimensions: { width: currentWidth, height: currentHeight, left: currentLeft, top: currentTop },
                 newDimensions: { width: newWidth, height: newHeight, left: newLeft, top: newTop }
@@ -635,13 +635,13 @@
      * Handle role selection change for preview
      */
     function handleRoleChange(selectedRole) {
-        console.log('[HTML Editor Embed] Role changed to:', selectedRole);
+        console.log('[CSS Editor Embed] Role changed to:', selectedRole);
 
         // Save preference
         try {
             localStorage.setItem('cssEditorPreviewRole', selectedRole);
         } catch (error) {
-            console.warn('[HTML Editor Embed] Failed to save preview role preference:', error);
+            console.warn('[CSS Editor Embed] Failed to save preview role preference:', error);
         }
 
         // Set the preview role on window for the main JS to use
@@ -660,14 +660,14 @@
         window.cssEditorEnableLivePreview = !window.cssEditorEnableLivePreview;
         const isEnabled = window.cssEditorEnableLivePreview;
 
-        console.log(`[HTML Editor Embed] Live preview ${isEnabled ? 'enabled' : 'disabled'}`);
+        console.log(`[CSS Editor Embed] Live preview ${isEnabled ? 'enabled' : 'disabled'}`);
 
         // Save preference to localStorage
         try {
             localStorage.setItem('cssEditorLivePreviewEnabled', isEnabled ? 'true' : 'false');
-            console.log(`[HTML Editor Embed] Saved live preview preference: ${isEnabled}`);
+            console.log(`[CSS Editor Embed] Saved live preview preference: ${isEnabled}`);
         } catch (error) {
-            console.warn('[HTML Editor Embed] Failed to save live preview preference:', error);
+            console.warn('[CSS Editor Embed] Failed to save live preview preference:', error);
         }
 
         // Update button appearance
@@ -701,21 +701,21 @@
             const minHeight = 300;
 
             if (viewport.width < minWidth || viewport.height < minHeight) {
-                console.log('[HTML Editor Embed] Viewport too small to open editor');
+                console.log('[CSS Editor Embed] Viewport too small to open editor');
                 isEditorOpen = false; // Revert state
-                showToast('HTML Editor requires a larger window to open');
+                showToast('CSS Editor requires a larger window to open');
                 return;
             }
 
             overlay.style.display = 'flex';
             toggleButton.style.opacity = '0.7';
-            console.log('[HTML Editor Embed] Editor opened');
+            console.log('[CSS Editor Embed] Editor opened');
 
             // Save open state to localStorage
             try {
                 localStorage.setItem('cssEditorOverlayOpen', 'true');
             } catch (error) {
-                console.warn('[HTML Editor Embed] Failed to save overlay state:', error);
+                console.warn('[CSS Editor Embed] Failed to save overlay state:', error);
             }
 
             // Update editor heights now that overlay is visible
@@ -726,13 +726,13 @@
         } else {
             overlay.style.display = 'none';
             toggleButton.style.opacity = '1';
-            console.log('[HTML Editor Embed] Editor closed');
+            console.log('[CSS Editor Embed] Editor closed');
 
             // Save closed state to localStorage
             try {
                 localStorage.setItem('cssEditorOverlayOpen', 'false');
             } catch (error) {
-                console.warn('[HTML Editor Embed] Failed to save overlay state:', error);
+                console.warn('[CSS Editor Embed] Failed to save overlay state:', error);
             }
         }
     }
@@ -891,13 +891,13 @@
     function updateEditorHeights() {
         // Don't run if overlay is not visible
         if (!overlay || overlay.style.display === 'none') {
-            console.log('[HTML Editor Embed] Skipping height update - overlay not visible');
+            console.log('[CSS Editor Embed] Skipping height update - overlay not visible');
             return;
         }
 
         const editorContainer = document.getElementById('editor-container');
         if (!editorContainer || editorContainer.style.display === 'none') {
-            console.log('[HTML Editor Embed] Skipping height update - editor container not visible');
+            console.log('[CSS Editor Embed] Skipping height update - editor container not visible');
             return;
         }
 
@@ -905,7 +905,7 @@
         const editorsGrid = document.getElementById('editors-grid');
 
         if (!toggleBar || !editorsGrid) {
-            console.log('[HTML Editor Embed] Skipping height update - required elements not found');
+            console.log('[CSS Editor Embed] Skipping height update - required elements not found');
             return;
         }
 
@@ -1000,7 +1000,7 @@
         }
 
         // Expose updateEditorHeights to window scope so main JS can call it
-        window.cssEditorUpdateHeights = updateEditorHeights;
+        window.htmlEditorUpdateHeights = updateEditorHeights;
         try {
             console.log('[HTML Editor Embed] Loading resources...');
 
@@ -1008,32 +1008,32 @@
             // This must happen before the main JS loads so DOMContentLoaded can see it
             // Default to OFF (false) if no preference is saved
             try {
-                const savedPreference = localStorage.getItem('cssEditorLivePreviewEnabled');
+                const savedPreference = localStorage.getItem('htmlEditorLivePreviewEnabled');
                 if (savedPreference === 'true') {
-                    window.cssEditorEnableLivePreview = true;
+                    window.htmlEditorEnableLivePreview = true;
                     console.log('[HTML Editor Embed] Live preview enabled from saved preference');
                 } else if (savedPreference === 'false') {
-                    window.cssEditorEnableLivePreview = false;
+                    window.htmlEditorEnableLivePreview = false;
                     console.log('[HTML Editor Embed] Live preview disabled from saved preference');
                 } else {
                     // No saved preference - default to OFF
-                    window.cssEditorEnableLivePreview = false;
+                    window.htmlEditorEnableLivePreview = false;
                     console.log('[HTML Editor Embed] Live preview defaulting to OFF (no saved preference)');
                 }
             } catch (error) {
                 // localStorage might not be available
                 console.warn('[HTML Editor Embed] Failed to load live preview preference, defaulting to OFF:', error);
-                window.cssEditorEnableLivePreview = false;
+                window.htmlEditorEnableLivePreview = false;
             }
 
             // Load preview role preference
             try {
-                const savedRole = localStorage.getItem('cssEditorPreviewRole') || 'anonymous';
-                window.cssEditorPreviewRole = savedRole;
+                const savedRole = localStorage.getItem('htmlEditorPreviewRole') || 'anonymous';
+                window.htmlEditorPreviewRole = savedRole;
                 console.log('[HTML Editor Embed] Preview role set to:', savedRole);
             } catch (error) {
                 console.warn('[HTML Editor Embed] Failed to load preview role preference:', error);
-                window.cssEditorPreviewRole = 'anonymous';
+                window.htmlEditorPreviewRole = 'anonymous';
             }
 
             // Load CSS first
@@ -1080,7 +1080,7 @@
 
             // Restore overlay visibility state from localStorage
             try {
-                const savedState = localStorage.getItem('cssEditorOverlayOpen');
+                const savedState = localStorage.getItem('htmlEditorOverlayOpen');
                 if (savedState === 'true') {
                     console.log('[HTML Editor Embed] Restoring overlay open state from localStorage');
                     // Open the overlay after a short delay to ensure everything is initialized
