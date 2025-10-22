@@ -19,7 +19,7 @@ This URL always points to the latest released version. You'll automatically rece
 #### Option 2: Pinned Version (No Auto-Updates)
 
 ```html
-<script src="https://releases.benelliot-nice.com/cxone-expert-enhancements/releases/v0.1.3/css-editor-embed.js"></script>
+<script src="https://releases.benelliot-nice.com/cxone-expert-enhancements/releases/v0.2.0/css-editor-embed.js"></script>
 ```
 
 Pin to a specific version to prevent automatic updates. Replace `vX.X.X` with your desired version (e.g., `v0.0.7`).
@@ -170,7 +170,7 @@ Users can choose how they receive updates:
 
 **Pinned version - For stability:**
 ```html
-<script src="https://releases.benelliot-nice.com/cxone-expert-enhancements/releases/v0.1.3/css-editor-embed.js"></script>
+<script src="https://releases.benelliot-nice.com/cxone-expert-enhancements/releases/v0.2.0/css-editor-embed.js"></script>
 ```
 - Stays on that specific version forever
 - Cached permanently (immutable)
