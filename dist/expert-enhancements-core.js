@@ -636,25 +636,36 @@
                 const deltaX = e.clientX - resizeStartX;
                 const deltaY = e.clientY - resizeStartY;
 
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+
                 // Right side resize
                 if (currentResizeHandle === 'right' || currentResizeHandle === 'corner-right') {
-                    const newWidth = Math.max(600, resizeStartWidth + deltaX);
+                    const rect = overlay.getBoundingClientRect();
+                    const maxWidth = viewportWidth - rect.left;
+                    const newWidth = Math.max(600, Math.min(resizeStartWidth + deltaX, maxWidth));
                     overlay.style.width = newWidth + 'px';
                 }
 
                 // Left side resize (adjust both position and width)
                 if (currentResizeHandle === 'left' || currentResizeHandle === 'corner-left') {
                     const newWidth = Math.max(600, resizeStartWidth - deltaX);
-                    if (newWidth >= 600) {
+                    const newLeft = resizeStartLeft + deltaX;
+
+                    // Ensure left edge doesn't go below 0
+                    // Ensure right edge doesn't exceed viewport
+                    if (newLeft >= 0 && (newLeft + newWidth) <= viewportWidth) {
                         overlay.style.width = newWidth + 'px';
-                        overlay.style.left = (resizeStartLeft + deltaX) + 'px';
+                        overlay.style.left = newLeft + 'px';
                         overlay.style.transform = 'none';
                     }
                 }
 
                 // Bottom resize
                 if (currentResizeHandle === 'bottom' || currentResizeHandle === 'corner-right' || currentResizeHandle === 'corner-left') {
-                    const newHeight = Math.max(400, resizeStartHeight + deltaY);
+                    const rect = overlay.getBoundingClientRect();
+                    const maxHeight = viewportHeight - rect.top;
+                    const newHeight = Math.max(400, Math.min(resizeStartHeight + deltaY, maxHeight));
                     overlay.style.height = newHeight + 'px';
                 }
             });
