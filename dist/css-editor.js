@@ -2316,9 +2316,10 @@ function attachEventListeners() {
     document.addEventListener('keydown', (e) => {
         // Check for Ctrl+S (Windows/Linux) or Cmd+S (Mac)
         const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+        const key = e.key.toLowerCase();
 
         // Ctrl+Shift+S or Cmd+Shift+S: Save all tabs
-        if (isCtrlOrCmd && e.shiftKey && e.key === 's') {
+        if (isCtrlOrCmd && e.shiftKey && key === 's') {
             e.preventDefault();
             console.log('[Keyboard Shortcut] Ctrl+Shift+S detected - saving all tabs');
             saveCSS();
@@ -2326,7 +2327,7 @@ function attachEventListeners() {
         }
 
         // Ctrl+S or Cmd+S: Save current focused tab
-        if (isCtrlOrCmd && !e.shiftKey && e.key === 's') {
+        if (isCtrlOrCmd && !e.shiftKey && key === 's') {
             e.preventDefault();
             console.log('[Keyboard Shortcut] Ctrl+S detected - saving current tab');
 
