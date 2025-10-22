@@ -85,6 +85,8 @@
 
             // Restore state if available
             const savedState = context.Storage.getAppState(this.id);
+            const hasRestoredState = !!(savedState && savedState.activeRoles && savedState.activeRoles.length > 0);
+
             if (savedState) {
                 console.log('[CSS Editor] Restoring state:', savedState);
                 this.setState(savedState);
@@ -96,8 +98,8 @@
             // Build toggle bar
             this.buildToggleBar();
 
-            // Initialize active editors
-            this.initializeEditors();
+            // Initialize active editors (only set default if no state was restored)
+            this.initializeEditors(hasRestoredState);
 
             console.log('[CSS Editor] Mounted');
         },
@@ -498,10 +500,11 @@
         /**
          * Initialize editors (activate default if none active)
          */
-        initializeEditors() {
+        initializeEditors(hasRestoredState = false) {
             const hasActive = Object.values(editorState).some(r => r.active);
 
-            if (!hasActive) {
+            // Only set default if no state was restored and nothing is active
+            if (!hasRestoredState && !hasActive) {
                 // Activate 'all' by default
                 editorState.all.active = true;
             }
