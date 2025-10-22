@@ -639,6 +639,61 @@
         },
 
         /**
+         * Save a single HTML field
+         */
+        async saveField(fieldId) {
+            try {
+                console.log(`[HTML Editor] Saving ${fieldId}...`);
+
+                const field = editorState[fieldId];
+                if (!field) {
+                    throw new Error(`Field ${fieldId} not found`);
+                }
+
+                // Sync this editor's value to state
+                const editor = monacoEditors[fieldId];
+                if (editor) {
+                    field.content = editor.getValue();
+                }
+
+                // Build form data - send all fields but only save changes for this one
+                // Other fields use their original content to avoid overwriting
+                const formData = {
+                    csrf_token: csrfToken,
+                    html_template_head: fieldId === 'head' ? field.content : originalContent.head,
+                    html_template_tail: fieldId === 'tail' ? field.content : originalContent.tail
+                };
+
+                const { body, boundary } = context.API.buildMultipartBody(formData);
+
+                const url = '/deki/cp/custom_html.php?params=%2F';
+                const response = await context.API.fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': `multipart/form-data; boundary=${boundary}`
+                    },
+                    body: body
+                });
+
+                if (response.ok || response.redirected) {
+                    context.UI.showMessage(`${field.label} saved successfully!`, 'success');
+
+                    // Update original content for this field only
+                    originalContent[fieldId] = field.content;
+                    field.isDirty = false;
+
+                    this.updateToggleButtons();
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+            } catch (error) {
+                console.error(`[HTML Editor] Save ${fieldId} failed:`, error);
+                context.UI.showMessage(`Failed to save: ${error.message}`, 'error');
+            }
+        },
+
+        /**
          * Save all HTML
          */
         async saveAll() {

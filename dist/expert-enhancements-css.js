@@ -426,6 +426,21 @@
                 style: { display: 'flex', gap: '0.5rem' }
             });
 
+            const saveBtn = context.DOM.create('button', {
+                className: 'pane-btn pane-btn-save',
+                title: 'Save',
+                style: {
+                    background: '#28a745',
+                    border: '1px solid #28a745',
+                    color: 'white',
+                    padding: '0.25rem 0.5rem',
+                    borderRadius: '3px',
+                    cursor: 'pointer',
+                    fontSize: '0.7rem'
+                }
+            }, ['Save']);
+            saveBtn.addEventListener('click', () => this.saveRole(roleId));
+
             const exportBtn = context.DOM.create('button', {
                 className: 'pane-btn',
                 title: 'Export',
@@ -456,6 +471,7 @@
             }, ['Discard']);
             discardBtn.addEventListener('click', () => this.discardRole(roleId));
 
+            actions.appendChild(saveBtn);
             actions.appendChild(exportBtn);
             actions.appendChild(discardBtn);
 
@@ -629,6 +645,65 @@
 
             this.updateToggleButtons();
             context.UI.showMessage(`${role.label} reverted`, 'success');
+        },
+
+        /**
+         * Save a single CSS role
+         */
+        async saveRole(roleId) {
+            try {
+                console.log(`[CSS Editor] Saving ${roleId}...`);
+
+                const role = editorState[roleId];
+                if (!role) {
+                    throw new Error(`Role ${roleId} not found`);
+                }
+
+                // Sync this editor's value to state
+                const editor = monacoEditors[roleId];
+                if (editor) {
+                    role.content = editor.getValue();
+                }
+
+                // Build form data - send all fields but only save changes for this one
+                // Other fields use their original content to avoid overwriting
+                const formData = {
+                    csrf_token: csrfToken,
+                    css_template_all: roleId === 'all' ? role.content : originalContent.all,
+                    css_template_anonymous: roleId === 'anonymous' ? role.content : originalContent.anonymous,
+                    css_template_viewer: roleId === 'viewer' ? role.content : originalContent.viewer,
+                    css_template_seated: roleId === 'seated' ? role.content : originalContent.seated,
+                    css_template_admin: roleId === 'admin' ? role.content : originalContent.admin,
+                    css_template_grape: roleId === 'grape' ? role.content : originalContent.grape
+                };
+
+                const { body, boundary } = context.API.buildMultipartBody(formData);
+
+                const url = '/deki/cp/custom_css.php?params=%2F';
+                const response = await context.API.fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': `multipart/form-data; boundary=${boundary}`
+                    },
+                    body: body
+                });
+
+                if (response.ok || response.redirected) {
+                    context.UI.showMessage(`${role.label} saved successfully!`, 'success');
+
+                    // Update original content for this role only
+                    originalContent[roleId] = role.content;
+                    role.isDirty = false;
+
+                    this.updateToggleButtons();
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+            } catch (error) {
+                console.error(`[CSS Editor] Save ${roleId} failed:`, error);
+                context.UI.showMessage(`Failed to save: ${error.message}`, 'error');
+            }
         },
 
         /**
