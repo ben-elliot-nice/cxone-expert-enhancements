@@ -423,12 +423,12 @@
             });
             pane.appendChild(editorContainer);
 
-            // Create Monaco editor
+            // Create Monaco editor after layout settles
             setTimeout(() => {
                 if (context.Monaco.isReady()) {
                     this.createMonacoEditor(roleId, editorContainer);
                 }
-            }, 0);
+            }, 100);
 
             return pane;
         },
@@ -440,32 +440,45 @@
             const role = editorState[roleId];
             const monaco = context.Monaco.get();
 
-            const editor = monaco.editor.create(container, {
-                value: role.content || '',
-                language: 'css',
-                theme: 'vs-dark',
-                automaticLayout: false,
-                minimap: { enabled: true },
-                fontSize: 14,
-                wordWrap: 'on',
-                scrollBeyondLastLine: false
-            });
+            // Wait for container to have dimensions
+            const checkDimensions = () => {
+                const rect = container.getBoundingClientRect();
+                if (rect.height < 10) {
+                    // Container doesn't have proper dimensions yet, wait more
+                    setTimeout(checkDimensions, 50);
+                    return;
+                }
 
-            monacoEditors[roleId] = editor;
+                // Container has dimensions, create editor
+                const editor = monaco.editor.create(container, {
+                    value: role.content || '',
+                    language: 'css',
+                    theme: 'vs-dark',
+                    automaticLayout: false,
+                    minimap: { enabled: true },
+                    fontSize: 14,
+                    wordWrap: 'on',
+                    scrollBeyondLastLine: false
+                });
 
-            // Track changes
-            editor.onDidChangeModelContent(() => {
-                role.content = editor.getValue();
-                role.isDirty = role.content !== originalContent[roleId];
-                this.updateToggleButtons();
-            });
+                monacoEditors[roleId] = editor;
 
-            // Force layout after creation
-            setTimeout(() => {
-                editor.layout();
-            }, 10);
+                // Track changes
+                editor.onDidChangeModelContent(() => {
+                    role.content = editor.getValue();
+                    role.isDirty = role.content !== originalContent[roleId];
+                    this.updateToggleButtons();
+                });
 
-            console.log(`[CSS Editor] Created Monaco editor for: ${roleId}`);
+                // Force layout after creation
+                setTimeout(() => {
+                    editor.layout();
+                }, 10);
+
+                console.log(`[CSS Editor] Created Monaco editor for: ${roleId} (${rect.width}x${rect.height})`);
+            };
+
+            checkDimensions();
         },
 
         /**
