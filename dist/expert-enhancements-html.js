@@ -80,7 +80,6 @@
 
             // Restore state if available
             const savedState = context.Storage.getAppState(this.id);
-            const hasRestoredState = !!(savedState && savedState.activeFields && savedState.activeFields.length > 0);
 
             if (savedState) {
                 console.log('[HTML Editor] Restoring state:', savedState);
@@ -93,8 +92,10 @@
             // Build toggle bar
             this.buildToggleBar();
 
-            // Initialize active editors (only set default if no state was restored)
-            this.initializeEditors(hasRestoredState);
+            // Initialize editors - skip default if we have saved state
+            const skipDefault = !!savedState;
+            console.log('[HTML Editor] Initializing editors, skip default:', skipDefault);
+            this.initializeEditors(skipDefault);
 
             console.log('[HTML Editor] Mounted');
         },
@@ -313,6 +314,16 @@
 
             this.updateGrid();
             this.updateToggleButtons();
+            this.saveState();
+        },
+
+        /**
+         * Save current state to storage
+         */
+        saveState() {
+            const state = this.getState();
+            context.Storage.setAppState(this.id, state);
+            console.log('[HTML Editor] State saved:', state);
         },
 
         /**
@@ -406,6 +417,21 @@
                 style: { display: 'flex', gap: '0.5rem' }
             });
 
+            const saveBtn = context.DOM.create('button', {
+                className: 'pane-btn pane-btn-save',
+                title: 'Save',
+                style: {
+                    background: '#28a745',
+                    border: '1px solid #28a745',
+                    color: 'white',
+                    padding: '0.25rem 0.5rem',
+                    borderRadius: '3px',
+                    cursor: 'pointer',
+                    fontSize: '0.7rem'
+                }
+            }, ['Save']);
+            saveBtn.addEventListener('click', () => this.saveField(fieldId));
+
             const exportBtn = context.DOM.create('button', {
                 className: 'pane-btn',
                 title: 'Export',
@@ -436,6 +462,7 @@
             }, ['Discard']);
             discardBtn.addEventListener('click', () => this.discardField(fieldId));
 
+            actions.appendChild(saveBtn);
             actions.appendChild(exportBtn);
             actions.appendChild(discardBtn);
 
@@ -491,13 +518,16 @@
         /**
          * Initialize editors (activate default if none active)
          */
-        initializeEditors(hasRestoredState = false) {
+        initializeEditors(skipDefault = false) {
             const hasActive = Object.values(editorState).some(f => f.active);
 
-            // Only set default if no state was restored and nothing is active
-            if (!hasRestoredState && !hasActive) {
+            // Only set default if we should not skip and nothing is active
+            if (!skipDefault && !hasActive) {
                 // Activate 'head' by default
                 editorState.head.active = true;
+                console.log('[HTML Editor] No saved state, activating default: head');
+            } else {
+                console.log('[HTML Editor] Skipping default activation, skipDefault:', skipDefault, 'hasActive:', hasActive);
             }
 
             this.updateGrid();

@@ -85,7 +85,6 @@
 
             // Restore state if available
             const savedState = context.Storage.getAppState(this.id);
-            const hasRestoredState = !!(savedState && savedState.activeRoles && savedState.activeRoles.length > 0);
 
             if (savedState) {
                 console.log('[CSS Editor] Restoring state:', savedState);
@@ -98,8 +97,10 @@
             // Build toggle bar
             this.buildToggleBar();
 
-            // Initialize active editors (only set default if no state was restored)
-            this.initializeEditors(hasRestoredState);
+            // Initialize editors - skip default if we have saved state
+            const skipDefault = !!savedState;
+            console.log('[CSS Editor] Initializing editors, skip default:', skipDefault);
+            this.initializeEditors(skipDefault);
 
             console.log('[CSS Editor] Mounted');
         },
@@ -322,6 +323,16 @@
 
             this.updateGrid();
             this.updateToggleButtons();
+            this.saveState();
+        },
+
+        /**
+         * Save current state to storage
+         */
+        saveState() {
+            const state = this.getState();
+            context.Storage.setAppState(this.id, state);
+            console.log('[CSS Editor] State saved:', state);
         },
 
         /**
@@ -500,13 +511,16 @@
         /**
          * Initialize editors (activate default if none active)
          */
-        initializeEditors(hasRestoredState = false) {
+        initializeEditors(skipDefault = false) {
             const hasActive = Object.values(editorState).some(r => r.active);
 
-            // Only set default if no state was restored and nothing is active
-            if (!hasRestoredState && !hasActive) {
+            // Only set default if we should not skip and nothing is active
+            if (!skipDefault && !hasActive) {
                 // Activate 'all' by default
                 editorState.all.active = true;
+                console.log('[CSS Editor] No saved state, activating default: all');
+            } else {
+                console.log('[CSS Editor] Skipping default activation, skipDefault:', skipDefault, 'hasActive:', hasActive);
             }
 
             this.updateGrid();
