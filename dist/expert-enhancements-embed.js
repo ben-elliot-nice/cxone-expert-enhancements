@@ -160,6 +160,33 @@
         try {
             console.log('[Expert Enhancements Embed] Initializing...');
 
+            // Check for state clear parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('ceeState') === 'clear') {
+                console.log('[Expert Enhancements Embed] Clearing all editor state from localStorage...');
+
+                // Clear unified app system state
+                localStorage.removeItem('expertEnhancements:common');
+                localStorage.removeItem('expertEnhancements:app:css-editor');
+                localStorage.removeItem('expertEnhancements:app:html-editor');
+
+                // Clear old standalone CSS editor state
+                localStorage.removeItem('cssEditorActiveRoles');
+                localStorage.removeItem('cssEditorContent');
+                localStorage.removeItem('cssEditorOverlayDimensions');
+                localStorage.removeItem('cssEditorOverlayOpen');
+                localStorage.removeItem('cssEditorPreviewRole');
+                localStorage.removeItem('cssEditorLivePreviewEnabled');
+
+                // Clear old standalone HTML editor state
+                localStorage.removeItem('htmlEditorActiveRoles');
+                localStorage.removeItem('htmlEditorContent');
+                localStorage.removeItem('htmlEditorOverlayDimensions');
+                localStorage.removeItem('htmlEditorOverlayOpen');
+
+                console.log('[Expert Enhancements Embed] All editor state cleared');
+            }
+
             // 1. Load Monaco loader first
             await loadMonacoLoader();
 

@@ -869,6 +869,24 @@
             return;
         }
 
+        // Check for state clear parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('ceeState') === 'clear') {
+            console.log('[HTML Editor Embed] Clearing all HTML editor state from localStorage...');
+
+            // Clear standalone HTML editor state
+            localStorage.removeItem('htmlEditorActiveRoles');
+            localStorage.removeItem('htmlEditorContent');
+            localStorage.removeItem('htmlEditorOverlayDimensions');
+            localStorage.removeItem('htmlEditorOverlayOpen');
+
+            // Clear unified app system state (for forward compatibility)
+            localStorage.removeItem('expertEnhancements:common');
+            localStorage.removeItem('expertEnhancements:app:html-editor');
+
+            console.log('[HTML Editor Embed] All HTML editor state cleared');
+        }
+
         // Expose updateEditorHeights to window scope so main JS can call it
         window.htmlEditorUpdateHeights = updateEditorHeights;
         try {

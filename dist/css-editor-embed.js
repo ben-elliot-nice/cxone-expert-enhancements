@@ -999,6 +999,26 @@
             return;
         }
 
+        // Check for state clear parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('ceeState') === 'clear') {
+            console.log('[CSS Editor Embed] Clearing all CSS editor state from localStorage...');
+
+            // Clear standalone CSS editor state
+            localStorage.removeItem('cssEditorActiveRoles');
+            localStorage.removeItem('cssEditorContent');
+            localStorage.removeItem('cssEditorOverlayDimensions');
+            localStorage.removeItem('cssEditorOverlayOpen');
+            localStorage.removeItem('cssEditorPreviewRole');
+            localStorage.removeItem('cssEditorLivePreviewEnabled');
+
+            // Clear unified app system state (for forward compatibility)
+            localStorage.removeItem('expertEnhancements:common');
+            localStorage.removeItem('expertEnhancements:app:css-editor');
+
+            console.log('[CSS Editor Embed] All CSS editor state cleared');
+        }
+
         // Expose updateEditorHeights to window scope so main JS can call it
         window.cssEditorUpdateHeights = updateEditorHeights;
         try {
