@@ -536,15 +536,19 @@
             overlayContent = DOM.create('div', { id: 'expert-enhancements-overlay-content' });
 
             // Resize handles
+            const leftHandle = DOM.create('div', { className: 'enhancements-resize-handle left' });
             const rightHandle = DOM.create('div', { className: 'enhancements-resize-handle right' });
             const bottomHandle = DOM.create('div', { className: 'enhancements-resize-handle bottom' });
-            const cornerHandle = DOM.create('div', { className: 'enhancements-resize-handle corner' });
+            const cornerRightHandle = DOM.create('div', { className: 'enhancements-resize-handle corner-right' });
+            const cornerLeftHandle = DOM.create('div', { className: 'enhancements-resize-handle corner-left' });
 
             overlay.appendChild(overlayHeader);
             overlay.appendChild(overlayContent);
+            overlay.appendChild(leftHandle);
             overlay.appendChild(rightHandle);
             overlay.appendChild(bottomHandle);
-            overlay.appendChild(cornerHandle);
+            overlay.appendChild(cornerRightHandle);
+            overlay.appendChild(cornerLeftHandle);
 
             document.body.appendChild(overlay);
 
@@ -553,7 +557,7 @@
 
             // Attach event listeners
             this.attachDragListeners();
-            this.attachResizeListeners(rightHandle, bottomHandle, cornerHandle);
+            this.attachResizeListeners(leftHandle, rightHandle, bottomHandle, cornerRightHandle, cornerLeftHandle);
 
             // Restore dimensions
             this.restoreDimensions();
@@ -603,7 +607,9 @@
         /**
          * Attach resize listeners
          */
-        attachResizeListeners(rightHandle, bottomHandle, cornerHandle) {
+        attachResizeListeners(leftHandle, rightHandle, bottomHandle, cornerRightHandle, cornerLeftHandle) {
+            let resizeStartLeft = 0;
+
             const startResize = (e, handle) => {
                 isResizing = true;
                 currentResizeHandle = handle;
@@ -613,13 +619,16 @@
                 const rect = overlay.getBoundingClientRect();
                 resizeStartWidth = rect.width;
                 resizeStartHeight = rect.height;
+                resizeStartLeft = rect.left;
 
                 e.preventDefault();
             };
 
+            leftHandle.addEventListener('mousedown', (e) => startResize(e, 'left'));
             rightHandle.addEventListener('mousedown', (e) => startResize(e, 'right'));
             bottomHandle.addEventListener('mousedown', (e) => startResize(e, 'bottom'));
-            cornerHandle.addEventListener('mousedown', (e) => startResize(e, 'corner'));
+            cornerRightHandle.addEventListener('mousedown', (e) => startResize(e, 'corner-right'));
+            cornerLeftHandle.addEventListener('mousedown', (e) => startResize(e, 'corner-left'));
 
             document.addEventListener('mousemove', (e) => {
                 if (!isResizing) return;
@@ -627,12 +636,24 @@
                 const deltaX = e.clientX - resizeStartX;
                 const deltaY = e.clientY - resizeStartY;
 
-                if (currentResizeHandle === 'right' || currentResizeHandle === 'corner') {
+                // Right side resize
+                if (currentResizeHandle === 'right' || currentResizeHandle === 'corner-right') {
                     const newWidth = Math.max(600, resizeStartWidth + deltaX);
                     overlay.style.width = newWidth + 'px';
                 }
 
-                if (currentResizeHandle === 'bottom' || currentResizeHandle === 'corner') {
+                // Left side resize (adjust both position and width)
+                if (currentResizeHandle === 'left' || currentResizeHandle === 'corner-left') {
+                    const newWidth = Math.max(600, resizeStartWidth - deltaX);
+                    if (newWidth >= 600) {
+                        overlay.style.width = newWidth + 'px';
+                        overlay.style.left = (resizeStartLeft + deltaX) + 'px';
+                        overlay.style.transform = 'none';
+                    }
+                }
+
+                // Bottom resize
+                if (currentResizeHandle === 'bottom' || currentResizeHandle === 'corner-right' || currentResizeHandle === 'corner-left') {
                     const newHeight = Math.max(400, resizeStartHeight + deltaY);
                     overlay.style.height = newHeight + 'px';
                 }
