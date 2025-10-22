@@ -237,7 +237,7 @@
                     'data-role': id
                 }, [label]);
 
-                btn.addEventListener('click', () => this.toggleEditor(id));
+                btn.addEventListener('click', (e) => this.toggleEditor(id, e));
                 toggleBar.appendChild(btn);
             });
 
@@ -273,22 +273,40 @@
 
         /**
          * Toggle editor for a role
+         * Left click: Open only this editor (close others)
+         * Shift+click: Toggle this editor alongside others
          */
-        toggleEditor(roleId) {
+        toggleEditor(roleId, event) {
             const role = editorState[roleId];
             if (!role) return;
 
             const activeCount = Object.values(editorState).filter(r => r.active).length;
+            const isShiftClick = event && event.shiftKey;
 
-            if (role.active) {
-                // Deactivate
-                role.active = false;
+            if (isShiftClick) {
+                // Shift+click: Toggle this editor while keeping others
+                if (role.active) {
+                    role.active = false;
+                } else {
+                    if (activeCount >= MAX_ACTIVE_EDITORS) {
+                        context.UI.showMessage(`Maximum ${MAX_ACTIVE_EDITORS} editors can be open at once`, 'error');
+                        return;
+                    }
+                    role.active = true;
+                }
             } else {
-                // Activate if under limit
-                if (activeCount >= MAX_ACTIVE_EDITORS) {
-                    context.UI.showMessage(`Maximum ${MAX_ACTIVE_EDITORS} editors can be open at once`, 'error');
+                // Regular click: Open only this editor
+                if (role.active && activeCount === 1) {
+                    // Don't close if it's the only one open
                     return;
                 }
+
+                // Close all others
+                Object.keys(editorState).forEach(rid => {
+                    editorState[rid].active = false;
+                });
+
+                // Open this one
                 role.active = true;
             }
 

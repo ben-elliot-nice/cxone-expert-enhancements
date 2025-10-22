@@ -179,31 +179,36 @@
 
             console.log('[Expert Enhancements Embed] Core loaded');
 
-            // 3. Load app resources
+            // 3. Initialize Monaco early (before apps load)
+            console.log('[Expert Enhancements Embed] Pre-loading Monaco...');
+            await window.ExpertEnhancements.Monaco.init();
+            console.log('[Expert Enhancements Embed] Monaco ready');
+
+            // 4. Load app resources
             await loadCSS(RESOURCES.cssEditorCss);
             await loadJS(RESOURCES.cssEditorJs);
             await loadJS(RESOURCES.htmlEditorJs);
 
-            // 4. Wait for apps to register
+            // 5. Wait for apps to register
             await new Promise((resolve) => setTimeout(resolve, 200));
 
             console.log('[Expert Enhancements Embed] Apps loaded');
 
-            // 5. Create UI
+            // 6. Create UI
             createToggleButton();
             window.ExpertEnhancements.Overlay.create();
 
-            // 6. Update app switcher
+            // 7. Update app switcher
             window.ExpertEnhancements.Overlay.updateAppSwitcher();
 
-            // 7. Restore and load last active app
+            // 8. Restore and load last active app
             const commonState = window.ExpertEnhancements.Storage.getCommonState();
             const lastActiveApp = commonState.lastActiveApp || 'css-editor';
 
             console.log('[Expert Enhancements Embed] Loading last active app:', lastActiveApp);
             await window.ExpertEnhancements.AppManager.switchTo(lastActiveApp);
 
-            // 8. Restore overlay state
+            // 9. Restore overlay state
             if (commonState.overlayOpen) {
                 console.log('[Expert Enhancements Embed] Restoring overlay open state');
                 setTimeout(() => {
