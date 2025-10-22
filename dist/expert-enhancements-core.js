@@ -649,16 +649,28 @@
 
                 // Left side resize (adjust both position and width)
                 if (currentResizeHandle === 'left' || currentResizeHandle === 'corner-left') {
-                    const newWidth = Math.max(600, resizeStartWidth - deltaX);
-                    const newLeft = resizeStartLeft + deltaX;
+                    // Calculate desired new dimensions
+                    let newWidth = resizeStartWidth - deltaX;
+                    let newLeft = resizeStartLeft + deltaX;
 
-                    // Ensure left edge doesn't go below 0
-                    // Ensure right edge doesn't exceed viewport
-                    if (newLeft >= 0 && (newLeft + newWidth) <= viewportWidth) {
-                        overlay.style.width = newWidth + 'px';
-                        overlay.style.left = newLeft + 'px';
-                        overlay.style.transform = 'none';
+                    // Right edge position (should stay constant)
+                    const rightEdge = resizeStartLeft + resizeStartWidth;
+
+                    // Clamp left edge to viewport
+                    newLeft = Math.max(0, Math.min(newLeft, rightEdge - 600));
+
+                    // Recalculate width based on clamped left position
+                    newWidth = rightEdge - newLeft;
+
+                    // Ensure minimum width
+                    if (newWidth < 600) {
+                        newWidth = 600;
+                        newLeft = rightEdge - 600;
                     }
+
+                    overlay.style.width = newWidth + 'px';
+                    overlay.style.left = newLeft + 'px';
+                    overlay.style.transform = 'none';
                 }
 
                 // Bottom resize
