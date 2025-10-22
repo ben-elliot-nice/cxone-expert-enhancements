@@ -180,76 +180,7 @@
         const headerButtons = document.createElement('div');
         headerButtons.style.cssText = 'display: flex; gap: 8px; align-items: center;';
 
-        // Live Preview toggle button
-        const livePreviewBtn = document.createElement('button');
-        livePreviewBtn.id = 'live-preview-toggle';
-        livePreviewBtn.innerHTML = '👁️';
-
-        // Initialize button appearance based on current state (will be set after preferences load)
-        const initialState = window.htmlEditorEnableLivePreview || false;
-        livePreviewBtn.title = `Toggle Live Preview (currently ${initialState ? 'ON' : 'OFF'})`;
-        livePreviewBtn.style.cssText = `
-            background: ${initialState ? 'rgba(76, 175, 80, 0.3)' : 'rgba(244, 67, 54, 0.3)'};
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: white;
-            padding: 4px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            line-height: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-        `;
-        livePreviewBtn.addEventListener('mouseenter', () => {
-            const isEnabled = window.htmlEditorEnableLivePreview;
-            livePreviewBtn.style.background = isEnabled ? 'rgba(76, 175, 80, 0.4)' : 'rgba(244, 67, 54, 0.4)';
-        });
-        livePreviewBtn.addEventListener('mouseleave', () => {
-            const isEnabled = window.htmlEditorEnableLivePreview;
-            livePreviewBtn.style.background = isEnabled ? 'rgba(76, 175, 80, 0.3)' : 'rgba(244, 67, 54, 0.3)';
-        });
-        livePreviewBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toggleLivePreview();
-        });
-
-        // Role selector dropdown for preview
-        const roleSelector = document.createElement('select');
-        roleSelector.id = 'live-preview-role-selector';
-        roleSelector.style.cssText = `
-            background: rgba(255, 255, 255, 0.9);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            color: #333;
-            padding: 4px 8px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 500;
-            transition: all 0.2s;
-        `;
-        roleSelector.innerHTML = `
-            <option value="anonymous">Anonymous</option>
-            <option value="viewer">Community</option>
-            <option value="seated">Pro</option>
-            <option value="admin">Admin</option>
-            <option value="grape">Legacy</option>
-        `;
-        // Load saved role preference
-        try {
-            const savedRole = localStorage.getItem('htmlEditorPreviewRole') || 'anonymous';
-            roleSelector.value = savedRole;
-            console.log('[HTML Editor Embed] Loaded preview role from localStorage:', savedRole);
-        } catch (error) {
-            console.warn('[HTML Editor Embed] Failed to load preview role preference:', error);
-        }
-        roleSelector.addEventListener('change', (e) => {
-            e.stopPropagation();
-            console.log('[HTML Editor Embed] Role selector changed, calling handleRoleChange with:', e.target.value);
-            handleRoleChange(e.target.value);
-        });
-
+        // Minimize button
         const minimizeBtn = document.createElement('button');
         minimizeBtn.innerHTML = '−';
         minimizeBtn.title = 'Minimize';
@@ -281,8 +212,6 @@
             toggleEditor();
         });
 
-        headerButtons.appendChild(livePreviewBtn);
-        headerButtons.appendChild(roleSelector);
         headerButtons.appendChild(minimizeBtn);
         overlayHeader.appendChild(headerButtons);
 
@@ -631,62 +560,7 @@
         }
     }
 
-    /**
-     * Handle role selection change for preview
-     */
-    function handleRoleChange(selectedRole) {
-        console.log('[CSS Editor Embed] Role changed to:', selectedRole);
-
-        // Save preference
-        try {
-            localStorage.setItem('cssEditorPreviewRole', selectedRole);
-        } catch (error) {
-            console.warn('[CSS Editor Embed] Failed to save preview role preference:', error);
-        }
-
-        // Set the preview role on window for the main JS to use
-        window.cssEditorPreviewRole = selectedRole;
-
-        // If live preview is enabled, update immediately
-        if (window.cssEditorEnableLivePreview && typeof window.updateLivePreview === 'function') {
-            window.updateLivePreview();
-        }
-    }
-
-    /**
-     * Toggle live preview on/off
-     */
-    function toggleLivePreview() {
-        window.cssEditorEnableLivePreview = !window.cssEditorEnableLivePreview;
-        const isEnabled = window.cssEditorEnableLivePreview;
-
-        console.log(`[CSS Editor Embed] Live preview ${isEnabled ? 'enabled' : 'disabled'}`);
-
-        // Save preference to localStorage
-        try {
-            localStorage.setItem('cssEditorLivePreviewEnabled', isEnabled ? 'true' : 'false');
-            console.log(`[CSS Editor Embed] Saved live preview preference: ${isEnabled}`);
-        } catch (error) {
-            console.warn('[CSS Editor Embed] Failed to save live preview preference:', error);
-        }
-
-        // Update button appearance
-        const btn = document.getElementById('live-preview-toggle');
-        if (btn) {
-            btn.style.background = isEnabled ? 'rgba(76, 175, 80, 0.3)' : 'rgba(244, 67, 54, 0.3)';
-            btn.title = `Toggle Live Preview (currently ${isEnabled ? 'ON' : 'OFF'})`;
-        }
-
-        // If enabling, trigger an immediate update
-        if (isEnabled && typeof window.updateLivePreview === 'function') {
-            window.updateLivePreview();
-        }
-
-        // If disabling, clear the live preview
-        if (!isEnabled && typeof window.clearLivePreview === 'function') {
-            window.clearLivePreview();
-        }
-    }
+    // Live preview removed - not supported in HTML editor for security reasons
 
     /**
      * Toggle editor visibility
@@ -1003,38 +877,6 @@
         window.htmlEditorUpdateHeights = updateEditorHeights;
         try {
             console.log('[HTML Editor Embed] Loading resources...');
-
-            // IMPORTANT: Load live preview preference from localStorage BEFORE loading any resources
-            // This must happen before the main JS loads so DOMContentLoaded can see it
-            // Default to OFF (false) if no preference is saved
-            try {
-                const savedPreference = localStorage.getItem('htmlEditorLivePreviewEnabled');
-                if (savedPreference === 'true') {
-                    window.htmlEditorEnableLivePreview = true;
-                    console.log('[HTML Editor Embed] Live preview enabled from saved preference');
-                } else if (savedPreference === 'false') {
-                    window.htmlEditorEnableLivePreview = false;
-                    console.log('[HTML Editor Embed] Live preview disabled from saved preference');
-                } else {
-                    // No saved preference - default to OFF
-                    window.htmlEditorEnableLivePreview = false;
-                    console.log('[HTML Editor Embed] Live preview defaulting to OFF (no saved preference)');
-                }
-            } catch (error) {
-                // localStorage might not be available
-                console.warn('[HTML Editor Embed] Failed to load live preview preference, defaulting to OFF:', error);
-                window.htmlEditorEnableLivePreview = false;
-            }
-
-            // Load preview role preference
-            try {
-                const savedRole = localStorage.getItem('htmlEditorPreviewRole') || 'anonymous';
-                window.htmlEditorPreviewRole = savedRole;
-                console.log('[HTML Editor Embed] Preview role set to:', savedRole);
-            } catch (error) {
-                console.warn('[HTML Editor Embed] Failed to load preview role preference:', error);
-                window.htmlEditorPreviewRole = 'anonymous';
-            }
 
             // Load CSS first
             await loadCSS(CSS_URL);

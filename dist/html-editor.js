@@ -49,9 +49,6 @@ let linterReady = false;
 let originalContent = {}; // Store original HTML from API
 let isMobileView = false; // Track if we're in mobile view (< 1080px)
 let saveToLocalStorageDebounceTimer = null; // Debounce timer for localStorage saves
-let livePreviewStyleTag = null; // Style tag for live HTML preview injection (disabled for security)
-let livePreviewDebounceTimer = null; // Debounce timer for live preview updates
-// Note: Live preview flag is now stored in window.htmlEditorEnableLivePreview (controlled by overlay toggle button)
 
 // Autocomplete data storage
 let autocompleteData = {
@@ -300,118 +297,8 @@ function clearCSSFromLocalStorage() {
     }
 }
 
-/**
- * Initialize or get the live preview style tag
- */
-function getLivePreviewStyleTag() {
-    if (!livePreviewStyleTag) {
-        livePreviewStyleTag = document.createElement('style');
-        livePreviewStyleTag.id = 'css-editor-live-preview';
-        livePreviewStyleTag.setAttribute('data-source', 'CSS Editor Live Preview');
-        document.head.appendChild(livePreviewStyleTag);
-        console.log('[getLivePreviewStyleTag] Created live preview style tag');
-    }
-    return livePreviewStyleTag;
-}
-
-/**
- * Update live CSS preview in the page (debounced)
- */
-function updateLivePreview() {
-    // Check the dynamic flag (can be toggled by overlay button)
-    const isEnabled = window.htmlEditorEnableLivePreview || false;
-
-    // Only update if live preview is enabled
-    if (!isEnabled) {
-        console.log('[updateLivePreview] Live preview disabled, skipping');
-        return;
-    }
-
-    console.log('[updateLivePreview] Scheduling live preview update');
-
-    // Clear existing timer
-    if (livePreviewDebounceTimer) {
-        clearTimeout(livePreviewDebounceTimer);
-    }
-
-    // Set new timer - update after 300ms of inactivity
-    livePreviewDebounceTimer = setTimeout(() => {
-        performLivePreviewUpdate();
-        livePreviewDebounceTimer = null;
-    }, 300);
-}
-
-/**
- * Actually perform the live preview update
- */
-function performLivePreviewUpdate() {
-    try {
-        const styleTag = getLivePreviewStyleTag();
-
-        // Get the selected preview role (defaults to 'anonymous')
-        const selectedRole = window.htmlEditorPreviewRole || 'anonymous';
-        console.log('[performLivePreviewUpdate] Preview role:', selectedRole);
-
-        // Build CSS combination based on selected role
-        // Rules:
-        // - anonymous: all + anonymous
-        // - viewer (community): all + viewer
-        // - seated (pro): all + seated
-        // - admin: all + seated + admin
-        // - grape (legacy): all + grape
-        let combinedCSS = '';
-        const rolesToInclude = [];
-
-        // All roles get "all"
-        rolesToInclude.push('all');
-
-        // Add specific roles based on selection
-        if (selectedRole === 'anonymous') {
-            rolesToInclude.push('anonymous');
-        } else if (selectedRole === 'viewer') {
-            rolesToInclude.push('viewer');
-        } else if (selectedRole === 'seated') {
-            rolesToInclude.push('seated');
-        } else if (selectedRole === 'admin') {
-            // Admins inherit pro (seated) permissions
-            rolesToInclude.push('seated');
-            rolesToInclude.push('admin');
-        } else if (selectedRole === 'grape') {
-            rolesToInclude.push('grape');
-        }
-
-        console.log('[performLivePreviewUpdate] Including roles:', rolesToInclude);
-
-        // Combine CSS in order
-        rolesToInclude.forEach(role => {
-            const state = editorState[role];
-            if (state && state.content && state.content.trim()) {
-                combinedCSS += `\n/* CSS Editor Preview: ${state.label} */\n`;
-                combinedCSS += state.content;
-                combinedCSS += '\n';
-            }
-        });
-
-        styleTag.textContent = combinedCSS;
-        console.log(`[performLivePreviewUpdate] Updated live preview: ${combinedCSS.length} characters for role "${selectedRole}"`);
-    } catch (error) {
-        console.warn('[performLivePreviewUpdate] Failed to update live preview:', error);
-    }
-}
-
-/**
- * Clear live preview CSS
- */
-function clearLivePreview() {
-    if (livePreviewStyleTag) {
-        livePreviewStyleTag.textContent = '';
-        console.log('[clearLivePreview] Cleared live preview');
-    }
-}
-
-// Expose functions for embed script
-window.updateLivePreview = updateLivePreview;
-window.clearLivePreview = clearLivePreview;
+// Live preview is not supported in HTML editor for security reasons
+// HTML injection would be a security risk, users should save and refresh to see changes
 
 
 function updateToggleButtons() {
@@ -584,12 +471,8 @@ function rebuildToggleBar() {
     } else {
         // Create desktop toggle buttons
         const roles = [
-            { role: 'all', label: 'All Roles' },
-            { role: 'anonymous', label: 'Anonymous' },
-            { role: 'viewer', label: 'Community Member' },
-            { role: 'seated', label: 'Pro Member' },
-            { role: 'admin', label: 'Admin' },
-            { role: 'grape', label: 'Legacy Browser' }
+            { role: 'head', label: 'Page HTML Head' },
+            { role: 'tail', label: 'Page HTML Tail' }
         ];
 
         roles.forEach(({ role, label }) => {
@@ -864,9 +747,6 @@ function createMonacoEditor(role) {
 
         // Save to localStorage with debounce (500ms after typing stops)
         debouncedSaveCSSToLocalStorage();
-
-        // Update live preview with debounce (300ms after typing stops)
-        updateLivePreview();
     });
 
     state.editor = editor;
@@ -1443,9 +1323,9 @@ function initializeEditors(cssData) {
     if (restored > 0) {
         console.log(`[initializeEditors] Restored ${restored} active editor(s) from cache`);
     } else {
-        // No cached editors - activate "all" role by default
-        console.log('[initializeEditors] No cached editors, activating "all" role by default');
-        editorState.all.active = true;
+        // No cached editors - activate "head" field by default
+        console.log('[initializeEditors] No cached editors, activating "head" field by default');
+        editorState.head.active = true;
     }
 
     // STEP 3: Check viewport width to set correct mobile/desktop state
@@ -1462,13 +1342,7 @@ function initializeEditors(cssData) {
         updateToggleButtons();
     }
 
-    // STEP 5: Initialize live preview with current content (only if enabled)
-    const isLivePreviewEnabled = window.htmlEditorEnableLivePreview || false;
-    if (isLivePreviewEnabled) {
-        performLivePreviewUpdate();
-    }
-
-    // STEP 6: Scan page for autocomplete data
+    // STEP 5: Scan page for autocomplete data
     console.log('[initializeEditors] Scanning page for autocomplete data');
     scanDOMForAutocomplete();
     scanCSSForAutocomplete();
@@ -2389,15 +2263,9 @@ window.addEventListener('DOMContentLoaded', () => {
         isMobileView = overlay ? overlay.offsetWidth < 1080 : false;
         console.log(`[DOMContentLoaded] Initial view mode (overlay): ${isMobileView ? 'mobile' : 'desktop'}`);
     } else {
-        // Direct page embed mode - clear any existing live preview
+        // Direct page embed mode
         isMobileView = window.innerWidth < 1080;
         console.log(`[DOMContentLoaded] Initial view mode (page): ${isMobileView ? 'mobile' : 'desktop'}`);
-        console.log(`[DOMContentLoaded] Direct embed mode detected - clearing any existing live preview`);
-        const existingPreviewTag = document.getElementById('css-editor-live-preview');
-        if (existingPreviewTag) {
-            existingPreviewTag.remove();
-            console.log(`[DOMContentLoaded] Removed existing live preview style tag`);
-        }
     }
 
     // Wait for Monaco's require to be available (stored separately)
