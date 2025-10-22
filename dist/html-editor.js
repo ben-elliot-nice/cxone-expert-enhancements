@@ -1441,7 +1441,7 @@ async function loadCSS() {
     }
 
     // No localStorage data, fetch from API
-    const url = '/deki/cp/custom_css.php?params=%2F';
+    const url = '/deki/cp/custom_html.php?params=%2F';
     console.log('[loadCSS] No localStorage data, fetching from URL:', url);
 
     try {
