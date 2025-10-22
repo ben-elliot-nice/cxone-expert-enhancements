@@ -414,12 +414,10 @@
             });
             pane.appendChild(editorContainer);
 
-            // Create Monaco editor after layout settles
-            setTimeout(() => {
-                if (context.Monaco.isReady()) {
-                    this.createMonacoEditor(fieldId, editorContainer);
-                }
-            }, 100);
+            // Create Monaco editor (CSS now properly sizes containers)
+            if (context.Monaco.isReady()) {
+                this.createMonacoEditor(fieldId, editorContainer);
+            }
 
             return pane;
         },
@@ -431,56 +429,28 @@
             const field = editorState[fieldId];
             const monaco = context.Monaco.get();
 
-            // Wait for container to have dimensions
-            let attempts = 0;
-            const maxAttempts = 20; // 1 second max wait
+            // Create editor immediately (CSS now properly sizes containers)
+            const editor = monaco.editor.create(container, {
+                value: field.content || '',
+                language: 'html',
+                theme: 'vs-dark',
+                automaticLayout: false,
+                minimap: { enabled: true },
+                fontSize: 14,
+                wordWrap: 'on',
+                scrollBeyondLastLine: false
+            });
 
-            const checkDimensions = () => {
-                const rect = container.getBoundingClientRect();
-                attempts++;
+            monacoEditors[fieldId] = editor;
 
-                console.log(`[HTML Editor] Checking dimensions for ${fieldId}: ${rect.width}x${rect.height} (attempt ${attempts})`);
+            // Track changes
+            editor.onDidChangeModelContent(() => {
+                field.content = editor.getValue();
+                field.isDirty = field.content !== originalContent[fieldId];
+                this.updateToggleButtons();
+            });
 
-                if (rect.height < 10 && attempts < maxAttempts) {
-                    // Container doesn't have proper dimensions yet, wait more
-                    setTimeout(checkDimensions, 50);
-                    return;
-                }
-
-                if (rect.height < 10) {
-                    console.warn(`[HTML Editor] Container still too small after ${attempts} attempts, creating anyway`);
-                }
-
-                // Container has dimensions, create editor
-                const editor = monaco.editor.create(container, {
-                    value: field.content || '',
-                    language: 'html',
-                    theme: 'vs-dark',
-                    automaticLayout: false,
-                    minimap: { enabled: true },
-                    fontSize: 14,
-                    wordWrap: 'on',
-                    scrollBeyondLastLine: false
-                });
-
-                monacoEditors[fieldId] = editor;
-
-                // Track changes
-                editor.onDidChangeModelContent(() => {
-                    field.content = editor.getValue();
-                    field.isDirty = field.content !== originalContent[fieldId];
-                    this.updateToggleButtons();
-                });
-
-                // Force layout after creation
-                setTimeout(() => {
-                    editor.layout();
-                }, 100);
-
-                console.log(`[HTML Editor] Created Monaco editor for: ${fieldId} (${rect.width}x${rect.height})`);
-            };
-
-            checkDimensions();
+            console.log(`[HTML Editor] Created Monaco editor for: ${fieldId}`);
         },
 
         /**
