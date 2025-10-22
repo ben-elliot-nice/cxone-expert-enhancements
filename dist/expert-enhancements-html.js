@@ -206,7 +206,12 @@
                     const textarea = doc.querySelector(`textarea[name="${name}"]`);
                     if (textarea) {
                         const content = textarea.textContent;
-                        editorState[fieldId].content = content;
+                        // Only update content if field doesn't have unsaved edits
+                        // This preserves edited content across page refreshes
+                        if (!editorState[fieldId].isDirty) {
+                            editorState[fieldId].content = content;
+                        }
+                        // Always update originalContent with server state
                         originalContent[fieldId] = content;
                     }
                 });
