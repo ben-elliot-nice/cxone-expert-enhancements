@@ -710,7 +710,8 @@
                         'Content-Type': `multipart/form-data; boundary=${boundary}`
                     },
                     credentials: 'include',
-                    body: body
+                    body: body,
+                    redirect: 'follow'
                 });
 
                 if (response.ok || response.redirected) {
@@ -769,7 +770,8 @@
                         'Content-Type': `multipart/form-data; boundary=${boundary}`
                     },
                     credentials: 'include',
-                    body: body
+                    body: body,
+                    redirect: 'follow'
                 });
 
                 if (response.ok || response.redirected) {

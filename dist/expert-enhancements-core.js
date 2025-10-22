@@ -227,7 +227,7 @@
          * Build multipart form body
          */
         buildMultipartBody(data) {
-            const boundary = '----WebKitFormBoundary' + Math.random().toString(36).substring(2);
+            const boundary = '----WebKitFormBoundary' + Math.random().toString(36).substring(2, 15);
             let body = '';
 
             Object.entries(data).forEach(([name, value]) => {
@@ -236,6 +236,10 @@
                 body += `${value}\r\n`;
             });
 
+            // Add submit button - critical for server to process as form submission
+            body += `--${boundary}\r\n`;
+            body += `Content-Disposition: form-data; name="deki_buttons[submit][submit]"\r\n\r\n`;
+            body += `submit\r\n`;
             body += `--${boundary}--\r\n`;
 
             return { body, boundary };
