@@ -850,18 +850,26 @@
             const hasUnsavedChanges = Object.values(editorState).some(role => role.isDirty);
             const discardBtn = document.getElementById('discard-btn');
 
+            console.log('[CSS Editor] discardAll - hasUnsavedChanges:', hasUnsavedChanges);
+            console.log('[CSS Editor] discardAll - discardBtn:', discardBtn);
+            console.log('[CSS Editor] discardAll - discardBtn.classList:', discardBtn?.classList);
+
             if (hasUnsavedChanges) {
                 if (discardBtn && !discardBtn.classList.contains('confirming')) {
+                    console.log('[CSS Editor] discardAll - Showing inline confirmation');
                     // Show inline confirmation
                     context.UI.showInlineConfirmation(discardBtn, () => {
                         this.performDiscardAll();
                     });
+                } else {
+                    console.log('[CSS Editor] discardAll - Button already confirming or not found');
                 }
                 return;
             }
 
             // No unsaved changes - show "no changes" message
             if (discardBtn && !discardBtn.classList.contains('showing-no-changes')) {
+                console.log('[CSS Editor] discardAll - Showing no changes message');
                 context.UI.showNoChangesMessage(discardBtn);
             }
         },

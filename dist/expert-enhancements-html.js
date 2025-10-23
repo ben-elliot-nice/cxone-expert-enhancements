@@ -112,8 +112,17 @@
             // Setup keyboard shortcuts
             this.setupKeyboardShortcuts();
 
-            // Setup click listener to close editor dropdowns when clicking outside
+            // Setup click listener to close dropdowns when clicking outside
             document.addEventListener('click', (e) => {
+                // Close global dropdown
+                const dropdown = document.querySelector('.save-dropdown');
+                const dropdownMenu = document.getElementById('save-dropdown-menu');
+                if (dropdown && dropdownMenu && !dropdown.contains(e.target)) {
+                    dropdownMenu.classList.remove('show');
+                    dropdown.classList.remove('open');
+                }
+
+                // Close editor dropdowns
                 if (!e.target.closest('.editor-save-dropdown')) {
                     document.querySelectorAll('.editor-save-dropdown-menu.show').forEach(menu => {
                         menu.classList.remove('show');
@@ -292,11 +301,8 @@
                 toggleBar.appendChild(btn);
             });
 
-            // Create save/discard buttons
-            const buttonGroup = context.DOM.create('div', {
-                className: 'save-dropdown',
-                style: { display: 'flex', gap: '4px' }
-            });
+            // Create save/discard dropdown (matching CSS editor structure)
+            const saveDropdown = context.DOM.create('div', { className: 'save-dropdown' });
 
             const saveBtn = context.DOM.create('button', {
                 className: 'btn btn-primary',
@@ -304,22 +310,64 @@
             }, ['Save All']);
             saveBtn.addEventListener('click', () => this.saveAll());
 
-            const discardBtn = context.DOM.create('button', {
-                className: 'btn btn-secondary',
-                id: 'discard-btn',
-                style: {
-                    background: '#dc3545',
-                    color: 'white',
-                    border: '1px solid #dc3545'
-                }
-            }, ['Discard All']);
-            discardBtn.addEventListener('click', () => this.discardAll());
+            const dropdownToggle = context.DOM.create('button', {
+                className: 'btn btn-dropdown-toggle',
+                id: 'save-dropdown-toggle'
+            }, ['▼']);
 
-            buttonGroup.appendChild(saveBtn);
-            buttonGroup.appendChild(discardBtn);
-            toggleBar.appendChild(buttonGroup);
+            const dropdownMenu = context.DOM.create('div', {
+                className: 'dropdown-menu',
+                id: 'save-dropdown-menu'
+            });
+
+            const discardBtn = context.DOM.create('button', {
+                className: 'dropdown-item',
+                id: 'discard-btn'
+            }, ['Discard All']);
+
+            dropdownMenu.appendChild(discardBtn);
+            saveDropdown.appendChild(saveBtn);
+            saveDropdown.appendChild(dropdownToggle);
+            saveDropdown.appendChild(dropdownMenu);
+            toggleBar.appendChild(saveDropdown);
+
+            // Setup dropdown event listeners
+            this.setupSaveDropdown();
 
             this.updateToggleButtons();
+        },
+
+        /**
+         * Setup save dropdown event listeners
+         */
+        setupSaveDropdown() {
+            const saveBtn = document.getElementById('save-btn');
+            const discardBtn = document.getElementById('discard-btn');
+            const dropdownToggle = document.getElementById('save-dropdown-toggle');
+            const dropdownMenu = document.getElementById('save-dropdown-menu');
+            const dropdown = document.querySelector('.save-dropdown');
+
+            if (saveBtn) {
+                saveBtn.addEventListener('click', () => this.saveAll());
+                console.log('[HTML Editor] Save button listener attached');
+            }
+
+            if (discardBtn) {
+                discardBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.discardAll();
+                });
+                console.log('[HTML Editor] Discard button listener attached');
+            }
+
+            if (dropdownToggle && dropdownMenu && dropdown) {
+                dropdownToggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    dropdownMenu.classList.toggle('show');
+                    dropdown.classList.toggle('open');
+                });
+                console.log('[HTML Editor] Dropdown toggle listener attached');
+            }
         },
 
         /**
