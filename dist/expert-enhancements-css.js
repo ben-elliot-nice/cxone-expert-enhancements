@@ -78,13 +78,21 @@
         async mount(container) {
             console.log('[CSS Editor] Mounting...');
 
-            // Build UI
+            // Build UI with persistent save dropdown
             container.innerHTML = `
                 <div class="enhancements-app-container">
                     <div id="message-area"></div>
                     <div id="loading" class="loading" style="display: block;">Loading CSS from system...</div>
                     <div id="css-editor-container" style="display: none;">
-                        <div class="toggle-bar" id="toggle-bar"></div>
+                        <div class="toggle-bar" id="toggle-bar">
+                            <div class="save-dropdown">
+                                <button class="btn btn-primary" id="save-btn">Save All</button>
+                                <button class="btn btn-dropdown-toggle" id="save-dropdown-toggle">▼</button>
+                                <div class="dropdown-menu" id="save-dropdown-menu">
+                                    <button class="dropdown-item" id="discard-btn">Discard All</button>
+                                </div>
+                            </div>
+                        </div>
                         <div id="editors-grid" class="editors-grid"></div>
                     </div>
                 </div>
@@ -106,13 +114,19 @@
             // Load CSS data - skip full fetch if we have dirty edits (checkpoint protection)
             await this.loadData(hasDirtyEdits);
 
-            // Build toggle bar
+            // Check viewport width to set mobile/desktop view
+            this.checkViewportWidth();
+
+            // Build toggle bar (buttons or dropdown based on viewport)
             this.buildToggleBar();
 
             // Initialize editors - skip default if we have saved state
             const skipDefault = !!savedState;
             console.log('[CSS Editor] Initializing editors, skip default:', skipDefault);
             this.initializeEditors(skipDefault);
+
+            // Setup save dropdown event listeners
+            this.setupSaveDropdown();
 
             // Setup keyboard shortcuts
             this.setupKeyboardShortcuts();
@@ -147,6 +161,9 @@
          * Handle resize events
          */
         onResize() {
+            // Check if view mode changed (mobile/desktop)
+            this.checkViewportWidth();
+
             // Recalculate heights and re-layout
             this.updateHeights();
         },
@@ -273,53 +290,199 @@
         },
 
         /**
-         * Build toggle bar with role buttons
+         * Check viewport width and switch between mobile/desktop view
+         */
+        checkViewportWidth() {
+            const wasMobileView = isMobileView;
+
+            // Get container width to determine mobile/desktop view
+            const container = document.getElementById('css-editor-container');
+            if (container) {
+                const containerWidth = container.offsetWidth;
+                isMobileView = containerWidth < 920;
+                console.log(`[CSS Editor] checkViewportWidth: width=${containerWidth}px, mobile=${isMobileView}`);
+            }
+
+            // If view mode changed, rebuild the toggle bar
+            if (wasMobileView !== isMobileView) {
+                console.log(`[CSS Editor] View mode changed to ${isMobileView ? 'mobile' : 'desktop'}`);
+                this.buildToggleBar();
+
+                // If switching to mobile and multiple editors are active, keep only the first
+                if (isMobileView) {
+                    const activeRoles = Object.keys(editorState).filter(role => editorState[role].active);
+                    if (activeRoles.length > 1) {
+                        console.log(`[CSS Editor] Multiple editors active in mobile view, keeping only: ${activeRoles[0]}`);
+                        // Deactivate all except the first
+                        activeRoles.slice(1).forEach(roleId => {
+                            editorState[roleId].active = false;
+                        });
+                        this.updateGrid();
+                        this.saveState();
+                    }
+                }
+                this.updateToggleButtons();
+            }
+
+            return isMobileView;
+        },
+
+        /**
+         * Build toggle bar with role buttons (desktop) or dropdown (mobile)
+         * Never rebuilds the save dropdown - only toggle buttons or mobile selector
          */
         buildToggleBar() {
             const toggleBar = document.getElementById('toggle-bar');
             if (!toggleBar) return;
 
-            toggleBar.innerHTML = '';
+            console.log(`[CSS Editor] buildToggleBar for ${isMobileView ? 'mobile' : 'desktop'} view`);
 
-            // Create role buttons
-            ROLE_CONFIG.forEach(({ id, label }) => {
-                const btn = context.DOM.create('button', {
-                    className: 'toggle-btn',
-                    'data-role': id
-                }, [label]);
+            // Clear existing buttons/selectors (but keep save dropdown)
+            const existingButtons = toggleBar.querySelectorAll('.toggle-btn, .mobile-selector-wrapper');
+            existingButtons.forEach(el => el.remove());
 
-                btn.addEventListener('click', (e) => this.toggleEditor(id, e));
-                toggleBar.appendChild(btn);
-            });
+            if (isMobileView) {
+                // Create mobile dropdown selector
+                const wrapper = document.createElement('div');
+                wrapper.className = 'mobile-selector-wrapper';
 
-            // Create save/discard buttons
-            const buttonGroup = context.DOM.create('div', {
-                className: 'save-dropdown',
-                style: { display: 'flex', gap: '4px' }
-            });
+                const label = document.createElement('label');
+                label.htmlFor = 'mobile-editor-select';
+                label.textContent = 'Editor: ';
+                label.className = 'mobile-selector-label';
 
-            const saveBtn = context.DOM.create('button', {
-                className: 'btn btn-primary',
-                id: 'save-btn'
-            }, ['Save All']);
-            saveBtn.addEventListener('click', () => this.saveAll());
+                const select = document.createElement('select');
+                select.id = 'mobile-editor-select';
+                select.className = 'mobile-editor-select';
 
-            const discardBtn = context.DOM.create('button', {
-                className: 'btn btn-secondary',
-                id: 'discard-btn',
-                style: {
-                    background: '#dc3545',
-                    color: 'white',
-                    border: '1px solid #dc3545'
+                // Add options for each role with status icons
+                ROLE_CONFIG.forEach(({ id, label: roleLabel }) => {
+                    const role = editorState[id];
+                    const option = document.createElement('option');
+                    option.value = id;
+                    const statusIcon = role.isDirty ? '● ' : '✓ ';
+                    option.textContent = statusIcon + roleLabel;
+                    option.setAttribute('data-role', id);
+                    select.appendChild(option);
+                });
+
+                // Set current selection - respect already active editor
+                let activeRole = Object.keys(editorState).find(role => editorState[role].active);
+
+                // Only activate first editor if truly no active editors exist
+                if (!activeRole) {
+                    const firstRole = ROLE_CONFIG[0].id;
+                    editorState[firstRole].active = true;
+                    activeRole = firstRole;
+                    console.log(`[CSS Editor] No active editor found, activating first: ${activeRole}`);
+                    // Need to render the editor
+                    setTimeout(() => {
+                        this.updateGrid();
+                        this.saveState();
+                    }, 0);
+                } else {
+                    console.log(`[CSS Editor] Using existing active editor: ${activeRole}`);
                 }
-            }, ['Discard All']);
-            discardBtn.addEventListener('click', () => this.discardAll());
 
-            buttonGroup.appendChild(saveBtn);
-            buttonGroup.appendChild(discardBtn);
-            toggleBar.appendChild(buttonGroup);
+                select.value = activeRole;
+
+                // Add change listener
+                select.addEventListener('change', (e) => this.handleMobileEditorChange(e.target.value));
+
+                wrapper.appendChild(label);
+                wrapper.appendChild(select);
+
+                // Insert at the beginning of toggle bar (before save dropdown)
+                const firstChild = toggleBar.firstChild;
+                toggleBar.insertBefore(wrapper, firstChild);
+            } else {
+                // Create desktop toggle buttons
+                ROLE_CONFIG.forEach(({ id, label }) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'toggle-btn';
+                    btn.setAttribute('data-role', id);
+                    btn.textContent = label;
+                    btn.addEventListener('click', (e) => this.toggleEditor(id, e));
+
+                    // Insert before the save dropdown
+                    const saveDropdown = toggleBar.querySelector('.save-dropdown');
+                    toggleBar.insertBefore(btn, saveDropdown);
+                });
+            }
 
             this.updateToggleButtons();
+        },
+
+        /**
+         * Handle mobile dropdown editor change
+         */
+        handleMobileEditorChange(newRoleId) {
+            console.log(`[CSS Editor] handleMobileEditorChange to: ${newRoleId}`);
+
+            const currentActiveRole = Object.keys(editorState).find(role => editorState[role].active);
+
+            // If selecting the same role, do nothing
+            if (newRoleId === currentActiveRole) {
+                return;
+            }
+
+            // Deactivate all editors
+            Object.keys(editorState).forEach(roleId => {
+                editorState[roleId].active = false;
+            });
+
+            // Activate selected editor
+            editorState[newRoleId].active = true;
+
+            this.updateGrid();
+            this.saveState();
+
+            // Update option text to reflect current status icons
+            const mobileSelect = document.getElementById('mobile-editor-select');
+            if (mobileSelect) {
+                this.updateToggleButtons();
+            }
+        },
+
+        /**
+         * Setup save dropdown event listeners
+         */
+        setupSaveDropdown() {
+            const saveBtn = document.getElementById('save-btn');
+            const discardBtn = document.getElementById('discard-btn');
+            const dropdownToggle = document.getElementById('save-dropdown-toggle');
+            const dropdownMenu = document.getElementById('save-dropdown-menu');
+            const dropdown = document.querySelector('.save-dropdown');
+
+            if (saveBtn) {
+                saveBtn.addEventListener('click', () => this.saveAll());
+                console.log('[CSS Editor] Save button listener attached');
+            }
+
+            if (discardBtn) {
+                discardBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.discardAll();
+                });
+                console.log('[CSS Editor] Discard button listener attached');
+            }
+
+            if (dropdownToggle && dropdownMenu && dropdown) {
+                dropdownToggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    dropdownMenu.classList.toggle('show');
+                    dropdown.classList.toggle('open');
+                });
+                console.log('[CSS Editor] Dropdown toggle listener attached');
+            }
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (dropdown && dropdownMenu && !dropdown.contains(e.target)) {
+                    dropdownMenu.classList.remove('show');
+                    dropdown.classList.remove('open');
+                }
+            });
         },
 
         /**
@@ -586,6 +749,7 @@
          * Update toggle button states and pane status indicators
          */
         updateToggleButtons() {
+            // Update desktop buttons (if they exist)
             const buttons = document.querySelectorAll('.toggle-btn');
 
             buttons.forEach(btn => {
@@ -607,6 +771,26 @@
                     btn.style.color = '';
                 }
             });
+
+            // Update mobile dropdown (if it exists)
+            const mobileSelect = document.getElementById('mobile-editor-select');
+            if (mobileSelect) {
+                const options = mobileSelect.querySelectorAll('option[data-role]');
+                options.forEach(option => {
+                    const roleId = option.getAttribute('data-role');
+                    if (roleId && editorState[roleId]) {
+                        const role = editorState[roleId];
+                        const statusIcon = role.isDirty ? '● ' : '✓ ';
+                        option.textContent = statusIcon + role.label;
+                    }
+                });
+
+                // Set selected value to active role
+                const activeRole = Object.keys(editorState).find(role => editorState[role].active);
+                if (activeRole) {
+                    mobileSelect.value = activeRole;
+                }
+            }
 
             // Update editor pane status indicators
             Object.keys(editorState).forEach(roleId => {
