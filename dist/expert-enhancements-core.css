@@ -135,13 +135,6 @@
     outline-offset: 1px;
 }
 
-/* Hide role selector on narrow overlays */
-@media (max-width: 480px) {
-    .live-preview-role-selector {
-        display: none;
-    }
-}
-
 #expert-enhancements-overlay-header .header-buttons {
     display: flex;
     gap: 8px;

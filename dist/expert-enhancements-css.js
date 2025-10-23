@@ -180,8 +180,31 @@
             // Check if view mode changed (mobile/desktop)
             this.checkViewportWidth();
 
+            // Check if overlay is narrow (hide role selector)
+            this.checkOverlayWidth();
+
             // Recalculate heights and re-layout
             this.updateHeights();
+        },
+
+        /**
+         * Check overlay width and hide/show role selector accordingly
+         */
+        checkOverlayWidth() {
+            const overlay = document.getElementById('expert-enhancements-overlay');
+            if (!overlay) return;
+
+            const overlayWidth = overlay.offsetWidth;
+            const roleSelector = document.querySelector('.live-preview-role-selector');
+
+            if (roleSelector) {
+                // Hide role selector if overlay is narrower than 480px
+                if (overlayWidth < 480) {
+                    roleSelector.style.display = 'none';
+                } else {
+                    roleSelector.style.display = '';
+                }
+            }
         },
 
         /**
@@ -1277,6 +1300,9 @@
             context.Overlay.setAppControls([toggleBtn, roleSelector]);
 
             console.log('[CSS Editor] Live preview controls created and mounted');
+
+            // Check overlay width and hide role selector if needed
+            this.checkOverlayWidth();
 
             // Initialize preview if enabled
             if (livePreviewEnabled) {
