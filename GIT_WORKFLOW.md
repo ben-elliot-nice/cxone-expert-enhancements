@@ -78,18 +78,20 @@ gh pr create --base main --head develop \
 
 ## Version Bumping
 
-**IMPORTANT:** Version bumping should happen at the RIGHT time in your workflow:
+**IMPORTANT:** Version bumps are ONLY required for releases (develop → main), NOT for feature branches.
 
 ### ✅ When to Bump Version
 
 **For feature branches → develop:**
-- Bump version **AFTER** you've completed development, tested, and created the PR to develop
-- This avoids unnecessary version bumps during development just to satisfy CI checks
-- Only bump when you're confident the feature is ready to merge
+- ❌ **NO version bump required**
+- Feature branches merge directly to develop without version changes
+- Version check workflow does NOT run on feature → develop PRs
 
 **For develop → main (releases):**
-- Bump version **AFTER** the PR to develop is merged and you're ready to create a release
+- ✅ **Version bump REQUIRED**
+- Bump version **AFTER** all features are merged to develop and you're ready to create a release
 - This ensures the version bump is the last commit before the release
+- Version check workflow enforces this requirement
 
 ### Workflow Example
 
@@ -100,19 +102,21 @@ git checkout -b feature/my-feature
 git commit -m "feat: Add my feature"
 git push
 
-# 2. Create PR to develop (no version bump yet)
+# 2. Create PR to develop (NO version bump needed)
 gh pr create --base develop --title "Add my feature"
 
-# 3. AFTER PR is created and CI passes, bump version
-npm version patch  # For bug fixes (0.0.1 → 0.0.2)
-npm version minor  # For new features (0.0.1 → 0.1.0)
-npm version major  # For breaking changes (0.0.1 → 1.0.0)
+# 3. Merge PR to develop (no version bump)
+
+# 4. When ready to release, bump version on develop
+git checkout develop
+git pull
+npm version patch  # For bug fixes (1.0.1 → 1.0.2)
+npm version minor  # For new features (1.0.1 → 1.1.0)
+npm version major  # For breaking changes (1.0.1 → 2.0.0)
 git push
 
-# 4. Merge PR to develop
-
-# 5. When ready to release, create PR from develop to main
-gh pr create --base main --head develop --title "Release v0.0.X"
+# 5. Create PR from develop to main
+gh pr create --base main --head develop --title "Release v1.0.2"
 ```
 
 ### What npm version Does
@@ -138,19 +142,21 @@ tag-version-prefix=v
 
 This ensures consistent commit messages and tag prefixes across all version bumps.
 
-### Why Version Bumping is Required
+### Why Version Bumping is Required (for releases only)
 
 Every merge to `main` creates a release with a version tag. The version must be bumped to:
 - Track releases properly
-- Create unique version tags (e.g., `v0.0.1`, `v0.0.2`)
-- Enable pinned version deployments (`/v0.0.1/`)
+- Create unique version tags (e.g., `v1.0.1`, `v1.0.2`)
+- Enable pinned version deployments (`/releases/v1.0.1/`)
 - Generate accurate changelogs
+
+**Note:** Version bumps are NOT required for feature → develop PRs. The version check workflow only enforces this on develop → main PRs.
 
 | Command | Use Case | Version Change |
 |---------|----------|----------------|
-| `npm version patch` | Bug fixes | 0.0.1 → 0.0.2 |
-| `npm version minor` | New features | 0.0.1 → 0.1.0 |
-| `npm version major` | Breaking changes | 0.0.1 → 1.0.0 |
+| `npm version patch` | Bug fixes, minor changes | 1.0.1 → 1.0.2 |
+| `npm version minor` | New features, enhancements | 1.0.1 → 1.1.0 |
+| `npm version major` | Breaking changes | 1.0.1 → 2.0.0 |
 
 ## Deployment Paths
 
@@ -250,9 +256,10 @@ npm version major   # Breaking change
   - Future merge operations (causes conflicts)
 
 ### Versioning
-- ✅ **Always** bump version after PR is created and tested (not during development)
-- ✅ **Always** bump version before merging to `main`
-- ❌ **Don't** skip the version bump - releases require it
+- ❌ **Don't** bump version for feature → develop PRs (not required)
+- ✅ **Always** bump version on develop before creating release PR to `main`
+- ✅ **Always** bump version before merging develop to `main`
+- ❌ **Don't** skip the version bump for releases - version check will fail
 
 ### Security
 - ❌ **Don't** commit `.env` file (credentials)
