@@ -873,6 +873,8 @@
     let resizeStartWidth = 0, resizeStartHeight = 0;
     let resizeStartX = 0, resizeStartY = 0;
     let currentResizeHandle = null;
+    let isFullscreen = false;
+    let preFullscreenDimensions = null;
 
     const Overlay = {
         /**
@@ -942,6 +944,7 @@
             // Attach event listeners
             this.attachDragListeners();
             this.attachResizeListeners(leftHandle, rightHandle, bottomHandle, cornerRightHandle, cornerLeftHandle);
+            this.attachWindowResizeListener();
 
             // Restore dimensions
             this.restoreDimensions();
@@ -985,6 +988,14 @@
                     overlayHeader.style.cursor = 'move';
                     this.saveDimensions();
                 }
+            });
+
+            // Double-click to toggle fullscreen
+            overlayHeader.addEventListener('dblclick', (e) => {
+                // Skip if clicking on interactive elements
+                if (e.target.tagName === 'BUTTON' || e.target.tagName === 'SELECT') return;
+
+                this.toggleFullscreen();
             });
         },
 
@@ -1089,6 +1100,18 @@
         },
 
         /**
+         * Attach window resize listener for fullscreen mode
+         */
+        attachWindowResizeListener() {
+            window.addEventListener('resize', () => {
+                if (isFullscreen) {
+                    // Re-calculate 95vw x 95vh when window is resized
+                    this.applyFullscreen();
+                }
+            });
+        },
+
+        /**
          * Toggle overlay visibility
          */
         toggle() {
@@ -1131,8 +1154,17 @@
             if (!overlay) return;
 
             const state = Storage.getCommonState();
-            const dims = state.overlayDimensions;
 
+            // Check if overlay was in fullscreen mode
+            if (state.isFullscreen) {
+                isFullscreen = true;
+                preFullscreenDimensions = state.preFullscreenDimensions || null;
+                this.applyFullscreen();
+                return;
+            }
+
+            // Otherwise restore normal dimensions
+            const dims = state.overlayDimensions;
             if (dims) {
                 if (dims.width) overlay.style.width = dims.width;
                 if (dims.height) overlay.style.height = dims.height;
@@ -1145,6 +1177,100 @@
                     overlay.style.transform = 'none';
                 }
             }
+        },
+
+        /**
+         * Toggle fullscreen mode
+         */
+        toggleFullscreen() {
+            if (!overlay) return;
+
+            if (isFullscreen) {
+                // Exit fullscreen - restore previous dimensions
+                this.exitFullscreen();
+            } else {
+                // Enter fullscreen - save current dimensions and expand
+                this.enterFullscreen();
+            }
+        },
+
+        /**
+         * Enter fullscreen mode
+         */
+        enterFullscreen() {
+            if (!overlay) return;
+
+            console.log('[Overlay] Entering fullscreen mode');
+
+            // Save current dimensions
+            preFullscreenDimensions = {
+                width: overlay.style.width,
+                height: overlay.style.height,
+                left: overlay.style.left,
+                top: overlay.style.top,
+                transform: overlay.style.transform
+            };
+
+            // Apply fullscreen dimensions
+            this.applyFullscreen();
+
+            // Update state
+            isFullscreen = true;
+
+            // Save to localStorage
+            Storage.setCommonState({
+                isFullscreen: true,
+                preFullscreenDimensions: preFullscreenDimensions
+            });
+
+            // Notify app of resize (for mobile view switching)
+            setTimeout(() => {
+                AppManager.notifyResize();
+            }, 50);
+        },
+
+        /**
+         * Exit fullscreen mode
+         */
+        exitFullscreen() {
+            if (!overlay || !preFullscreenDimensions) return;
+
+            console.log('[Overlay] Exiting fullscreen mode');
+
+            // Restore previous dimensions
+            overlay.style.width = preFullscreenDimensions.width;
+            overlay.style.height = preFullscreenDimensions.height;
+            overlay.style.left = preFullscreenDimensions.left;
+            overlay.style.top = preFullscreenDimensions.top;
+            overlay.style.transform = preFullscreenDimensions.transform;
+
+            // Update state
+            isFullscreen = false;
+            preFullscreenDimensions = null;
+
+            // Save to localStorage
+            Storage.setCommonState({
+                isFullscreen: false,
+                preFullscreenDimensions: null
+            });
+
+            // Notify app of resize
+            setTimeout(() => {
+                AppManager.notifyResize();
+            }, 50);
+        },
+
+        /**
+         * Apply fullscreen dimensions
+         */
+        applyFullscreen() {
+            if (!overlay) return;
+
+            overlay.style.width = '95vw';
+            overlay.style.height = '95vh';
+            overlay.style.left = '2.5vw';
+            overlay.style.top = '2.5vh';
+            overlay.style.transform = 'none';
         },
 
         /**
