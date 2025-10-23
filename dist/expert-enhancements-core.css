@@ -83,7 +83,7 @@
 /* App-Specific Controls Container */
 #expert-enhancements-overlay-header .app-controls-container {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     align-items: center;
 }
 
@@ -135,10 +135,18 @@
     outline-offset: 1px;
 }
 
+/* Hide role selector on narrow overlays */
+@media (max-width: 480px) {
+    .live-preview-role-selector {
+        display: none;
+    }
+}
+
 #expert-enhancements-overlay-header .header-buttons {
     display: flex;
     gap: 8px;
     align-items: center;
+    padding-left: 8px;
 }
 
 #expert-enhancements-overlay-header .header-btn {
