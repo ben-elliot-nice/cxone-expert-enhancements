@@ -44,8 +44,8 @@
 
         // App-specific constraints for overlay sizing
         constraints: {
-            minWidth: 900,
-            minHeight: 600
+            minWidth: 420,
+            minHeight: 300
         },
 
         /**

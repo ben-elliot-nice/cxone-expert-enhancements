@@ -781,11 +781,12 @@
          */
         attachResizeListeners(leftHandle, rightHandle, bottomHandle, cornerRightHandle, cornerLeftHandle) {
             let resizeStartLeft = 0;
+            let resizeStartTop = 0;
 
             // Helper to get current app's constraints
             const getConstraints = () => {
                 const app = AppManager.getCurrentApp();
-                const defaults = { minWidth: 600, minHeight: 400 };
+                const defaults = { minWidth: 420, minHeight: 300 };
                 return app?.constraints ? { ...defaults, ...app.constraints } : defaults;
             };
 
@@ -799,6 +800,7 @@
                 resizeStartWidth = rect.width;
                 resizeStartHeight = rect.height;
                 resizeStartLeft = rect.left;
+                resizeStartTop = rect.top;
 
                 e.preventDefault();
             };
@@ -821,8 +823,7 @@
 
                 // Right side resize
                 if (currentResizeHandle === 'right' || currentResizeHandle === 'corner-right') {
-                    const rect = overlay.getBoundingClientRect();
-                    const maxWidth = viewportWidth - rect.left;
+                    const maxWidth = viewportWidth - resizeStartLeft;
                     const newWidth = Math.max(constraints.minWidth, Math.min(resizeStartWidth + deltaX, maxWidth));
                     overlay.style.width = newWidth + 'px';
                 }
@@ -855,8 +856,7 @@
 
                 // Bottom resize
                 if (currentResizeHandle === 'bottom' || currentResizeHandle === 'corner-right' || currentResizeHandle === 'corner-left') {
-                    const rect = overlay.getBoundingClientRect();
-                    const maxHeight = viewportHeight - rect.top;
+                    const maxHeight = viewportHeight - resizeStartTop;
                     const newHeight = Math.max(constraints.minHeight, Math.min(resizeStartHeight + deltaY, maxHeight));
                     overlay.style.height = newHeight + 'px';
                 }
