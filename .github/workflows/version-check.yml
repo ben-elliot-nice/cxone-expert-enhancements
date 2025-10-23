@@ -3,13 +3,13 @@ name: Version Check
 on:
   pull_request:
     branches:
-      - develop
+      - main
 
 jobs:
   check-version:
     runs-on: ubuntu-latest
-    # Skip version check for PRs from main to develop (release PRs)
-    if: github.head_ref != 'main'
+    # Only run version check for PRs from develop to main
+    if: github.head_ref == 'develop'
 
     steps:
       - name: Checkout PR branch
