@@ -93,8 +93,41 @@
     function createToggleButton() {
         toggleButton = document.createElement('button');
         toggleButton.id = 'expert-enhancements-toggle';
-        toggleButton.innerHTML = '⚡';
+        toggleButton.innerHTML = '&lt;/&gt;';
         toggleButton.title = 'CXone Expert Enhancements';
+        toggleButton.style.cssText = `
+            position: fixed;
+            top: 15px;
+            right: -45px;
+            width: 100px;
+            height: 50px;
+            border-radius: 25px;
+            background: #667eea;
+            border: 3px solid white;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            font-family: monospace;
+            cursor: pointer;
+            z-index: 999998;
+            box-shadow: -4px 4px 20px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: left;
+            padding-left: 12px;
+            line-height: 1;
+        `;
+
+        toggleButton.addEventListener('mouseenter', () => {
+            toggleButton.style.transform = 'scale(1.1)';
+            toggleButton.style.boxShadow = '-6px 6px 30px rgba(102, 126, 234, 0.5)';
+        });
+
+        toggleButton.addEventListener('mouseleave', () => {
+            toggleButton.style.transform = 'scale(1)';
+            toggleButton.style.boxShadow = '-4px 4px 20px rgba(0, 0, 0, 0.3)';
+        });
 
         toggleButton.addEventListener('click', () => {
             if (window.ExpertEnhancements && window.ExpertEnhancements.Overlay) {
