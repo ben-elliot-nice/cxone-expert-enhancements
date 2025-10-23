@@ -69,6 +69,7 @@
                 // Unmount current app
                 if (currentApp) {
                     console.log(`[App Manager] Unmounting: ${currentApp.name}`);
+                    Overlay.clearAppControls();
                     await currentApp.unmount();
 
                     // Save state
@@ -896,6 +897,13 @@
             headerLeft.appendChild(headerTitle);
             headerLeft.appendChild(appSwitcher);
 
+            // App-specific controls container (for CSS Editor live preview, etc.)
+            const appControls = DOM.create('div', {
+                className: 'app-controls-container',
+                id: 'app-controls-container'
+            });
+            headerLeft.appendChild(appControls);
+
             const headerButtons = DOM.create('div', { className: 'header-buttons' });
             const minimizeBtn = DOM.create('button', {
                 className: 'header-btn',
@@ -1155,6 +1163,35 @@
             const currentApp = AppManager.getCurrentApp();
             if (currentApp) {
                 switcher.value = currentApp.id;
+            }
+        },
+
+        /**
+         * Set app-specific header controls (mounted/unmounted with app)
+         */
+        setAppControls(elements) {
+            const container = document.getElementById('app-controls-container');
+            if (!container) return;
+
+            // Clear existing
+            container.innerHTML = '';
+
+            // Add new controls
+            if (Array.isArray(elements)) {
+                elements.forEach(el => container.appendChild(el));
+            }
+
+            console.log('[Overlay] App controls set:', elements.length, 'elements');
+        },
+
+        /**
+         * Clear app-specific controls
+         */
+        clearAppControls() {
+            const container = document.getElementById('app-controls-container');
+            if (container) {
+                container.innerHTML = '';
+                console.log('[Overlay] App controls cleared');
             }
         }
     };
