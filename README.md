@@ -95,7 +95,7 @@ This project uses a structured git flow with automated deployments:
 - **`develop`** → Deploy to `develop/` for integration testing
 - **Any other branch** → Deploy to `{sanitized-branch-name}/` for testing (supports feature/, hotfix/, bugfix/, refactor/, etc.)
 
-See [GIT_WORKFLOW.md](GIT_WORKFLOW.md) for detailed workflow instructions.
+See [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md) for detailed workflow instructions.
 
 #### Branch Naming Best Practices
 
@@ -233,7 +233,7 @@ cxone-expert-enhancements/
 ├── package.json               # Project metadata & version
 ├── .env.example               # Environment template
 ├── .env                       # Local credentials (gitignored)
-├── GIT_WORKFLOW.md            # Detailed workflow guide
+├── docs/GIT_WORKFLOW.md            # Detailed workflow guide
 └── README.md                  # This file
 ```
 
@@ -289,7 +289,7 @@ git checkout -b feature/amazing-feature
 5. Push your branch
 6. Open a Pull Request to `develop`
 
-See [GIT_WORKFLOW.md](GIT_WORKFLOW.md) for detailed contribution guidelines.
+See [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md) for detailed contribution guidelines.
 
 ## 🙏 Acknowledgments
 

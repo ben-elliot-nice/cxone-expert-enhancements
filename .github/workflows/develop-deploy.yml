@@ -30,7 +30,7 @@ jobs:
           DO_SPACES_ENDPOINT: ${{ vars.DO_SPACES_ENDPOINT }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
           GITHUB_ACTIONS: 'true'
-        run: npm run deploy:v2
+        run: npm run deploy
 
       - name: Create deployment summary
         run: |
@@ -47,13 +47,16 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Main embed script:**" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`html" >> $GITHUB_STEP_SUMMARY
-          echo "<script src=\"${BASE_URL}/develop/css-editor-embed.js\"></script>" >> $GITHUB_STEP_SUMMARY
+          echo "<script src=\"${BASE_URL}/develop/expert-enhancements-embed.js\"></script>" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Direct file links:**" >> $GITHUB_STEP_SUMMARY
-          echo "- [css-editor-embed.js](${BASE_URL}/develop/css-editor-embed.js)" >> $GITHUB_STEP_SUMMARY
-          echo "- [css-editor.js](${BASE_URL}/develop/css-editor.js)" >> $GITHUB_STEP_SUMMARY
-          echo "- [css-editor.css](${BASE_URL}/develop/css-editor.css)" >> $GITHUB_STEP_SUMMARY
+          echo "- [expert-enhancements-embed.js](${BASE_URL}/develop/expert-enhancements-embed.js)" >> $GITHUB_STEP_SUMMARY
+          echo "- [expert-enhancements-core.js](${BASE_URL}/develop/expert-enhancements-core.js)" >> $GITHUB_STEP_SUMMARY
+          echo "- [expert-enhancements-core.css](${BASE_URL}/develop/expert-enhancements-core.css)" >> $GITHUB_STEP_SUMMARY
+          echo "- [expert-enhancements-css.js](${BASE_URL}/develop/expert-enhancements-css.js)" >> $GITHUB_STEP_SUMMARY
+          echo "- [expert-enhancements-css.css](${BASE_URL}/develop/expert-enhancements-css.css)" >> $GITHUB_STEP_SUMMARY
+          echo "- [expert-enhancements-html.js](${BASE_URL}/develop/expert-enhancements-html.js)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📝 Testing Instructions" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
