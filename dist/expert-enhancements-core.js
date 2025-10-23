@@ -618,6 +618,210 @@
             });
 
             return data;
+        },
+
+        /**
+         * Show inline confirmation in a button (Confirm? ✓ ×)
+         * @param {HTMLElement} button - The button element to transform
+         * @param {Function} onConfirm - Callback to execute on confirmation
+         */
+        showInlineConfirmation(button, onConfirm) {
+            // Mark button as confirming
+            button.classList.add('confirming');
+
+            // Store original button content and dimensions
+            const originalText = button.textContent;
+            const originalColor = button.style.color;
+            const originalHeight = button.offsetHeight + 'px';
+            const originalMinHeight = button.style.minHeight;
+
+            // Replace button content with confirm UI
+            button.innerHTML = '';
+            button.style.display = 'flex';
+            button.style.alignItems = 'stretch';
+            button.style.gap = '0';
+            button.style.justifyContent = 'space-between';
+            button.style.padding = '0';
+            button.style.height = originalHeight;
+            button.style.minHeight = originalHeight;
+
+            const confirmText = document.createElement('span');
+            confirmText.textContent = 'Confirm?';
+            confirmText.style.fontSize = '0.7rem';
+            confirmText.style.display = 'flex';
+            confirmText.style.alignItems = 'center';
+            confirmText.style.paddingLeft = '1rem';
+            confirmText.style.paddingRight = '0.5rem';
+            confirmText.style.flex = '1';
+
+            const buttonGroup = document.createElement('span');
+            buttonGroup.style.display = 'flex';
+            buttonGroup.style.alignItems = 'stretch';
+            buttonGroup.style.marginLeft = 'auto';
+
+            const tickBtn = document.createElement('span');
+            tickBtn.textContent = '✓';
+            tickBtn.className = 'confirm-tick';
+            tickBtn.style.cursor = 'pointer';
+            tickBtn.style.padding = '0 0.75rem';
+            tickBtn.style.borderRadius = '0';
+            tickBtn.style.background = 'rgba(76, 175, 80, 0.2)';
+            tickBtn.style.color = '#4caf50';
+            tickBtn.style.fontWeight = 'bold';
+            tickBtn.style.display = 'flex';
+            tickBtn.style.alignItems = 'center';
+            tickBtn.style.justifyContent = 'center';
+            tickBtn.style.minWidth = '2.5rem';
+            tickBtn.style.transition = 'all 0.15s';
+
+            const crossBtn = document.createElement('span');
+            crossBtn.textContent = '×';
+            crossBtn.className = 'confirm-cross';
+            crossBtn.style.cursor = 'pointer';
+            crossBtn.style.padding = '0 0.75rem';
+            crossBtn.style.borderRadius = '0';
+            crossBtn.style.background = 'rgba(244, 67, 54, 0.2)';
+            crossBtn.style.color = '#f44336';
+            crossBtn.style.fontWeight = 'bold';
+            crossBtn.style.fontSize = '1.2rem';
+            crossBtn.style.lineHeight = '1';
+            crossBtn.style.display = 'flex';
+            crossBtn.style.alignItems = 'center';
+            crossBtn.style.justifyContent = 'center';
+            crossBtn.style.minWidth = '2.5rem';
+            crossBtn.style.transition = 'all 0.15s';
+
+            // Add hover effects
+            tickBtn.addEventListener('mouseenter', () => {
+                tickBtn.style.background = 'rgba(76, 175, 80, 0.35)';
+            });
+            tickBtn.addEventListener('mouseleave', () => {
+                tickBtn.style.background = 'rgba(76, 175, 80, 0.2)';
+            });
+
+            crossBtn.addEventListener('mouseenter', () => {
+                crossBtn.style.background = 'rgba(244, 67, 54, 0.35)';
+            });
+            crossBtn.addEventListener('mouseleave', () => {
+                crossBtn.style.background = 'rgba(244, 67, 54, 0.2)';
+            });
+
+            buttonGroup.appendChild(tickBtn);
+            buttonGroup.appendChild(crossBtn);
+
+            button.appendChild(confirmText);
+            button.appendChild(buttonGroup);
+
+            // Reset function
+            const resetButton = () => {
+                button.classList.remove('confirming');
+                button.textContent = originalText;
+                button.style.color = originalColor;
+                button.style.display = '';
+                button.style.alignItems = '';
+                button.style.gap = '';
+                button.style.justifyContent = '';
+                button.style.padding = '';
+                button.style.height = '';
+                button.style.minHeight = originalMinHeight;
+            };
+
+            // Tick click handler
+            tickBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                resetButton();
+                onConfirm();
+            });
+
+            // Cross click handler
+            crossBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                resetButton();
+            });
+
+            // Click outside handler
+            const clickOutsideHandler = (e) => {
+                if (!button.contains(e.target)) {
+                    resetButton();
+                    document.removeEventListener('click', clickOutsideHandler);
+                }
+            };
+
+            // Add click outside listener after a brief delay to avoid immediate trigger
+            setTimeout(() => {
+                document.addEventListener('click', clickOutsideHandler);
+            }, 100);
+        },
+
+        /**
+         * Show "No changes" message in a button temporarily
+         * @param {HTMLElement} button - The button element to transform
+         */
+        showNoChangesMessage(button) {
+            // Mark button as showing no changes message
+            button.classList.add('showing-no-changes');
+
+            // Store original button content and dimensions
+            const originalText = button.textContent;
+            const originalColor = button.style.color;
+            const originalHeight = button.offsetHeight + 'px';
+            const originalMinHeight = button.style.minHeight;
+            const originalFontSize = button.style.fontSize;
+            const originalBackground = button.style.background;
+
+            // Replace button content with "no changes" message
+            button.innerHTML = '';
+            button.style.display = 'flex';
+            button.style.alignItems = 'center';
+            button.style.justifyContent = 'flex-start';
+            button.style.padding = '0.5rem 0.75rem';
+            button.style.height = originalHeight;
+            button.style.minHeight = originalHeight;
+            button.style.color = '#ff9800';
+            button.style.cursor = 'default';
+            button.textContent = 'No changes';
+
+            // Flash animation
+            button.style.background = 'rgba(255, 152, 0, 0.15)';
+            button.style.transition = 'background 0.3s ease';
+            setTimeout(() => {
+                button.style.background = originalBackground;
+            }, 300);
+
+            // Reset function
+            const resetButton = () => {
+                button.classList.remove('showing-no-changes');
+                button.textContent = originalText;
+                button.style.color = originalColor;
+                button.style.display = '';
+                button.style.alignItems = '';
+                button.style.justifyContent = '';
+                button.style.padding = '';
+                button.style.height = '';
+                button.style.minHeight = originalMinHeight;
+                button.style.fontSize = originalFontSize;
+                button.style.cursor = '';
+                button.style.background = originalBackground;
+                button.style.transition = '';
+            };
+
+            // Auto-reset after 2 seconds
+            setTimeout(() => {
+                resetButton();
+            }, 2000);
+
+            // Click outside handler
+            const clickOutsideHandler = (e) => {
+                if (!button.contains(e.target)) {
+                    resetButton();
+                    document.removeEventListener('click', clickOutsideHandler);
+                }
+            };
+
+            // Add click outside listener after a brief delay
+            setTimeout(() => {
+                document.addEventListener('click', clickOutsideHandler);
+            }, 100);
         }
     };
 

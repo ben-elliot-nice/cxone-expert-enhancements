@@ -476,11 +476,19 @@
                 console.log('[CSS Editor] Dropdown toggle listener attached');
             }
 
-            // Close dropdown when clicking outside
+            // Close dropdowns when clicking outside
             document.addEventListener('click', (e) => {
+                // Close global dropdown
                 if (dropdown && dropdownMenu && !dropdown.contains(e.target)) {
                     dropdownMenu.classList.remove('show');
                     dropdown.classList.remove('open');
+                }
+
+                // Close editor dropdowns
+                if (!e.target.closest('.editor-save-dropdown')) {
+                    document.querySelectorAll('.editor-save-dropdown-menu.show').forEach(menu => {
+                        menu.classList.remove('show');
+                    });
                 }
             });
         },
@@ -626,57 +634,57 @@
 
             // Action buttons
             const actions = context.DOM.create('div', {
-                style: { display: 'flex', gap: '0.5rem' }
+                className: 'editor-pane-actions',
+                style: { display: 'flex', gap: '0.5rem', alignItems: 'center' }
+            });
+
+            // Save dropdown group
+            const saveDropdown = context.DOM.create('div', {
+                className: 'editor-save-dropdown'
             });
 
             const saveBtn = context.DOM.create('button', {
-                className: 'pane-btn pane-btn-save',
-                title: 'Save',
-                style: {
-                    background: '#28a745',
-                    border: '1px solid #28a745',
-                    color: 'white',
-                    padding: '0.25rem 0.5rem',
-                    borderRadius: '3px',
-                    cursor: 'pointer',
-                    fontSize: '0.7rem'
-                }
+                className: 'editor-pane-save',
+                'data-save-role': roleId
             }, ['Save']);
             saveBtn.addEventListener('click', () => this.saveRole(roleId));
 
+            const dropdownToggle = context.DOM.create('button', {
+                className: 'editor-save-dropdown-toggle',
+                'data-dropdown-role': roleId
+            }, ['▼']);
+            dropdownToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleEditorDropdown(roleId);
+            });
+
+            const dropdownMenu = context.DOM.create('div', {
+                className: 'editor-save-dropdown-menu',
+                'data-menu-role': roleId
+            });
+
+            const revertBtn = context.DOM.create('button', {
+                className: 'editor-dropdown-item',
+                'data-revert-role': roleId
+            }, ['Revert this']);
+            revertBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.revertRole(roleId);
+            });
+
+            dropdownMenu.appendChild(revertBtn);
+            saveDropdown.appendChild(saveBtn);
+            saveDropdown.appendChild(dropdownToggle);
+            saveDropdown.appendChild(dropdownMenu);
+
             const exportBtn = context.DOM.create('button', {
-                className: 'pane-btn',
-                title: 'Export',
-                style: {
-                    background: 'transparent',
-                    border: '1px solid #555',
-                    color: '#ccc',
-                    padding: '0.25rem 0.5rem',
-                    borderRadius: '3px',
-                    cursor: 'pointer',
-                    fontSize: '0.7rem'
-                }
+                className: 'editor-pane-export',
+                'data-export-role': roleId
             }, ['Export']);
             exportBtn.addEventListener('click', () => this.exportRole(roleId));
 
-            const discardBtn = context.DOM.create('button', {
-                className: 'pane-btn',
-                title: 'Discard',
-                style: {
-                    background: 'transparent',
-                    border: '1px solid #555',
-                    color: '#dc3545',
-                    padding: '0.25rem 0.5rem',
-                    borderRadius: '3px',
-                    cursor: 'pointer',
-                    fontSize: '0.7rem'
-                }
-            }, ['Discard']);
-            discardBtn.addEventListener('click', () => this.discardRole(roleId));
-
-            actions.appendChild(saveBtn);
+            actions.appendChild(saveDropdown);
             actions.appendChild(exportBtn);
-            actions.appendChild(discardBtn);
 
             header.appendChild(titleGroup);
             header.appendChild(actions);
@@ -828,21 +836,48 @@
 
         /**
          * Discard all changes (revert to original)
+         * Uses inline confirmation
          */
-        async discardAll() {
-            const confirmed = await context.UI.confirm(
-                'Discard all changes and revert to last saved state?',
-                { confirmText: 'Discard', cancelText: 'Cancel', type: 'danger' }
-            );
+        discardAll() {
+            console.log('[CSS Editor] discardAll called');
 
-            if (!confirmed) {
+            if (Object.keys(originalContent).length === 0) {
+                context.UI.showMessage('No original content to revert to', 'error');
                 return;
             }
 
+            // Check if any editors have unsaved changes
+            const hasUnsavedChanges = Object.values(editorState).some(role => role.isDirty);
+            const discardBtn = document.getElementById('discard-btn');
+
+            if (hasUnsavedChanges) {
+                if (discardBtn && !discardBtn.classList.contains('confirming')) {
+                    // Show inline confirmation
+                    context.UI.showInlineConfirmation(discardBtn, () => {
+                        this.performDiscardAll();
+                    });
+                }
+                return;
+            }
+
+            // No unsaved changes - show "no changes" message
+            if (discardBtn && !discardBtn.classList.contains('showing-no-changes')) {
+                context.UI.showNoChangesMessage(discardBtn);
+            }
+        },
+
+        /**
+         * Actually perform discard all (after confirmation)
+         */
+        performDiscardAll() {
+            console.log('[CSS Editor] performDiscardAll executing');
+
+            // Revert all state to original content
             Object.keys(editorState).forEach(roleId => {
                 editorState[roleId].content = originalContent[roleId] || '';
                 editorState[roleId].isDirty = false;
 
+                // If editor is active, update its content
                 const editor = monacoEditors[roleId];
                 if (editor) {
                     editor.setValue(editorState[roleId].content);
@@ -850,35 +885,90 @@
             });
 
             this.updateToggleButtons();
+            this.saveState();
+
+            // Close dropdown menu
+            const dropdownMenu = document.getElementById('save-dropdown-menu');
+            if (dropdownMenu) dropdownMenu.classList.remove('show');
+            const dropdown = document.querySelector('.save-dropdown');
+            if (dropdown) dropdown.classList.remove('open');
+
             context.UI.showMessage('All changes discarded', 'success');
         },
 
         /**
-         * Discard changes for a specific role
+         * Revert a single role (with inline confirmation)
          */
-        async discardRole(roleId) {
+        revertRole(roleId) {
+            console.log(`[CSS Editor] revertRole called for: ${roleId}`);
+
             const role = editorState[roleId];
             if (!role) return;
 
-            const confirmed = await context.UI.confirm(
-                `Discard changes to ${role.label}?`,
-                { confirmText: 'Discard', cancelText: 'Cancel', type: 'danger' }
-            );
+            // Check if editor has unsaved changes
+            const revertBtn = document.querySelector(`[data-revert-role="${roleId}"]`);
+            if (!revertBtn) return;
 
-            if (!confirmed) {
+            if (role.isDirty) {
+                if (!revertBtn.classList.contains('confirming')) {
+                    // Show inline confirmation
+                    context.UI.showInlineConfirmation(revertBtn, () => {
+                        this.performRevert(roleId);
+                    });
+                }
                 return;
             }
 
+            // No unsaved changes - show "no changes" message
+            if (!revertBtn.classList.contains('showing-no-changes')) {
+                context.UI.showNoChangesMessage(revertBtn);
+            }
+        },
+
+        /**
+         * Actually perform revert (after confirmation)
+         */
+        performRevert(roleId) {
+            console.log(`[CSS Editor] performRevert executing for: ${roleId}`);
+
+            const role = editorState[roleId];
+            if (!role) return;
+
+            // Revert content to original
             role.content = originalContent[roleId] || '';
             role.isDirty = false;
 
+            // If editor is active, update its content
             const editor = monacoEditors[roleId];
             if (editor) {
                 editor.setValue(role.content);
             }
 
             this.updateToggleButtons();
+            this.saveState();
+
+            // Close dropdown menu
+            const menu = document.querySelector(`[data-menu-role="${roleId}"]`);
+            if (menu) menu.classList.remove('show');
+
             context.UI.showMessage(`${role.label} reverted`, 'success');
+        },
+
+        /**
+         * Toggle editor dropdown menu
+         */
+        toggleEditorDropdown(roleId) {
+            const menu = document.querySelector(`[data-menu-role="${roleId}"]`);
+            if (!menu) return;
+
+            // Close all other editor dropdowns AND the global dropdown
+            document.querySelectorAll('.editor-save-dropdown-menu.show').forEach(m => {
+                if (m !== menu) m.classList.remove('show');
+            });
+            const globalDropdown = document.getElementById('save-dropdown-menu');
+            if (globalDropdown) globalDropdown.classList.remove('show');
+
+            menu.classList.toggle('show');
         },
 
         /**
