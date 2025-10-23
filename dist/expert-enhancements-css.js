@@ -34,6 +34,12 @@
     let isMobileView = false;
     let keyboardHandler = null; // Keyboard shortcut handler
 
+    // Live Preview state (CSS Editor only)
+    let livePreviewEnabled = false;
+    let livePreviewRole = 'anonymous';
+    let livePreviewStyleTag = null;
+    let livePreviewDebounceTimer = null;
+
     // ============================================================================
     // App Interface Implementation
     // ============================================================================
@@ -131,6 +137,9 @@
             // Setup keyboard shortcuts
             this.setupKeyboardShortcuts();
 
+            // Create and mount live preview controls to overlay header
+            this.createLivePreviewControls();
+
             console.log('[CSS Editor] Mounted');
         },
 
@@ -139,6 +148,13 @@
          */
         async unmount() {
             console.log('[CSS Editor] Unmounting...');
+
+            // Clear live preview
+            this.clearLivePreview();
+            if (livePreviewStyleTag && livePreviewStyleTag.parentNode) {
+                livePreviewStyleTag.remove();
+                livePreviewStyleTag = null;
+            }
 
             // Remove keyboard shortcuts
             if (keyboardHandler) {
@@ -164,8 +180,31 @@
             // Check if view mode changed (mobile/desktop)
             this.checkViewportWidth();
 
+            // Check if overlay is narrow (hide role selector)
+            this.checkOverlayWidth();
+
             // Recalculate heights and re-layout
             this.updateHeights();
+        },
+
+        /**
+         * Check overlay width and hide/show role selector accordingly
+         */
+        checkOverlayWidth() {
+            const overlay = document.getElementById('expert-enhancements-overlay');
+            if (!overlay) return;
+
+            const overlayWidth = overlay.offsetWidth;
+            const roleSelector = document.querySelector('.live-preview-role-selector');
+
+            if (roleSelector) {
+                // Hide role selector if overlay is narrower than 480px
+                if (overlayWidth < 480) {
+                    roleSelector.style.display = 'none';
+                } else {
+                    roleSelector.style.display = '';
+                }
+            }
         },
 
         /**
@@ -176,7 +215,11 @@
                 activeRoles: Object.keys(editorState).filter(role => editorState[role].active),
                 content: {},
                 isDirty: {},
-                originalContent: {}
+                originalContent: {},
+                livePreview: {
+                    enabled: livePreviewEnabled,
+                    selectedRole: livePreviewRole
+                }
             };
 
             Object.keys(editorState).forEach(role => {
@@ -227,6 +270,13 @@
                 Object.keys(state.originalContent).forEach(role => {
                     originalContent[role] = state.originalContent[role];
                 });
+            }
+
+            // Restore live preview state
+            if (state.livePreview) {
+                livePreviewEnabled = state.livePreview.enabled || false;
+                livePreviewRole = state.livePreview.selectedRole || 'anonymous';
+                console.log('[CSS Editor] Restored live preview state:', state.livePreview);
             }
         },
 
@@ -730,6 +780,7 @@
                 role.content = editor.getValue();
                 role.isDirty = role.content !== originalContent[roleId];
                 this.updateToggleButtons();
+                this.updateLivePreview();
             });
 
             console.log(`[CSS Editor] Created Monaco editor for: ${roleId}`);
@@ -1217,6 +1268,182 @@
 
             document.addEventListener('keydown', keyboardHandler);
             console.log('[CSS Editor] Keyboard shortcuts registered: Ctrl+S (save open), Ctrl+Shift+S (save all)');
+        },
+
+        /**
+         * Create and mount live preview UI controls to overlay header
+         */
+        createLivePreviewControls() {
+            // Toggle button (eye icon)
+            const toggleBtn = context.DOM.create('button', {
+                className: livePreviewEnabled ? 'live-preview-toggle enabled' : 'live-preview-toggle',
+                title: `Live Preview (${livePreviewEnabled ? 'ON' : 'OFF'})`
+            });
+            toggleBtn.innerHTML = '👁️';
+            toggleBtn.addEventListener('click', () => this.toggleLivePreview());
+
+            // Role selector dropdown
+            const roleSelector = context.DOM.create('select', {
+                className: 'live-preview-role-selector'
+            });
+            roleSelector.innerHTML = `
+                <option value="anonymous">Anonymous</option>
+                <option value="viewer">Community</option>
+                <option value="seated">Pro</option>
+                <option value="admin">Admin</option>
+                <option value="grape">Legacy</option>
+            `;
+            roleSelector.value = livePreviewRole;
+            roleSelector.addEventListener('change', (e) => this.setLivePreviewRole(e.target.value));
+
+            // Mount to overlay header via core
+            context.Overlay.setAppControls([toggleBtn, roleSelector]);
+
+            console.log('[CSS Editor] Live preview controls created and mounted');
+
+            // Check overlay width and hide role selector if needed
+            this.checkOverlayWidth();
+
+            // Initialize preview if enabled
+            if (livePreviewEnabled) {
+                this.performLivePreviewUpdate();
+            }
+        },
+
+        /**
+         * Toggle live preview on/off
+         */
+        toggleLivePreview() {
+            livePreviewEnabled = !livePreviewEnabled;
+
+            console.log(`[CSS Editor] Live preview ${livePreviewEnabled ? 'enabled' : 'disabled'}`);
+
+            // Update button appearance
+            const toggleBtn = document.querySelector('.live-preview-toggle');
+            if (toggleBtn) {
+                toggleBtn.className = livePreviewEnabled ? 'live-preview-toggle enabled' : 'live-preview-toggle';
+                toggleBtn.title = `Live Preview (${livePreviewEnabled ? 'ON' : 'OFF'})`;
+            }
+
+            // Update or clear preview
+            if (livePreviewEnabled) {
+                this.performLivePreviewUpdate();
+            } else {
+                this.clearLivePreview();
+            }
+
+            // Persist state
+            this.saveState();
+        },
+
+        /**
+         * Set live preview role and update immediately
+         */
+        setLivePreviewRole(roleId) {
+            livePreviewRole = roleId;
+
+            console.log(`[CSS Editor] Live preview role changed to: ${roleId}`);
+
+            // Update immediately if enabled
+            if (livePreviewEnabled) {
+                this.performLivePreviewUpdate();
+            }
+
+            // Persist state
+            this.saveState();
+        },
+
+        /**
+         * Get or create live preview style tag in page <head>
+         */
+        getLivePreviewStyleTag() {
+            if (!livePreviewStyleTag) {
+                livePreviewStyleTag = document.createElement('style');
+                livePreviewStyleTag.id = 'css-editor-live-preview';
+                livePreviewStyleTag.setAttribute('data-source', 'CSS Editor Live Preview');
+                document.head.appendChild(livePreviewStyleTag);
+                console.log('[CSS Editor] Created live preview style tag');
+            }
+            return livePreviewStyleTag;
+        },
+
+        /**
+         * Update live preview (debounced 300ms)
+         */
+        updateLivePreview() {
+            if (!livePreviewEnabled) return;
+
+            // Clear existing timer
+            if (livePreviewDebounceTimer) {
+                clearTimeout(livePreviewDebounceTimer);
+            }
+
+            // Debounce 300ms
+            livePreviewDebounceTimer = setTimeout(() => {
+                this.performLivePreviewUpdate();
+                livePreviewDebounceTimer = null;
+            }, 300);
+        },
+
+        /**
+         * Perform live preview update (actual CSS injection)
+         * Combines CSS based on role hierarchy
+         */
+        performLivePreviewUpdate() {
+            try {
+                const styleTag = this.getLivePreviewStyleTag();
+
+                // Determine which roles to include based on selected preview role
+                // Role hierarchy:
+                // - anonymous: all + anonymous
+                // - viewer: all + viewer
+                // - seated: all + seated
+                // - admin: all + seated + admin (inherits pro)
+                // - grape: all + grape
+
+                const rolesToInclude = ['all']; // All roles get "all" CSS
+
+                if (livePreviewRole === 'anonymous') {
+                    rolesToInclude.push('anonymous');
+                } else if (livePreviewRole === 'viewer') {
+                    rolesToInclude.push('viewer');
+                } else if (livePreviewRole === 'seated') {
+                    rolesToInclude.push('seated');
+                } else if (livePreviewRole === 'admin') {
+                    // Admin inherits pro member permissions
+                    rolesToInclude.push('seated', 'admin');
+                } else if (livePreviewRole === 'grape') {
+                    rolesToInclude.push('grape');
+                }
+
+                // Combine CSS in order
+                let combinedCSS = '';
+                rolesToInclude.forEach(roleId => {
+                    const role = editorState[roleId];
+                    if (role && role.content && role.content.trim()) {
+                        combinedCSS += `\n/* Live Preview: ${role.label} */\n`;
+                        combinedCSS += role.content;
+                        combinedCSS += '\n';
+                    }
+                });
+
+                // Inject into page
+                styleTag.textContent = combinedCSS;
+
+                console.log(`[CSS Editor] Live preview updated: ${combinedCSS.length} chars for role "${livePreviewRole}"`);
+            } catch (error) {
+                console.error('[CSS Editor] Live preview update failed:', error);
+            }
+        },
+
+        /**
+         * Clear live preview CSS
+         */
+        clearLivePreview() {
+            if (livePreviewStyleTag) {
+                livePreviewStyleTag.textContent = '';
+                console.log('[CSS Editor] Live preview cleared');
+            }
         }
     };
 
