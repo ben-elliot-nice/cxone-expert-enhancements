@@ -139,14 +139,46 @@
     opacity: 1 !important;
 }
 
-/* Hover state - subtle highlight */
-.enhancements-resize-handle:hover {
-    background: rgba(102, 126, 234, 0.15);
+/* Hover state - subtle gradient highlight fading into editor */
+.enhancements-resize-handle.left:hover {
+    background: linear-gradient(to right, rgba(102, 126, 234, 0.15), rgba(102, 126, 234, 1));
 }
 
-/* Active/dragging state - stronger highlight */
-.enhancements-resize-handle.resizing {
-    background: rgba(102, 126, 234, 0.25);
+.enhancements-resize-handle.right:hover {
+    background: linear-gradient(to left, rgba(102, 126, 234, 0.15), rgba(102, 126, 234, 1));
+}
+
+.enhancements-resize-handle.bottom:hover {
+    background: linear-gradient(to top, rgba(102, 126, 234, 0.15), rgba(102, 126, 234, 1));
+}
+
+.enhancements-resize-handle.corner-right:hover {
+    background: linear-gradient(to top left, rgba(102, 126, 234, 0.15), rgba(102, 126, 234, 1));
+}
+
+.enhancements-resize-handle.corner-left:hover {
+    background: linear-gradient(to top right, rgba(102, 126, 234, 0.15), rgba(102, 126, 234, 1));
+}
+
+/* Active/dragging state - stronger gradient */
+.enhancements-resize-handle.left.resizing {
+    background: linear-gradient(to right, rgba(102, 126, 234, 0.25), rgba(102, 126, 234, 1));
+}
+
+.enhancements-resize-handle.right.resizing {
+    background: linear-gradient(to left, rgba(102, 126, 234, 0.25), rgba(102, 126, 234, 1));
+}
+
+.enhancements-resize-handle.bottom.resizing {
+    background: linear-gradient(to top, rgba(102, 126, 234, 0.25), rgba(102, 126, 234, 1));
+}
+
+.enhancements-resize-handle.corner-right.resizing {
+    background: linear-gradient(to top left, rgba(102, 126, 234, 0.25), rgba(102, 126, 234, 1));
+}
+
+.enhancements-resize-handle.corner-left.resizing {
+    background: linear-gradient(to top right, rgba(102, 126, 234, 0.25), rgba(102, 126, 234, 1));
 }
 
 .enhancements-resize-handle.left {
