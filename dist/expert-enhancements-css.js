@@ -106,10 +106,7 @@
             // Load CSS data - skip full fetch if we have dirty edits (checkpoint protection)
             await this.loadData(hasDirtyEdits);
 
-            // Check viewport width to set mobile/desktop view
-            this.checkViewportWidth();
-
-            // Build toggle bar (mobile dropdown or desktop buttons based on viewport)
+            // Build toggle bar
             this.buildToggleBar();
 
             // Initialize editors - skip default if we have saved state
@@ -150,9 +147,6 @@
          * Handle resize events
          */
         onResize() {
-            // Check if view mode changed (mobile/desktop)
-            this.checkViewportWidth();
-
             // Recalculate heights and re-layout
             this.updateHeights();
         },
@@ -279,182 +273,53 @@
         },
 
         /**
-         * Check viewport width and switch between mobile/desktop view
-         */
-        checkViewportWidth() {
-            const wasMobileView = isMobileView;
-
-            // Get overlay width to determine mobile/desktop view
-            const container = document.getElementById('css-editor-container');
-            if (container) {
-                const containerWidth = container.offsetWidth;
-                isMobileView = containerWidth < 920;
-                console.log(`[CSS Editor] checkViewportWidth: width=${containerWidth}px, mobile=${isMobileView}`);
-            }
-
-            // If view mode changed, rebuild the toggle bar
-            if (wasMobileView !== isMobileView) {
-                console.log(`[CSS Editor] View mode changed to ${isMobileView ? 'mobile' : 'desktop'}`);
-                this.buildToggleBar();
-
-                // If switching to mobile and multiple editors are active, keep only the first
-                if (isMobileView) {
-                    const activeRoles = Object.keys(editorState).filter(role => editorState[role].active);
-                    if (activeRoles.length > 1) {
-                        console.log(`[CSS Editor] Multiple editors active in mobile view, keeping only: ${activeRoles[0]}`);
-                        // Deactivate all except the first
-                        activeRoles.slice(1).forEach(roleId => {
-                            editorState[roleId].active = false;
-                        });
-                        this.updateGrid();
-                        this.saveState();
-                    }
-                }
-                this.updateToggleButtons();
-            }
-
-            return isMobileView;
-        },
-
-        /**
-         * Build toggle bar with role buttons (desktop) or dropdown (mobile)
+         * Build toggle bar with role buttons
          */
         buildToggleBar() {
             const toggleBar = document.getElementById('toggle-bar');
             if (!toggleBar) return;
 
-            // Clear existing buttons/selectors (but keep save dropdown)
-            const existingButtons = toggleBar.querySelectorAll('.toggle-btn, .mobile-selector-wrapper');
-            existingButtons.forEach(el => el.remove());
+            toggleBar.innerHTML = '';
 
-            if (isMobileView) {
-                // Create mobile dropdown selector
-                const wrapper = context.DOM.create('div', { className: 'mobile-selector-wrapper' });
+            // Create role buttons
+            ROLE_CONFIG.forEach(({ id, label }) => {
+                const btn = context.DOM.create('button', {
+                    className: 'toggle-btn',
+                    'data-role': id
+                }, [label]);
 
-                const label = context.DOM.create('label', {
-                    htmlFor: 'mobile-editor-select',
-                    className: 'mobile-selector-label'
-                }, ['Editor: ']);
-
-                const select = context.DOM.create('select', {
-                    id: 'mobile-editor-select',
-                    className: 'mobile-editor-select'
-                });
-
-                // Add options for each role with status icons
-                ROLE_CONFIG.forEach(({ id, label: roleLabel }) => {
-                    const state = editorState[id];
-                    const statusIcon = state.isDirty ? '● ' : '✓ ';
-                    const option = context.DOM.create('option', {
-                        value: id,
-                        'data-role': id
-                    }, [statusIcon + roleLabel]);
-                    select.appendChild(option);
-                });
-
-                // Set current selection
-                const activeRole = Object.keys(editorState).find(role => editorState[role].active);
-                if (activeRole) {
-                    select.value = activeRole;
-                } else {
-                    // Activate first role if none active
-                    editorState[ROLE_CONFIG[0].id].active = true;
-                    select.value = ROLE_CONFIG[0].id;
-                    setTimeout(() => {
-                        this.updateGrid();
-                        this.saveState();
-                    }, 0);
-                }
-
-                // Add change listener
-                select.addEventListener('change', (e) => this.handleMobileEditorChange(e.target.value));
-
-                wrapper.appendChild(label);
-                wrapper.appendChild(select);
-
-                // Insert at the beginning
-                const saveDropdown = toggleBar.querySelector('.save-dropdown');
-                if (saveDropdown) {
-                    toggleBar.insertBefore(wrapper, saveDropdown);
-                } else {
-                    toggleBar.appendChild(wrapper);
-                }
-            } else {
-                // Create desktop toggle buttons
-                ROLE_CONFIG.forEach(({ id, label }) => {
-                    const btn = context.DOM.create('button', {
-                        className: 'toggle-btn',
-                        'data-role': id
-                    }, [label]);
-
-                    btn.addEventListener('click', (e) => this.toggleEditor(id, e));
-                    toggleBar.appendChild(btn);
-                });
-            }
-
-            // Ensure save/discard buttons exist
-            if (!toggleBar.querySelector('.save-dropdown')) {
-                const buttonGroup = context.DOM.create('div', {
-                    className: 'save-dropdown',
-                    style: { display: 'flex', gap: '4px' }
-                });
-
-                const saveBtn = context.DOM.create('button', {
-                    className: 'btn btn-primary',
-                    id: 'save-btn'
-                }, ['Save All']);
-                saveBtn.addEventListener('click', () => this.saveAll());
-
-                const discardBtn = context.DOM.create('button', {
-                    className: 'btn btn-secondary',
-                    id: 'discard-btn',
-                    style: {
-                        background: '#dc3545',
-                        color: 'white',
-                        border: '1px solid #dc3545'
-                    }
-                }, ['Discard All']);
-                discardBtn.addEventListener('click', () => this.discardAll());
-
-                buttonGroup.appendChild(saveBtn);
-                buttonGroup.appendChild(discardBtn);
-                toggleBar.appendChild(buttonGroup);
-            }
-
-            this.updateToggleButtons();
-        },
-
-        /**
-         * Handle mobile dropdown editor change
-         */
-        handleMobileEditorChange(newRoleId) {
-            console.log(`[CSS Editor] Mobile editor change to: ${newRoleId}`);
-
-            // Deactivate all editors
-            Object.keys(editorState).forEach(roleId => {
-                editorState[roleId].active = false;
+                btn.addEventListener('click', (e) => this.toggleEditor(id, e));
+                toggleBar.appendChild(btn);
             });
 
-            // Activate selected editor
-            editorState[newRoleId].active = true;
+            // Create save/discard buttons
+            const buttonGroup = context.DOM.create('div', {
+                className: 'save-dropdown',
+                style: { display: 'flex', gap: '4px' }
+            });
 
-            this.updateGrid();
-            this.saveState();
+            const saveBtn = context.DOM.create('button', {
+                className: 'btn btn-primary',
+                id: 'save-btn'
+            }, ['Save All']);
+            saveBtn.addEventListener('click', () => this.saveAll());
 
-            // Update option text to reflect current status icons
-            const select = document.getElementById('mobile-editor-select');
-            if (select) {
-                const options = select.querySelectorAll('option[data-role]');
-                options.forEach(option => {
-                    const roleId = option.getAttribute('data-role');
-                    if (roleId && editorState[roleId]) {
-                        const state = editorState[roleId];
-                        const statusIcon = state.isDirty ? '● ' : '✓ ';
-                        option.textContent = statusIcon + state.label;
-                    }
-                });
-                select.value = newRoleId;
-            }
+            const discardBtn = context.DOM.create('button', {
+                className: 'btn btn-secondary',
+                id: 'discard-btn',
+                style: {
+                    background: '#dc3545',
+                    color: 'white',
+                    border: '1px solid #dc3545'
+                }
+            }, ['Discard All']);
+            discardBtn.addEventListener('click', () => this.discardAll());
+
+            buttonGroup.appendChild(saveBtn);
+            buttonGroup.appendChild(discardBtn);
+            toggleBar.appendChild(buttonGroup);
+
+            this.updateToggleButtons();
         },
 
         /**
@@ -721,7 +586,6 @@
          * Update toggle button states and pane status indicators
          */
         updateToggleButtons() {
-            // Update desktop buttons (if they exist)
             const buttons = document.querySelectorAll('.toggle-btn');
 
             buttons.forEach(btn => {
@@ -743,26 +607,6 @@
                     btn.style.color = '';
                 }
             });
-
-            // Update mobile dropdown (if it exists)
-            const mobileSelect = document.getElementById('mobile-editor-select');
-            if (mobileSelect) {
-                const options = mobileSelect.querySelectorAll('option[data-role]');
-                options.forEach(option => {
-                    const roleId = option.getAttribute('data-role');
-                    if (roleId && editorState[roleId]) {
-                        const role = editorState[roleId];
-                        const statusIcon = role.isDirty ? '● ' : '✓ ';
-                        option.textContent = statusIcon + role.label;
-                    }
-                });
-
-                // Set selected value to active role
-                const activeRole = Object.keys(editorState).find(role => editorState[role].active);
-                if (activeRole) {
-                    mobileSelect.value = activeRole;
-                }
-            }
 
             // Update editor pane status indicators
             Object.keys(editorState).forEach(roleId => {
