@@ -27,6 +27,7 @@
     let originalContent = {};
     let csrfToken = '';
     let monacoEditors = {};
+    let keyboardHandler = null; // Keyboard shortcut handler
 
     // ============================================================================
     // App Interface Implementation
@@ -108,6 +109,9 @@
             console.log('[HTML Editor] Initializing editors, skip default:', skipDefault);
             this.initializeEditors(skipDefault);
 
+            // Setup keyboard shortcuts
+            this.setupKeyboardShortcuts();
+
             console.log('[HTML Editor] Mounted');
         },
 
@@ -116,6 +120,12 @@
          */
         async unmount() {
             console.log('[HTML Editor] Unmounting...');
+
+            // Remove keyboard shortcuts
+            if (keyboardHandler) {
+                document.removeEventListener('keydown', keyboardHandler);
+                keyboardHandler = null;
+            }
 
             // Dispose Monaco editors
             Object.values(monacoEditors).forEach(editor => {
@@ -800,6 +810,94 @@
                 console.error('[HTML Editor] Save failed:', error);
                 context.UI.showMessage('Failed to save HTML: ' + error.message, 'error');
             }
+        },
+
+        /**
+         * Save only the currently open tabs
+         */
+        async saveOpenTabs() {
+            try {
+                const openFields = Object.keys(editorState).filter(field => editorState[field].active);
+
+                if (openFields.length === 0) {
+                    context.UI.showMessage('No tabs open to save', 'warning');
+                    return;
+                }
+
+                console.log(`[HTML Editor] Saving ${openFields.length} open tab(s):`, openFields);
+
+                // Sync editor values to state for open tabs
+                openFields.forEach(fieldId => {
+                    const editor = monacoEditors[fieldId];
+                    if (editor) {
+                        editorState[fieldId].content = editor.getValue();
+                    }
+                });
+
+                // Build form data - send edited content for open tabs, original for closed tabs
+                const formData = {
+                    csrf_token: csrfToken,
+                    html_template_head: openFields.includes('head') ? editorState.head.content : originalContent.head,
+                    html_template_tail: openFields.includes('tail') ? editorState.tail.content : originalContent.tail
+                };
+
+                const { body, boundary } = context.API.buildMultipartBody(formData);
+
+                const url = '/deki/cp/custom_html.php?params=%2F';
+                const response = await context.API.fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Cache-Control': 'max-age=0',
+                        'Content-Type': `multipart/form-data; boundary=${boundary}`
+                    },
+                    credentials: 'include',
+                    body: body,
+                    redirect: 'follow'
+                });
+
+                if (response.ok || response.redirected) {
+                    const tabLabel = openFields.length === 1 ? editorState[openFields[0]].label : `${openFields.length} tabs`;
+                    context.UI.showMessage(`${tabLabel} saved successfully!`, 'success');
+
+                    // Update original content for saved tabs
+                    openFields.forEach(fieldId => {
+                        originalContent[fieldId] = editorState[fieldId].content;
+                        editorState[fieldId].isDirty = false;
+                    });
+
+                    this.updateToggleButtons();
+                    this.saveState();
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+            } catch (error) {
+                console.error('[HTML Editor] Save open tabs failed:', error);
+                context.UI.showMessage('Failed to save: ' + error.message, 'error');
+            }
+        },
+
+        /**
+         * Setup keyboard shortcuts
+         */
+        setupKeyboardShortcuts() {
+            keyboardHandler = (e) => {
+                // Ctrl+S or Cmd+S - Save open tabs
+                if ((e.ctrlKey || e.metaKey) && e.key === 's' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.saveOpenTabs();
+                }
+                // Ctrl+Shift+S or Cmd+Shift+S - Save all
+                else if ((e.ctrlKey || e.metaKey) && e.key === 'S' && e.shiftKey) {
+                    e.preventDefault();
+                    this.saveAll();
+                }
+            };
+
+            document.addEventListener('keydown', keyboardHandler);
+            console.log('[HTML Editor] Keyboard shortcuts registered: Ctrl+S (save open), Ctrl+Shift+S (save all)');
         }
     };
 

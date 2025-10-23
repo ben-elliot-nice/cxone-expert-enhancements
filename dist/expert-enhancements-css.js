@@ -32,6 +32,7 @@
     let csrfToken = '';
     let monacoEditors = {};
     let isMobileView = false;
+    let keyboardHandler = null; // Keyboard shortcut handler
 
     // ============================================================================
     // App Interface Implementation
@@ -113,6 +114,9 @@
             console.log('[CSS Editor] Initializing editors, skip default:', skipDefault);
             this.initializeEditors(skipDefault);
 
+            // Setup keyboard shortcuts
+            this.setupKeyboardShortcuts();
+
             console.log('[CSS Editor] Mounted');
         },
 
@@ -121,6 +125,12 @@
          */
         async unmount() {
             console.log('[CSS Editor] Unmounting...');
+
+            // Remove keyboard shortcuts
+            if (keyboardHandler) {
+                document.removeEventListener('keydown', keyboardHandler);
+                keyboardHandler = null;
+            }
 
             // Dispose Monaco editors
             Object.values(monacoEditors).forEach(editor => {
@@ -817,6 +827,98 @@
                 console.error('[CSS Editor] Save failed:', error);
                 context.UI.showMessage('Failed to save CSS: ' + error.message, 'error');
             }
+        },
+
+        /**
+         * Save only the currently open tabs
+         */
+        async saveOpenTabs() {
+            try {
+                const openRoles = Object.keys(editorState).filter(role => editorState[role].active);
+
+                if (openRoles.length === 0) {
+                    context.UI.showMessage('No tabs open to save', 'warning');
+                    return;
+                }
+
+                console.log(`[CSS Editor] Saving ${openRoles.length} open tab(s):`, openRoles);
+
+                // Sync editor values to state for open tabs
+                openRoles.forEach(roleId => {
+                    const editor = monacoEditors[roleId];
+                    if (editor) {
+                        editorState[roleId].content = editor.getValue();
+                    }
+                });
+
+                // Build form data - send edited content for open tabs, original for closed tabs
+                const formData = {
+                    csrf_token: csrfToken,
+                    css_template_all: openRoles.includes('all') ? editorState.all.content : originalContent.all,
+                    css_template_anonymous: openRoles.includes('anonymous') ? editorState.anonymous.content : originalContent.anonymous,
+                    css_template_viewer: openRoles.includes('viewer') ? editorState.viewer.content : originalContent.viewer,
+                    css_template_seated: openRoles.includes('seated') ? editorState.seated.content : originalContent.seated,
+                    css_template_admin: openRoles.includes('admin') ? editorState.admin.content : originalContent.admin,
+                    css_template_grape: openRoles.includes('grape') ? editorState.grape.content : originalContent.grape
+                };
+
+                const { body, boundary } = context.API.buildMultipartBody(formData);
+
+                const url = '/deki/cp/custom_css.php?params=%2F';
+                const response = await context.API.fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Cache-Control': 'max-age=0',
+                        'Content-Type': `multipart/form-data; boundary=${boundary}`
+                    },
+                    credentials: 'include',
+                    body: body,
+                    redirect: 'follow'
+                });
+
+                if (response.ok || response.redirected) {
+                    const tabLabel = openRoles.length === 1 ? editorState[openRoles[0]].label : `${openRoles.length} tabs`;
+                    context.UI.showMessage(`${tabLabel} saved successfully!`, 'success');
+
+                    // Update original content for saved tabs
+                    openRoles.forEach(roleId => {
+                        originalContent[roleId] = editorState[roleId].content;
+                        editorState[roleId].isDirty = false;
+                    });
+
+                    this.updateToggleButtons();
+                    this.saveState();
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+            } catch (error) {
+                console.error('[CSS Editor] Save open tabs failed:', error);
+                context.UI.showMessage('Failed to save: ' + error.message, 'error');
+            }
+        },
+
+        /**
+         * Setup keyboard shortcuts
+         */
+        setupKeyboardShortcuts() {
+            keyboardHandler = (e) => {
+                // Ctrl+S or Cmd+S - Save open tabs
+                if ((e.ctrlKey || e.metaKey) && e.key === 's' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.saveOpenTabs();
+                }
+                // Ctrl+Shift+S or Cmd+Shift+S - Save all
+                else if ((e.ctrlKey || e.metaKey) && e.key === 'S' && e.shiftKey) {
+                    e.preventDefault();
+                    this.saveAll();
+                }
+            };
+
+            document.addEventListener('keydown', keyboardHandler);
+            console.log('[CSS Editor] Keyboard shortcuts registered: Ctrl+S (save open), Ctrl+Shift+S (save all)');
         }
     };
 
