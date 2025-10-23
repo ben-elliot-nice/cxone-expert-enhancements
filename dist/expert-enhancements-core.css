@@ -80,10 +80,66 @@
     background: white;
 }
 
+/* App-Specific Controls Container */
+#expert-enhancements-overlay-header .app-controls-container {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+/* Live Preview Toggle Button */
+.live-preview-toggle {
+    background: rgba(244, 67, 54, 0.3); /* Red = OFF */
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.live-preview-toggle.enabled {
+    background: rgba(76, 175, 80, 0.3); /* Green = ON */
+}
+
+.live-preview-toggle:hover {
+    opacity: 0.85;
+    transform: scale(1.05);
+}
+
+/* Live Preview Role Selector */
+.live-preview-role-selector {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    color: #333;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.2s;
+    min-width: 110px;
+}
+
+.live-preview-role-selector:hover {
+    background: white;
+}
+
+.live-preview-role-selector:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.8);
+    outline-offset: 1px;
+}
+
 #expert-enhancements-overlay-header .header-buttons {
     display: flex;
     gap: 8px;
     align-items: center;
+    padding-left: 8px;
 }
 
 #expert-enhancements-overlay-header .header-btn {
@@ -513,6 +569,18 @@
     #message-area .message {
         padding: 0.75rem 1rem;
         font-size: 0.85rem;
+    }
+
+    /* Mobile responsiveness for live preview controls */
+    .live-preview-toggle {
+        font-size: 14px;
+        padding: 3px 8px;
+    }
+
+    .live-preview-role-selector {
+        font-size: 11px;
+        padding: 3px 6px;
+        min-width: 90px;
     }
 }
 
