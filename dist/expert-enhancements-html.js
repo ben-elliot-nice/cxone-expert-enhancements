@@ -28,6 +28,7 @@
     let csrfToken = '';
     let monacoEditors = {};
     let keyboardHandler = null; // Keyboard shortcut handler
+    let isMobileView = false; // Track mobile/desktop view mode
 
     // ============================================================================
     // App Interface Implementation
@@ -101,7 +102,13 @@
             // Load HTML data - skip full fetch if we have dirty edits (checkpoint protection)
             await this.loadData(hasDirtyEdits);
 
-            // Build toggle bar
+            // Check viewport width to set mobile/desktop view
+            this.checkViewportWidth();
+
+            // Setup save dropdown structure (one-time)
+            this.setupSaveDropdownStructure();
+
+            // Build toggle bar (buttons or dropdown based on viewport)
             this.buildToggleBar();
 
             // Initialize editors - skip default if we have saved state
@@ -160,6 +167,9 @@
          * Handle resize events
          */
         onResize() {
+            // Check if view mode changed (mobile/desktop)
+            this.checkViewportWidth();
+
             // Recalculate heights and re-layout
             this.updateHeights();
         },
@@ -227,6 +237,71 @@
         },
 
         /**
+         * Check viewport width and switch between mobile/desktop view
+         */
+        checkViewportWidth() {
+            const wasMobileView = isMobileView;
+
+            // Get container width to determine mobile/desktop view
+            const container = document.getElementById('html-editor-container');
+            if (container) {
+                const containerWidth = container.offsetWidth;
+                isMobileView = containerWidth < 920;
+                console.log(`[HTML Editor] checkViewportWidth: width=${containerWidth}px, mobile=${isMobileView}`);
+            }
+
+            // If view mode changed, rebuild the toggle bar
+            if (wasMobileView !== isMobileView) {
+                console.log(`[HTML Editor] View mode changed to ${isMobileView ? 'mobile' : 'desktop'}`);
+                this.buildToggleBar();
+
+                // If switching to mobile and multiple editors are active, keep only the first
+                if (isMobileView) {
+                    const activeFields = Object.keys(editorState).filter(field => editorState[field].active);
+                    if (activeFields.length > 1) {
+                        console.log(`[HTML Editor] Multiple editors active in mobile view, keeping only: ${activeFields[0]}`);
+                        // Deactivate all except the first
+                        activeFields.slice(1).forEach(fieldId => {
+                            editorState[fieldId].active = false;
+                        });
+                        this.updateGrid();
+                    }
+                }
+            }
+        },
+
+        /**
+         * Handle mobile dropdown editor change
+         */
+        handleMobileEditorChange(newFieldId) {
+            console.log(`[HTML Editor] handleMobileEditorChange to: ${newFieldId}`);
+
+            const currentActiveField = Object.keys(editorState).find(field => editorState[field].active);
+
+            // If selecting the same field, do nothing
+            if (newFieldId === currentActiveField) {
+                return;
+            }
+
+            // Deactivate all editors
+            Object.keys(editorState).forEach(fieldId => {
+                editorState[fieldId].active = false;
+            });
+
+            // Activate selected editor
+            editorState[newFieldId].active = true;
+
+            this.updateGrid();
+            this.saveState();
+
+            // Update option text to reflect current status icons
+            const mobileSelect = document.getElementById('mobile-editor-select');
+            if (mobileSelect) {
+                this.updateToggleButtons();
+            }
+        },
+
+        /**
          * Load HTML data from API
          * @param {boolean} skipContent - If true, only fetch CSRF token (checkpoint protection)
          */
@@ -282,24 +357,96 @@
         },
 
         /**
-         * Build toggle bar with field buttons
+         * Build toggle bar with field buttons or mobile dropdown
          */
         buildToggleBar() {
             const toggleBar = document.getElementById('toggle-bar');
             if (!toggleBar) return;
 
-            toggleBar.innerHTML = '';
+            console.log(`[HTML Editor] buildToggleBar for ${isMobileView ? 'mobile' : 'desktop'} view`);
 
-            // Create field buttons
-            FIELD_CONFIG.forEach(({ id, label }) => {
-                const btn = context.DOM.create('button', {
-                    className: 'toggle-btn',
-                    'data-field': id
-                }, [label]);
+            // Clear existing buttons/selectors (but keep save dropdown)
+            const existingButtons = toggleBar.querySelectorAll('.toggle-btn, .mobile-selector-wrapper');
+            existingButtons.forEach(el => el.remove());
 
-                btn.addEventListener('click', (e) => this.toggleEditor(id, e));
-                toggleBar.appendChild(btn);
-            });
+            if (isMobileView) {
+                // Create mobile dropdown selector
+                const wrapper = document.createElement('div');
+                wrapper.className = 'mobile-selector-wrapper';
+
+                const label = document.createElement('label');
+                label.htmlFor = 'mobile-editor-select';
+                label.textContent = 'Editor: ';
+                label.className = 'mobile-selector-label';
+
+                const select = document.createElement('select');
+                select.id = 'mobile-editor-select';
+                select.className = 'mobile-editor-select';
+
+                // Add options for each field with status icons
+                FIELD_CONFIG.forEach(({ id, label: fieldLabel }) => {
+                    const field = editorState[id];
+                    const option = document.createElement('option');
+                    option.value = id;
+                    const statusIcon = field.isDirty ? '● ' : '✓ ';
+                    option.textContent = statusIcon + fieldLabel;
+                    option.setAttribute('data-field', id);
+                    select.appendChild(option);
+                });
+
+                // Set current selection - respect already active editor
+                let activeField = Object.keys(editorState).find(field => editorState[field].active);
+
+                // Only activate first editor if truly no active editors exist
+                if (!activeField) {
+                    const firstField = FIELD_CONFIG[0].id;
+                    editorState[firstField].active = true;
+                    activeField = firstField;
+                    console.log(`[HTML Editor] No active editor found, activating first: ${activeField}`);
+                    // Need to render the editor
+                    setTimeout(() => {
+                        this.updateGrid();
+                        this.saveState();
+                    }, 0);
+                } else {
+                    console.log(`[HTML Editor] Using existing active editor: ${activeField}`);
+                }
+
+                select.value = activeField;
+
+                // Add change listener
+                select.addEventListener('change', (e) => this.handleMobileEditorChange(e.target.value));
+
+                wrapper.appendChild(label);
+                wrapper.appendChild(select);
+
+                // Insert at the beginning of toggle bar (before save dropdown)
+                const firstChild = toggleBar.firstChild;
+                toggleBar.insertBefore(wrapper, firstChild);
+            } else {
+                // Create desktop toggle buttons
+                FIELD_CONFIG.forEach(({ id, label }) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'toggle-btn';
+                    btn.setAttribute('data-field', id);
+                    btn.textContent = label;
+                    btn.addEventListener('click', (e) => this.toggleEditor(id, e));
+
+                    // Insert before the save dropdown
+                    const saveDropdown = toggleBar.querySelector('.save-dropdown');
+                    toggleBar.insertBefore(btn, saveDropdown);
+                });
+            }
+
+            this.updateToggleButtons();
+        },
+
+        /**
+         * Setup save dropdown (called once during initial build)
+         */
+        setupSaveDropdownStructure() {
+            const toggleBar = document.getElementById('toggle-bar');
+            if (!toggleBar) return;
 
             // Create save/discard dropdown (matching CSS editor structure)
             const saveDropdown = context.DOM.create('div', { className: 'save-dropdown' });
@@ -655,6 +802,21 @@
                     btn.style.color = '';
                 }
             });
+
+            // Update mobile dropdown (if it exists)
+            const mobileSelect = document.getElementById('mobile-editor-select');
+            if (mobileSelect) {
+                const options = mobileSelect.querySelectorAll('option[data-field]');
+                options.forEach(option => {
+                    const fieldId = option.getAttribute('data-field');
+                    const field = editorState[fieldId];
+                    if (field) {
+                        const statusIcon = field.isDirty ? '● ' : '✓ ';
+                        const fieldLabel = FIELD_CONFIG.find(f => f.id === fieldId)?.label || fieldId;
+                        option.textContent = statusIcon + fieldLabel;
+                    }
+                });
+            }
 
             // Update editor pane status indicators
             Object.keys(editorState).forEach(fieldId => {
