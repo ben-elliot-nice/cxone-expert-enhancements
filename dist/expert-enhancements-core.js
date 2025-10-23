@@ -1017,9 +1017,6 @@
                 resizeStartLeft = rect.left;
                 resizeStartTop = rect.top;
 
-                // Add visual feedback class
-                e.target.classList.add('resizing');
-
                 e.preventDefault();
             };
 
@@ -1085,11 +1082,6 @@
 
             document.addEventListener('mouseup', () => {
                 if (isResizing) {
-                    // Remove visual feedback from all handles
-                    document.querySelectorAll('.enhancements-resize-handle').forEach(handle => {
-                        handle.classList.remove('resizing');
-                    });
-
                     isResizing = false;
                     currentResizeHandle = null;
                     this.saveDimensions();
