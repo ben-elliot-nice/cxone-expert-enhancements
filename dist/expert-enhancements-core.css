@@ -125,12 +125,34 @@
     position: absolute;
     background: transparent;
     z-index: 10;
+    opacity: 0;
+    transition: opacity 0.2s ease, background 0.15s ease;
+}
+
+/* Show handles on overlay hover */
+#expert-enhancements-overlay:hover .enhancements-resize-handle {
+    opacity: 1;
+}
+
+/* Keep handles visible while resizing */
+.enhancements-resize-handle.resizing {
+    opacity: 1 !important;
+}
+
+/* Hover state - subtle highlight */
+.enhancements-resize-handle:hover {
+    background: rgba(102, 126, 234, 0.15);
+}
+
+/* Active/dragging state - stronger highlight */
+.enhancements-resize-handle.resizing {
+    background: rgba(102, 126, 234, 0.25);
 }
 
 .enhancements-resize-handle.left {
     left: 0;
     top: 0;
-    width: 8px;
+    width: 12px;
     height: 100%;
     cursor: ew-resize;
 }
@@ -138,7 +160,7 @@
 .enhancements-resize-handle.right {
     right: 0;
     top: 0;
-    width: 8px;
+    width: 12px;
     height: 100%;
     cursor: ew-resize;
 }
@@ -147,15 +169,15 @@
     bottom: 0;
     left: 0;
     width: 100%;
-    height: 8px;
+    height: 12px;
     cursor: ns-resize;
 }
 
 .enhancements-resize-handle.corner-right {
     bottom: 0;
     right: 0;
-    width: 16px;
-    height: 16px;
+    width: 20px;
+    height: 20px;
     cursor: nwse-resize;
 }
 
@@ -164,16 +186,21 @@
     position: absolute;
     right: 2px;
     bottom: 2px;
-    width: 12px;
-    height: 12px;
-    background: linear-gradient(-45deg, transparent 0%, transparent 40%, rgba(255,255,255,0.2) 40%, rgba(255,255,255,0.2) 45%, transparent 45%, transparent 55%, rgba(255,255,255,0.2) 55%, rgba(255,255,255,0.2) 60%, transparent 60%);
+    width: 16px;
+    height: 16px;
+    background: linear-gradient(-45deg, transparent 0%, transparent 40%, rgba(255,255,255,0.25) 40%, rgba(255,255,255,0.25) 45%, transparent 45%, transparent 55%, rgba(255,255,255,0.25) 55%, rgba(255,255,255,0.25) 60%, transparent 60%);
+    transition: opacity 0.15s ease;
+}
+
+.enhancements-resize-handle.corner-right:hover::after {
+    background: linear-gradient(-45deg, transparent 0%, transparent 40%, rgba(255,255,255,0.4) 40%, rgba(255,255,255,0.4) 45%, transparent 45%, transparent 55%, rgba(255,255,255,0.4) 55%, rgba(255,255,255,0.4) 60%, transparent 60%);
 }
 
 .enhancements-resize-handle.corner-left {
     bottom: 0;
     left: 0;
-    width: 16px;
-    height: 16px;
+    width: 20px;
+    height: 20px;
     cursor: nesw-resize;
 }
 
@@ -182,9 +209,27 @@
     position: absolute;
     left: 2px;
     bottom: 2px;
-    width: 12px;
-    height: 12px;
-    background: linear-gradient(45deg, transparent 0%, transparent 40%, rgba(255,255,255,0.2) 40%, rgba(255,255,255,0.2) 45%, transparent 45%, transparent 55%, rgba(255,255,255,0.2) 55%, rgba(255,255,255,0.2) 60%, transparent 60%);
+    width: 16px;
+    height: 16px;
+    background: linear-gradient(45deg, transparent 0%, transparent 40%, rgba(255,255,255,0.25) 40%, rgba(255,255,255,0.25) 45%, transparent 45%, transparent 55%, rgba(255,255,255,0.25) 55%, rgba(255,255,255,0.25) 60%, transparent 60%);
+    transition: opacity 0.15s ease;
+}
+
+.enhancements-resize-handle.corner-left:hover::after {
+    background: linear-gradient(45deg, transparent 0%, transparent 40%, rgba(255,255,255,0.4) 40%, rgba(255,255,255,0.4) 45%, transparent 45%, transparent 55%, rgba(255,255,255,0.4) 55%, rgba(255,255,255,0.4) 60%, transparent 60%);
+}
+
+/* Touch device support */
+@media (hover: none) and (pointer: coarse) {
+    /* Always show handles on touch devices at 50% opacity */
+    .enhancements-resize-handle {
+        opacity: 0.5;
+    }
+
+    /* Full opacity when overlay is being touched/active */
+    #expert-enhancements-overlay:active .enhancements-resize-handle {
+        opacity: 1;
+    }
 }
 
 /* ============================================================================
