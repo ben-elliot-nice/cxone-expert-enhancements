@@ -112,6 +112,15 @@
             // Setup keyboard shortcuts
             this.setupKeyboardShortcuts();
 
+            // Setup click listener to close editor dropdowns when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.editor-save-dropdown')) {
+                    document.querySelectorAll('.editor-save-dropdown-menu.show').forEach(menu => {
+                        menu.classList.remove('show');
+                    });
+                }
+            });
+
             console.log('[HTML Editor] Mounted');
         },
 
@@ -454,57 +463,57 @@
 
             // Action buttons
             const actions = context.DOM.create('div', {
-                style: { display: 'flex', gap: '0.5rem' }
+                className: 'editor-pane-actions',
+                style: { display: 'flex', gap: '0.5rem', alignItems: 'center' }
+            });
+
+            // Save dropdown group
+            const saveDropdown = context.DOM.create('div', {
+                className: 'editor-save-dropdown'
             });
 
             const saveBtn = context.DOM.create('button', {
-                className: 'pane-btn pane-btn-save',
-                title: 'Save',
-                style: {
-                    background: '#28a745',
-                    border: '1px solid #28a745',
-                    color: 'white',
-                    padding: '0.25rem 0.5rem',
-                    borderRadius: '3px',
-                    cursor: 'pointer',
-                    fontSize: '0.7rem'
-                }
+                className: 'editor-pane-save',
+                'data-save-field': fieldId
             }, ['Save']);
             saveBtn.addEventListener('click', () => this.saveField(fieldId));
 
+            const dropdownToggle = context.DOM.create('button', {
+                className: 'editor-save-dropdown-toggle',
+                'data-dropdown-field': fieldId
+            }, ['▼']);
+            dropdownToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleEditorDropdown(fieldId);
+            });
+
+            const dropdownMenu = context.DOM.create('div', {
+                className: 'editor-save-dropdown-menu',
+                'data-menu-field': fieldId
+            });
+
+            const revertBtn = context.DOM.create('button', {
+                className: 'editor-dropdown-item',
+                'data-revert-field': fieldId
+            }, ['Revert this']);
+            revertBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.revertField(fieldId);
+            });
+
+            dropdownMenu.appendChild(revertBtn);
+            saveDropdown.appendChild(saveBtn);
+            saveDropdown.appendChild(dropdownToggle);
+            saveDropdown.appendChild(dropdownMenu);
+
             const exportBtn = context.DOM.create('button', {
-                className: 'pane-btn',
-                title: 'Export',
-                style: {
-                    background: 'transparent',
-                    border: '1px solid #555',
-                    color: '#ccc',
-                    padding: '0.25rem 0.5rem',
-                    borderRadius: '3px',
-                    cursor: 'pointer',
-                    fontSize: '0.7rem'
-                }
+                className: 'editor-pane-export',
+                'data-export-field': fieldId
             }, ['Export']);
             exportBtn.addEventListener('click', () => this.exportField(fieldId));
 
-            const discardBtn = context.DOM.create('button', {
-                className: 'pane-btn',
-                title: 'Discard',
-                style: {
-                    background: 'transparent',
-                    border: '1px solid #555',
-                    color: '#dc3545',
-                    padding: '0.25rem 0.5rem',
-                    borderRadius: '3px',
-                    cursor: 'pointer',
-                    fontSize: '0.7rem'
-                }
-            }, ['Discard']);
-            discardBtn.addEventListener('click', () => this.discardField(fieldId));
-
-            actions.appendChild(saveBtn);
+            actions.appendChild(saveDropdown);
             actions.appendChild(exportBtn);
-            actions.appendChild(discardBtn);
 
             header.appendChild(titleGroup);
             header.appendChild(actions);
@@ -634,18 +643,33 @@
         },
 
         /**
-         * Discard all changes (revert to original)
+         * Discard all changes (with inline confirmation)
          */
-        async discardAll() {
-            const confirmed = await context.UI.confirm(
-                'Discard all changes and revert to last saved state?',
-                { confirmText: 'Discard', cancelText: 'Cancel', type: 'danger' }
-            );
+        discardAll() {
+            // Check if there are any unsaved changes
+            const hasUnsavedChanges = Object.values(editorState).some(field => field.isDirty);
+            const discardBtn = document.getElementById('discard-btn');
 
-            if (!confirmed) {
+            if (hasUnsavedChanges) {
+                // Show inline confirmation
+                if (discardBtn && !discardBtn.classList.contains('confirming')) {
+                    context.UI.showInlineConfirmation(discardBtn, () => {
+                        this.performDiscardAll();
+                    });
+                }
                 return;
             }
 
+            // No changes - show "No changes" message
+            if (discardBtn && !discardBtn.classList.contains('showing-no-changes')) {
+                context.UI.showNoChangesMessage(discardBtn);
+            }
+        },
+
+        /**
+         * Execute discard all (after confirmation)
+         */
+        performDiscardAll() {
             Object.keys(editorState).forEach(fieldId => {
                 editorState[fieldId].content = originalContent[fieldId] || '';
                 editorState[fieldId].isDirty = false;
@@ -657,24 +681,51 @@
             });
 
             this.updateToggleButtons();
+
+            // Check if all editors are now clean - if so, clear app state
+            const allClean = Object.values(editorState).every(s => !s.isDirty);
+            if (allClean) {
+                console.log('[HTML Editor] All editors clean, clearing app state');
+                context.Storage.clearAppState(this.id);
+            } else {
+                this.saveState();
+            }
+
             context.UI.showMessage('All changes discarded', 'success');
         },
 
         /**
-         * Discard changes for a specific field
+         * Revert changes for a specific field (with inline confirmation)
          */
-        async discardField(fieldId) {
+        revertField(fieldId) {
             const field = editorState[fieldId];
             if (!field) return;
 
-            const confirmed = await context.UI.confirm(
-                `Discard changes to ${field.label}?`,
-                { confirmText: 'Discard', cancelText: 'Cancel', type: 'danger' }
-            );
+            const revertBtn = document.querySelector(`[data-revert-field="${fieldId}"]`);
+            if (!revertBtn) return;
 
-            if (!confirmed) {
+            if (field.isDirty) {
+                // Show inline confirmation
+                if (!revertBtn.classList.contains('confirming')) {
+                    context.UI.showInlineConfirmation(revertBtn, () => {
+                        this.performRevert(fieldId);
+                    });
+                }
                 return;
             }
+
+            // No changes - show "No changes" message
+            if (!revertBtn.classList.contains('showing-no-changes')) {
+                context.UI.showNoChangesMessage(revertBtn);
+            }
+        },
+
+        /**
+         * Execute revert (after confirmation)
+         */
+        performRevert(fieldId) {
+            const field = editorState[fieldId];
+            if (!field) return;
 
             field.content = originalContent[fieldId] || '';
             field.isDirty = false;
@@ -684,8 +735,42 @@
                 editor.setValue(field.content);
             }
 
+            // Close the dropdown
+            const menu = document.querySelector(`[data-menu-field="${fieldId}"]`);
+            if (menu) {
+                menu.classList.remove('show');
+            }
+
             this.updateToggleButtons();
+
+            // Check if all editors are now clean - if so, clear app state
+            const allClean = Object.values(editorState).every(s => !s.isDirty);
+            if (allClean) {
+                console.log('[HTML Editor] All editors clean, clearing app state');
+                context.Storage.clearAppState(this.id);
+            } else {
+                this.saveState();
+            }
+
             context.UI.showMessage(`${field.label} reverted`, 'success');
+        },
+
+        /**
+         * Toggle editor dropdown menu
+         */
+        toggleEditorDropdown(fieldId) {
+            const menu = document.querySelector(`[data-menu-field="${fieldId}"]`);
+            if (!menu) return;
+
+            // Close all other editor dropdowns
+            document.querySelectorAll('.editor-save-dropdown-menu.show').forEach(m => {
+                if (m !== menu) {
+                    m.classList.remove('show');
+                }
+            });
+
+            // Toggle this dropdown
+            menu.classList.toggle('show');
         },
 
         /**

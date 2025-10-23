@@ -885,7 +885,15 @@
             });
 
             this.updateToggleButtons();
-            this.saveState();
+
+            // Check if all editors are now clean - if so, clear app state
+            const allClean = Object.values(editorState).every(s => !s.isDirty);
+            if (allClean) {
+                console.log('[CSS Editor] All editors clean, clearing app state');
+                context.Storage.clearAppState(this.id);
+            } else {
+                this.saveState();
+            }
 
             // Close dropdown menu
             const dropdownMenu = document.getElementById('save-dropdown-menu');
@@ -945,7 +953,15 @@
             }
 
             this.updateToggleButtons();
-            this.saveState();
+
+            // Check if all editors are now clean - if so, clear app state
+            const allClean = Object.values(editorState).every(s => !s.isDirty);
+            if (allClean) {
+                console.log('[CSS Editor] All editors clean, clearing app state');
+                context.Storage.clearAppState(this.id);
+            } else {
+                this.saveState();
+            }
 
             // Close dropdown menu
             const menu = document.querySelector(`[data-menu-role="${roleId}"]`);
