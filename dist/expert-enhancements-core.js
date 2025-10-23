@@ -1064,6 +1064,9 @@
                     const newHeight = Math.max(constraints.minHeight, Math.min(resizeStartHeight + deltaY, maxHeight));
                     overlay.style.height = newHeight + 'px';
                 }
+
+                // Notify app of resize during drag (for immediate mobile view switching)
+                AppManager.notifyResize();
             });
 
             document.addEventListener('mouseup', () => {
