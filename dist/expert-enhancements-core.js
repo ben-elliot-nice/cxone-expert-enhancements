@@ -60,7 +60,8 @@
                         API,
                         Storage,
                         UI,
-                        DOM
+                        DOM,
+                        Overlay
                     };
                     await app.init(context);
                     initializedApps.add(appId);
