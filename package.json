@@ -1,12 +1,11 @@
 {
   "name": "cxone-expert-enhancements",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Extensible toolkit loader for CXone Expert with modular enhancement modules including CSS editor, live preview, and more",
   "type": "module",
   "scripts": {
-    "deploy": "node deploy.js",
-    "deploy:v2": "node deploy-v2.js",
-    "cleanup": "node cleanup-feature.js"
+    "deploy": "node deploy/deploy-v2.js",
+    "cleanup": "node deploy/cleanup-feature.js"
   },
   "keywords": [
     "cxone",

@@ -22,13 +22,6 @@ const CONFIG = {
     { local: 'dist/expert-enhancements-css.css', remote: 'expert-enhancements-css.css', contentType: 'text/css' },
     { local: 'dist/expert-enhancements-css.js', remote: 'expert-enhancements-css.js', contentType: 'application/javascript' },
     { local: 'dist/expert-enhancements-html.js', remote: 'expert-enhancements-html.js', contentType: 'application/javascript' },
-    // Legacy individual files (for backwards compatibility during transition)
-    { local: 'dist/css-editor.css', remote: 'css-editor.css', contentType: 'text/css' },
-    { local: 'dist/css-editor.js', remote: 'css-editor.js', contentType: 'application/javascript' },
-    { local: 'dist/css-editor-embed.js', remote: 'css-editor-embed.js', contentType: 'application/javascript' },
-    { local: 'dist/html-editor.css', remote: 'html-editor.css', contentType: 'text/css' },
-    { local: 'dist/html-editor.js', remote: 'html-editor.js', contentType: 'application/javascript' },
-    { local: 'dist/html-editor-embed.js', remote: 'html-editor-embed.js', contentType: 'application/javascript' },
   ]
 };
 

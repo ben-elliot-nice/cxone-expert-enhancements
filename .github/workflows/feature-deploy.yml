@@ -31,7 +31,7 @@ jobs:
           DO_SPACES_ENDPOINT: ${{ vars.DO_SPACES_ENDPOINT }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
           GITHUB_ACTIONS: 'true'
-        run: npm run deploy:v2
+        run: npm run deploy
 
       - name: Create deployment summary
         run: |
