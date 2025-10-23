@@ -1,0 +1,653 @@
+/*
+ * CXone Expert Enhancements - Core Styles
+ * Common styles for the overlay shell and all apps
+ */
+
+/* ============================================================================
+   Global Reset for Overlay
+   ============================================================================ */
+
+#expert-enhancements-overlay * {
+    box-sizing: border-box;
+}
+
+/* ============================================================================
+   Overlay Shell
+   ============================================================================ */
+
+#expert-enhancements-overlay {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 1400px;
+    height: 800px;
+    max-width: 95vw;
+    max-height: 95vh;
+    background: #1e1e1e;
+    border: 1px solid #444;
+    border-radius: 8px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    z-index: 999999;
+    display: none;
+    flex-direction: column;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    overflow: hidden;
+}
+
+/* ============================================================================
+   Overlay Header
+   ============================================================================ */
+
+#expert-enhancements-overlay-header {
+    background: #667eea;
+    color: white;
+    padding: 12px 16px;
+    cursor: move;
+    user-select: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 8px 8px 0 0;
+    flex-shrink: 0;
+}
+
+#expert-enhancements-overlay-header .header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+#expert-enhancements-overlay-header .header-title {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+#expert-enhancements-overlay-header .app-switcher {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    color: #333;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.2s;
+    min-width: 120px;
+}
+
+#expert-enhancements-overlay-header .app-switcher:hover {
+    background: white;
+}
+
+/* App-Specific Controls Container */
+#expert-enhancements-overlay-header .app-controls-container {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+/* Live Preview Toggle Button */
+.live-preview-toggle {
+    background: rgba(244, 67, 54, 0.3); /* Red = OFF */
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.live-preview-toggle.enabled {
+    background: rgba(76, 175, 80, 0.3); /* Green = ON */
+}
+
+.live-preview-toggle:hover {
+    opacity: 0.85;
+    transform: scale(1.05);
+}
+
+/* Live Preview Role Selector */
+.live-preview-role-selector {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    color: #333;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.2s;
+    min-width: 110px;
+}
+
+.live-preview-role-selector:hover {
+    background: white;
+}
+
+.live-preview-role-selector:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.8);
+    outline-offset: 1px;
+}
+
+#expert-enhancements-overlay-header .header-buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding-left: 8px;
+}
+
+#expert-enhancements-overlay-header .header-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 20px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+#expert-enhancements-overlay-header .header-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* ============================================================================
+   Overlay Content (App Container)
+   ============================================================================ */
+
+#expert-enhancements-overlay-content {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    background: #1e1e1e;
+}
+
+/* ============================================================================
+   Resize Handles
+   ============================================================================ */
+
+.enhancements-resize-handle {
+    position: absolute;
+    background: transparent;
+    z-index: 10;
+    opacity: 0;
+    transition: opacity 0.2s ease, background 0.15s ease;
+}
+
+/* Show handles on overlay hover */
+#expert-enhancements-overlay:hover .enhancements-resize-handle {
+    opacity: 1;
+}
+
+/* Keep handles visible while resizing */
+.enhancements-resize-handle.resizing {
+    opacity: 1 !important;
+}
+
+/* Hover state - subtle gradient highlight fading from editor to edge */
+.enhancements-resize-handle.left:hover {
+    background: linear-gradient(to left, rgba(102, 126, 234, 0.15), rgba(102, 126, 234, 1));
+}
+
+.enhancements-resize-handle.right:hover {
+    background: linear-gradient(to right, rgba(102, 126, 234, 0.15), rgba(102, 126, 234, 1));
+}
+
+.enhancements-resize-handle.bottom:hover {
+    background: linear-gradient(to bottom, rgba(102, 126, 234, 0.15), rgba(102, 126, 234, 1));
+}
+
+.enhancements-resize-handle.corner-right:hover {
+    background: linear-gradient(to bottom right, rgba(102, 126, 234, 0.15), rgba(102, 126, 234, 1));
+}
+
+.enhancements-resize-handle.corner-left:hover {
+    background: linear-gradient(to bottom left, rgba(102, 126, 234, 0.15), rgba(102, 126, 234, 1));
+}
+
+/* Active/dragging state - stronger gradient */
+.enhancements-resize-handle.left.resizing {
+    background: linear-gradient(to left, rgba(102, 126, 234, 0.25), rgba(102, 126, 234, 1));
+}
+
+.enhancements-resize-handle.right.resizing {
+    background: linear-gradient(to right, rgba(102, 126, 234, 0.25), rgba(102, 126, 234, 1));
+}
+
+.enhancements-resize-handle.bottom.resizing {
+    background: linear-gradient(to bottom, rgba(102, 126, 234, 0.25), rgba(102, 126, 234, 1));
+}
+
+.enhancements-resize-handle.corner-right.resizing {
+    background: linear-gradient(to bottom right, rgba(102, 126, 234, 0.25), rgba(102, 126, 234, 1));
+}
+
+.enhancements-resize-handle.corner-left.resizing {
+    background: linear-gradient(to bottom left, rgba(102, 126, 234, 0.25), rgba(102, 126, 234, 1));
+}
+
+.enhancements-resize-handle.left {
+    left: 0;
+    top: 0;
+    width: 12px;
+    height: 100%;
+    cursor: ew-resize;
+}
+
+.enhancements-resize-handle.right {
+    right: 0;
+    top: 0;
+    width: 12px;
+    height: 100%;
+    cursor: ew-resize;
+}
+
+.enhancements-resize-handle.bottom {
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 12px;
+    cursor: ns-resize;
+}
+
+.enhancements-resize-handle.corner-right {
+    bottom: 0;
+    right: 0;
+    width: 20px;
+    height: 20px;
+    cursor: nwse-resize;
+}
+
+.enhancements-resize-handle.corner-right::after {
+    content: '';
+    position: absolute;
+    right: 2px;
+    bottom: 2px;
+    width: 16px;
+    height: 16px;
+    background: linear-gradient(-45deg, transparent 0%, transparent 40%, rgba(255,255,255,0.25) 40%, rgba(255,255,255,0.25) 45%, transparent 45%, transparent 55%, rgba(255,255,255,0.25) 55%, rgba(255,255,255,0.25) 60%, transparent 60%);
+    transition: opacity 0.15s ease;
+}
+
+.enhancements-resize-handle.corner-right:hover::after {
+    background: linear-gradient(-45deg, transparent 0%, transparent 40%, rgba(255,255,255,0.4) 40%, rgba(255,255,255,0.4) 45%, transparent 45%, transparent 55%, rgba(255,255,255,0.4) 55%, rgba(255,255,255,0.4) 60%, transparent 60%);
+}
+
+.enhancements-resize-handle.corner-left {
+    bottom: 0;
+    left: 0;
+    width: 20px;
+    height: 20px;
+    cursor: nesw-resize;
+}
+
+.enhancements-resize-handle.corner-left::after {
+    content: '';
+    position: absolute;
+    left: 2px;
+    bottom: 2px;
+    width: 16px;
+    height: 16px;
+    background: linear-gradient(45deg, transparent 0%, transparent 40%, rgba(255,255,255,0.25) 40%, rgba(255,255,255,0.25) 45%, transparent 45%, transparent 55%, rgba(255,255,255,0.25) 55%, rgba(255,255,255,0.25) 60%, transparent 60%);
+    transition: opacity 0.15s ease;
+}
+
+.enhancements-resize-handle.corner-left:hover::after {
+    background: linear-gradient(45deg, transparent 0%, transparent 40%, rgba(255,255,255,0.4) 40%, rgba(255,255,255,0.4) 45%, transparent 45%, transparent 55%, rgba(255,255,255,0.4) 55%, rgba(255,255,255,0.4) 60%, transparent 60%);
+}
+
+/* Touch device support */
+@media (hover: none) and (pointer: coarse) {
+    /* Always show handles on touch devices at 50% opacity */
+    .enhancements-resize-handle {
+        opacity: 0.5;
+    }
+
+    /* Full opacity when overlay is being touched/active */
+    #expert-enhancements-overlay:active .enhancements-resize-handle {
+        opacity: 1;
+    }
+}
+
+/* ============================================================================
+   Toggle Button (Floating)
+   ============================================================================ */
+
+#expert-enhancements-toggle {
+    position: fixed;
+    top: 15px;
+    right: -45px;
+    width: 100px;
+    height: 50px;
+    border-radius: 25px;
+    background: #667eea;
+    border: 3px solid white;
+    color: white;
+    font-size: 20px;
+    font-weight: bold;
+    font-family: monospace;
+    cursor: pointer;
+    z-index: 999998;
+    box-shadow: -4px 4px 20px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: left;
+    padding-left: 12px;
+    line-height: 1;
+}
+
+#expert-enhancements-toggle:hover {
+    transform: scale(1.1);
+    box-shadow: -6px 6px 30px rgba(102, 126, 234, 0.5);
+}
+
+#expert-enhancements-toggle:active {
+    transform: scale(0.95);
+}
+
+/* ============================================================================
+   Message Area (In-App Messages)
+   ============================================================================ */
+
+#message-area {
+    position: absolute;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2000;
+    max-width: 600px;
+    width: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    pointer-events: none;
+}
+
+#message-area .message {
+    pointer-events: auto;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#message-area .message.error {
+    background: rgba(255, 235, 238, 0.95);
+    border-left: 4px solid #e74c3c;
+    color: #c62828;
+}
+
+#message-area .message.success {
+    background: rgba(232, 245, 233, 0.95);
+    border-left: 4px solid #27ae60;
+    color: #2e7d32;
+}
+
+#message-area .message.info {
+    background: rgba(232, 240, 254, 0.95);
+    border-left: 4px solid #2196f3;
+    color: #1565c0;
+}
+
+#message-area .message-text {
+    flex: 1;
+}
+
+#message-area .message-close {
+    background: transparent;
+    border: none;
+    color: inherit;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    opacity: 0.6;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+#message-area .message-close:hover {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* ============================================================================
+   Common App Container
+   ============================================================================ */
+
+.enhancements-app-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    color: #e9ecef;
+    position: relative;
+}
+
+.enhancements-app-container .loading {
+    text-align: center;
+    padding: 4rem;
+    font-size: 1.3rem;
+    color: #999;
+}
+
+/* ============================================================================
+   Common Button Styles
+   ============================================================================ */
+
+.btn {
+    border: none;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 600;
+    padding: 0.4rem 1rem;
+    border-radius: 4px;
+}
+
+.btn-primary {
+    background: #0d6efd;
+    color: white;
+    border: 1px solid #0d6efd;
+    box-shadow: 0 1px 3px rgba(13, 110, 253, 0.2);
+}
+
+.btn-primary:hover {
+    background: #0b5ed7;
+    border-color: #0a58ca;
+}
+
+.btn-primary:active {
+    background: #0a58ca;
+}
+
+.btn-primary:disabled {
+    background: #6c757d;
+    border-color: #6c757d;
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+/* ============================================================================
+   Monaco Editor Widget Z-Index Fixes
+   ============================================================================ */
+
+.monaco-editor .suggest-widget,
+.monaco-editor .colorpicker-widget,
+.monaco-editor .parameter-hints-widget,
+.monaco-editor .monaco-hover,
+.monaco-editor .find-widget,
+.monaco-editor .context-view {
+    z-index: 10000 !important;
+}
+
+.monaco-editor .monaco-list-row {
+    z-index: 10001 !important;
+}
+
+/* ============================================================================
+   Mobile Responsive Styles
+   ============================================================================ */
+
+@media (max-width: 768px) {
+    /* Smaller overlay on tablets */
+    #expert-enhancements-overlay {
+        width: 100%;
+        height: 100%;
+        max-width: 100vw;
+        max-height: 100vh;
+        border-radius: 0;
+        border: none;
+    }
+
+    /* Smaller header */
+    #expert-enhancements-overlay-header {
+        padding: 10px 12px;
+    }
+
+    #expert-enhancements-overlay-header .header-title {
+        font-size: 13px;
+    }
+
+    #expert-enhancements-overlay-header .app-switcher {
+        min-width: 100px;
+        font-size: 11px;
+    }
+
+    /* Smaller toggle button */
+    #expert-enhancements-toggle {
+        width: 80px;
+        height: 44px;
+        top: 12px;
+        right: -35px;
+        font-size: 16px;
+        padding-left: 10px;
+    }
+
+    /* Smaller message area */
+    #message-area {
+        bottom: 1rem;
+        max-width: calc(100% - 2rem);
+    }
+
+    #message-area .message {
+        padding: 0.75rem 1rem;
+        font-size: 0.85rem;
+    }
+
+    /* Mobile responsiveness for live preview controls */
+    .live-preview-toggle {
+        font-size: 14px;
+        padding: 3px 8px;
+    }
+
+    .live-preview-role-selector {
+        font-size: 11px;
+        padding: 3px 6px;
+        min-width: 90px;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Extra small screens - full screen overlay */
+    #expert-enhancements-overlay {
+        width: 100vw;
+        height: 100vh;
+        max-width: 100vw;
+        max-height: 100vh;
+        top: 0;
+        left: 0;
+        transform: none;
+        border-radius: 0;
+    }
+
+    /* Minimal header */
+    #expert-enhancements-overlay-header {
+        padding: 8px 10px;
+    }
+
+    #expert-enhancements-overlay-header .header-title {
+        font-size: 12px;
+    }
+
+    #expert-enhancements-overlay-header .app-switcher {
+        min-width: 90px;
+        font-size: 10px;
+        padding: 3px 6px;
+    }
+
+    #expert-enhancements-overlay-header .header-btn {
+        width: 24px;
+        height: 24px;
+        font-size: 16px;
+    }
+
+    /* Hide resize handles on mobile */
+    .enhancements-resize-handle {
+        display: none;
+    }
+
+    /* Smaller toggle button */
+    #expert-enhancements-toggle {
+        width: 70px;
+        height: 40px;
+        top: 10px;
+        right: -30px;
+        font-size: 14px;
+        padding-left: 8px;
+    }
+
+    /* Compact messages */
+    #message-area {
+        bottom: 0.5rem;
+        max-width: calc(100% - 1rem);
+    }
+
+    #message-area .message {
+        padding: 0.6rem 0.8rem;
+        font-size: 0.8rem;
+    }
+
+    /* Adjust confirm dialog for mobile */
+    .enhancements-confirm-dialog {
+        min-width: 300px !important;
+        max-width: calc(100% - 2rem) !important;
+        padding: 20px !important;
+    }
+}

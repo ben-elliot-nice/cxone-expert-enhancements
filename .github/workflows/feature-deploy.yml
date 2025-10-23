@@ -31,7 +31,7 @@ jobs:
           DO_SPACES_ENDPOINT: ${{ vars.DO_SPACES_ENDPOINT }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
           GITHUB_ACTIONS: 'true'
-        run: npm run deploy:v2
+        run: npm run deploy
 
       - name: Create deployment summary
         run: |
@@ -50,13 +50,16 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Main embed script:**" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`html" >> $GITHUB_STEP_SUMMARY
-          echo "<script src=\"${BASE_URL}/${SANITIZED_BRANCH}/css-editor-embed.js\"></script>" >> $GITHUB_STEP_SUMMARY
+          echo "<script src=\"${BASE_URL}/${SANITIZED_BRANCH}/expert-enhancements-embed.js\"></script>" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Direct file links:**" >> $GITHUB_STEP_SUMMARY
-          echo "- [css-editor-embed.js](${BASE_URL}/${SANITIZED_BRANCH}/css-editor-embed.js)" >> $GITHUB_STEP_SUMMARY
-          echo "- [css-editor.js](${BASE_URL}/${SANITIZED_BRANCH}/css-editor.js)" >> $GITHUB_STEP_SUMMARY
-          echo "- [css-editor.css](${BASE_URL}/${SANITIZED_BRANCH}/css-editor.css)" >> $GITHUB_STEP_SUMMARY
+          echo "- [expert-enhancements-embed.js](${BASE_URL}/${SANITIZED_BRANCH}/expert-enhancements-embed.js)" >> $GITHUB_STEP_SUMMARY
+          echo "- [expert-enhancements-core.js](${BASE_URL}/${SANITIZED_BRANCH}/expert-enhancements-core.js)" >> $GITHUB_STEP_SUMMARY
+          echo "- [expert-enhancements-core.css](${BASE_URL}/${SANITIZED_BRANCH}/expert-enhancements-core.css)" >> $GITHUB_STEP_SUMMARY
+          echo "- [expert-enhancements-css.js](${BASE_URL}/${SANITIZED_BRANCH}/expert-enhancements-css.js)" >> $GITHUB_STEP_SUMMARY
+          echo "- [expert-enhancements-css.css](${BASE_URL}/${SANITIZED_BRANCH}/expert-enhancements-css.css)" >> $GITHUB_STEP_SUMMARY
+          echo "- [expert-enhancements-html.js](${BASE_URL}/${SANITIZED_BRANCH}/expert-enhancements-html.js)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📝 Testing Instructions" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -73,7 +76,7 @@ jobs:
             const branch = context.ref.replace('refs/heads/', '');
             const sanitizedBranch = branch.replace(/[^a-zA-Z0-9-_/]/g, '-').toLowerCase();
             const baseUrl = 'https://${{ vars.DO_SPACES_BUCKET }}.${{ vars.DO_SPACES_ENDPOINT }}/cxone-expert-enhancements';
-            const embedUrl = `${baseUrl}/${sanitizedBranch}/css-editor-embed.js`;
+            const embedUrl = `${baseUrl}/${sanitizedBranch}/expert-enhancements-embed.js`;
 
             const comment = `## 🚀 Branch Deployment Successful
 
@@ -90,9 +93,12 @@ jobs:
 
             ### All Files
 
-            - [css-editor-embed.js](${baseUrl}/${sanitizedBranch}/css-editor-embed.js)
-            - [css-editor.js](${baseUrl}/${sanitizedBranch}/css-editor.js)
-            - [css-editor.css](${baseUrl}/${sanitizedBranch}/css-editor.css)
+            - [expert-enhancements-embed.js](${baseUrl}/${sanitizedBranch}/expert-enhancements-embed.js)
+            - [expert-enhancements-core.js](${baseUrl}/${sanitizedBranch}/expert-enhancements-core.js)
+            - [expert-enhancements-core.css](${baseUrl}/${sanitizedBranch}/expert-enhancements-core.css)
+            - [expert-enhancements-css.js](${baseUrl}/${sanitizedBranch}/expert-enhancements-css.js)
+            - [expert-enhancements-css.css](${baseUrl}/${sanitizedBranch}/expert-enhancements-css.css)
+            - [expert-enhancements-html.js](${baseUrl}/${sanitizedBranch}/expert-enhancements-html.js)
             `;
 
             github.rest.issues.createComment({

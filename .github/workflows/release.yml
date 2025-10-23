@@ -97,7 +97,7 @@ jobs:
           DO_SPACES_ENDPOINT: ${{ vars.DO_SPACES_ENDPOINT }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
           GITHUB_ACTIONS: 'true'
-        run: npm run deploy:v2
+        run: npm run deploy
 
       - name: Create GitHub Release
         if: steps.check-tag.outputs.exists == 'false'
@@ -125,12 +125,12 @@ jobs:
 
             #### Option 1: Latest Version (Auto-Updates)
             \`\`\`html
-            <script src="${baseUrl}/latest/css-editor-embed.js"></script>
+            <script src="${baseUrl}/latest/expert-enhancements-embed.js"></script>
             \`\`\`
 
             #### Option 2: Pinned Version (No Auto-Updates)
             \`\`\`html
-            <script src="${baseUrl}/releases/v${version}/css-editor-embed.js"></script>
+            <script src="${baseUrl}/releases/v${version}/expert-enhancements-embed.js"></script>
             \`\`\`
 
             ### 📝 Changes
@@ -140,19 +140,28 @@ jobs:
             ### 🔗 Deployment URLs
 
             **Pinned Version (v${version}):**
-            - [css-editor-embed.js](${baseUrl}/releases/v${version}/css-editor-embed.js)
-            - [css-editor.js](${baseUrl}/releases/v${version}/css-editor.js)
-            - [css-editor.css](${baseUrl}/releases/v${version}/css-editor.css)
+            - [expert-enhancements-embed.js](${baseUrl}/releases/v${version}/expert-enhancements-embed.js)
+            - [expert-enhancements-core.js](${baseUrl}/releases/v${version}/expert-enhancements-core.js)
+            - [expert-enhancements-core.css](${baseUrl}/releases/v${version}/expert-enhancements-core.css)
+            - [expert-enhancements-css.js](${baseUrl}/releases/v${version}/expert-enhancements-css.js)
+            - [expert-enhancements-css.css](${baseUrl}/releases/v${version}/expert-enhancements-css.css)
+            - [expert-enhancements-html.js](${baseUrl}/releases/v${version}/expert-enhancements-html.js)
 
             **Latest:**
-            - [css-editor-embed.js](${baseUrl}/latest/css-editor-embed.js)
-            - [css-editor.js](${baseUrl}/latest/css-editor.js)
-            - [css-editor.css](${baseUrl}/latest/css-editor.css)
+            - [expert-enhancements-embed.js](${baseUrl}/latest/expert-enhancements-embed.js)
+            - [expert-enhancements-core.js](${baseUrl}/latest/expert-enhancements-core.js)
+            - [expert-enhancements-core.css](${baseUrl}/latest/expert-enhancements-core.css)
+            - [expert-enhancements-css.js](${baseUrl}/latest/expert-enhancements-css.js)
+            - [expert-enhancements-css.css](${baseUrl}/latest/expert-enhancements-css.css)
+            - [expert-enhancements-html.js](${baseUrl}/latest/expert-enhancements-html.js)
 
             **Main Branch:**
-            - [css-editor-embed.js](${baseUrl}/main/css-editor-embed.js)
-            - [css-editor.js](${baseUrl}/main/css-editor.js)
-            - [css-editor.css](${baseUrl}/main/css-editor.css)
+            - [expert-enhancements-embed.js](${baseUrl}/main/expert-enhancements-embed.js)
+            - [expert-enhancements-core.js](${baseUrl}/main/expert-enhancements-core.js)
+            - [expert-enhancements-core.css](${baseUrl}/main/expert-enhancements-core.css)
+            - [expert-enhancements-css.js](${baseUrl}/main/expert-enhancements-css.js)
+            - [expert-enhancements-css.css](${baseUrl}/main/expert-enhancements-css.css)
+            - [expert-enhancements-html.js](${baseUrl}/main/expert-enhancements-html.js)
 
             ---
 
@@ -189,25 +198,31 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "#### Option 1: Latest (Recommended - Auto-Updates)" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`html" >> $GITHUB_STEP_SUMMARY
-          echo "<script src=\"${BASE_URL}/latest/css-editor-embed.js\"></script>" >> $GITHUB_STEP_SUMMARY
+          echo "<script src=\"${BASE_URL}/latest/expert-enhancements-embed.js\"></script>" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "#### Option 2: Pinned Version (No Auto-Updates)" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`html" >> $GITHUB_STEP_SUMMARY
-          echo "<script src=\"${BASE_URL}/releases/v${VERSION}/css-editor-embed.js\"></script>" >> $GITHUB_STEP_SUMMARY
+          echo "<script src=\"${BASE_URL}/releases/v${VERSION}/expert-enhancements-embed.js\"></script>" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🔗 All Deployment URLs" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Pinned v${VERSION}:**" >> $GITHUB_STEP_SUMMARY
-          echo "- [css-editor-embed.js](${BASE_URL}/releases/v${VERSION}/css-editor-embed.js)" >> $GITHUB_STEP_SUMMARY
-          echo "- [css-editor.js](${BASE_URL}/releases/v${VERSION}/css-editor.js)" >> $GITHUB_STEP_SUMMARY
-          echo "- [css-editor.css](${BASE_URL}/releases/v${VERSION}/css-editor.css)" >> $GITHUB_STEP_SUMMARY
+          echo "- [expert-enhancements-embed.js](${BASE_URL}/releases/v${VERSION}/expert-enhancements-embed.js)" >> $GITHUB_STEP_SUMMARY
+          echo "- [expert-enhancements-core.js](${BASE_URL}/releases/v${VERSION}/expert-enhancements-core.js)" >> $GITHUB_STEP_SUMMARY
+          echo "- [expert-enhancements-core.css](${BASE_URL}/releases/v${VERSION}/expert-enhancements-core.css)" >> $GITHUB_STEP_SUMMARY
+          echo "- [expert-enhancements-css.js](${BASE_URL}/releases/v${VERSION}/expert-enhancements-css.js)" >> $GITHUB_STEP_SUMMARY
+          echo "- [expert-enhancements-css.css](${BASE_URL}/releases/v${VERSION}/expert-enhancements-css.css)" >> $GITHUB_STEP_SUMMARY
+          echo "- [expert-enhancements-html.js](${BASE_URL}/releases/v${VERSION}/expert-enhancements-html.js)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Latest:**" >> $GITHUB_STEP_SUMMARY
-          echo "- [css-editor-embed.js](${BASE_URL}/latest/css-editor-embed.js)" >> $GITHUB_STEP_SUMMARY
-          echo "- [css-editor.js](${BASE_URL}/latest/css-editor.js)" >> $GITHUB_STEP_SUMMARY
-          echo "- [css-editor.css](${BASE_URL}/latest/css-editor.css)" >> $GITHUB_STEP_SUMMARY
+          echo "- [expert-enhancements-embed.js](${BASE_URL}/latest/expert-enhancements-embed.js)" >> $GITHUB_STEP_SUMMARY
+          echo "- [expert-enhancements-core.js](${BASE_URL}/latest/expert-enhancements-core.js)" >> $GITHUB_STEP_SUMMARY
+          echo "- [expert-enhancements-core.css](${BASE_URL}/latest/expert-enhancements-core.css)" >> $GITHUB_STEP_SUMMARY
+          echo "- [expert-enhancements-css.js](${BASE_URL}/latest/expert-enhancements-css.js)" >> $GITHUB_STEP_SUMMARY
+          echo "- [expert-enhancements-css.css](${BASE_URL}/latest/expert-enhancements-css.css)" >> $GITHUB_STEP_SUMMARY
+          echo "- [expert-enhancements-html.js](${BASE_URL}/latest/expert-enhancements-html.js)" >> $GITHUB_STEP_SUMMARY
 
       - name: Sync README changes back to develop
         if: steps.check-tag.outputs.exists == 'false'

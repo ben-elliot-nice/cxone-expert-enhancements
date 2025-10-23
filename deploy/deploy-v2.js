@@ -15,9 +15,13 @@ const CONFIG = {
   region: 'us-east-1',
   basePrefix: 'cxone-expert-enhancements',
   files: [
-    { local: 'dist/css-editor.css', remote: 'css-editor.css', contentType: 'text/css' },
-    { local: 'dist/css-editor.js', remote: 'css-editor.js', contentType: 'application/javascript' },
-    { local: 'dist/css-editor-embed.js', remote: 'css-editor-embed.js', contentType: 'application/javascript' },
+    // Unified system files
+    { local: 'dist/expert-enhancements-embed.js', remote: 'expert-enhancements-embed.js', contentType: 'application/javascript' },
+    { local: 'dist/expert-enhancements-core.css', remote: 'expert-enhancements-core.css', contentType: 'text/css' },
+    { local: 'dist/expert-enhancements-core.js', remote: 'expert-enhancements-core.js', contentType: 'application/javascript' },
+    { local: 'dist/expert-enhancements-css.css', remote: 'expert-enhancements-css.css', contentType: 'text/css' },
+    { local: 'dist/expert-enhancements-css.js', remote: 'expert-enhancements-css.js', contentType: 'application/javascript' },
+    { local: 'dist/expert-enhancements-html.js', remote: 'expert-enhancements-html.js', contentType: 'application/javascript' },
   ]
 };
 
@@ -193,8 +197,10 @@ async function deploy() {
           cacheControl
         );
 
-        if (file.remote === 'css-editor-embed.js') {
-          deployedUrls.push({ desc: target.desc, url });
+        if (file.remote === 'expert-enhancements-embed.js') {
+          deployedUrls.push({ desc: `${target.desc} (Unified)`, url });
+        } else if (file.remote === 'css-editor-embed.js' || file.remote === 'html-editor-embed.js') {
+          deployedUrls.push({ desc: `${target.desc} (Legacy)`, url });
         }
       } catch (err) {
         error(`Upload failed for ${file.local}: ${err.message}`);

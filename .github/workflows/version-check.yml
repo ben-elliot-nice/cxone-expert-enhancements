@@ -3,13 +3,13 @@ name: Version Check
 on:
   pull_request:
     branches:
-      - develop
+      - main
 
 jobs:
   check-version:
     runs-on: ubuntu-latest
-    # Skip version check for PRs from main to develop (release PRs)
-    if: github.head_ref != 'main'
+    # Only run version check for PRs from develop to main
+    if: github.head_ref == 'develop'
 
     steps:
       - name: Checkout PR branch
@@ -22,21 +22,24 @@ jobs:
         run: |
           PR_VERSION=$(node -p "require('./package.json').version")
           echo "version=$PR_VERSION" >> $GITHUB_OUTPUT
-          echo "PR branch version: $PR_VERSION"
+          echo "PR branch (source) version: $PR_VERSION"
 
-      - name: Get develop branch version
-        id: develop_version
+      - name: Get target branch version
+        id: target_version
         run: |
-          git checkout origin/develop
-          DEVELOP_VERSION=$(node -p "require('./package.json').version")
-          echo "version=$DEVELOP_VERSION" >> $GITHUB_OUTPUT
-          echo "Develop branch version: $DEVELOP_VERSION"
+          TARGET_BRANCH="${{ github.base_ref }}"
+          echo "Target branch: $TARGET_BRANCH"
+          git checkout origin/$TARGET_BRANCH
+          TARGET_VERSION=$(node -p "require('./package.json').version")
+          echo "version=$TARGET_VERSION" >> $GITHUB_OUTPUT
+          echo "Target branch ($TARGET_BRANCH) version: $TARGET_VERSION"
 
       - name: Compare versions
         run: |
-          if [ "${{ steps.pr_version.outputs.version }}" == "${{ steps.develop_version.outputs.version }}" ]; then
+          TARGET_BRANCH="${{ github.base_ref }}"
+          if [ "${{ steps.pr_version.outputs.version }}" == "${{ steps.target_version.outputs.version }}" ]; then
             echo "❌ Version has not been bumped in package.json"
-            echo "Current develop version: ${{ steps.develop_version.outputs.version }}"
+            echo "Current $TARGET_BRANCH version: ${{ steps.target_version.outputs.version }}"
             echo "PR branch version: ${{ steps.pr_version.outputs.version }}"
             echo ""
             echo "Please bump the version using one of:"
@@ -45,5 +48,5 @@ jobs:
             echo "  npm version major  (for breaking changes)"
             exit 1
           else
-            echo "✅ Version bumped from ${{ steps.develop_version.outputs.version }} to ${{ steps.pr_version.outputs.version }}"
+            echo "✅ Version bumped from ${{ steps.target_version.outputs.version }} to ${{ steps.pr_version.outputs.version }}"
           fi
