@@ -446,8 +446,8 @@
                 gap: 8px;
                 max-width: 400px;
                 pointer-events: auto;
-                animation: slideDown 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-                transition: bottom 0.3s ease-out, opacity 0.3s, transform 0.4s ease-in;
+                animation: slideDown 0.5s ease-out;
+                transition: bottom 0.5s ease-out;
             `;
 
             // Add keyframe animations if not exists
@@ -521,7 +521,7 @@
             }
 
             // Slide out to bottom with fade
-            toastObj.element.style.animation = 'slideOutBottom 0.4s ease-in forwards';
+            toastObj.element.style.animation = 'slideOutBottom 0.5s ease-in forwards';
 
             setTimeout(() => {
                 if (toastObj.element.parentElement) {
@@ -542,7 +542,7 @@
                     const nextToast = this._toastState.toastQueue.shift();
                     this._renderToast(nextToast);
                 }
-            }, 400);
+            }, 500);
         },
 
         /**
@@ -601,7 +601,7 @@
                         font-size: 12px;
                         cursor: pointer;
                         pointer-events: auto;
-                        transition: background 0.2s, bottom 0.3s ease-out;
+                        transition: background 0.2s, bottom 0.5s ease-out;
                     `;
                     dismissAllBtn.onmouseover = () => {
                         dismissAllBtn.style.background = 'rgba(50, 50, 50, 0.9)';
