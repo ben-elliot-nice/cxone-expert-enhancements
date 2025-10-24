@@ -4,9 +4,12 @@
  * Single embed script that loads all enhancements (CSS Editor, HTML Editor, etc.)
  *
  * Usage:
- * <script src="https://[cdn]/expert-enhancements/[version]/expert-enhancements-embed.js"></script>
+ * <script src="https://releases.benelliot-nice.com/cxone-expert-enhancements/latest/expert-enhancements-embed.js"></script>
  *
- * @version 1.0.0
+ * Documentation: https://github.com/ben-elliot-nice/cxone-expert-enhancements#readme
+ * Issues: https://github.com/ben-elliot-nice/cxone-expert-enhancements/issues
+ *
+ * @version 1.2.0
  */
 
 (function() {
