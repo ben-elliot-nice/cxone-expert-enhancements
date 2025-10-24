@@ -446,18 +446,35 @@
                 gap: 8px;
                 max-width: 400px;
                 pointer-events: auto;
-                animation: slideUp 0.3s ease-out;
-                transition: bottom 0.3s ease-out, opacity 0.3s;
+                animation: slideDown 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+                transition: bottom 0.3s ease-out, opacity 0.3s, transform 0.4s ease-in;
             `;
 
-            // Add keyframe animation if not exists
+            // Add keyframe animations if not exists
             if (!document.getElementById('enhancements-toast-style')) {
                 const style = document.createElement('style');
                 style.id = 'enhancements-toast-style';
                 style.textContent = `
-                    @keyframes slideUp {
-                        from { opacity: 0; transform: translateY(20px); }
-                        to { opacity: 1; transform: translateY(0); }
+                    @keyframes slideDown {
+                        from {
+                            opacity: 0;
+                            transform: translateY(-120%);
+                        }
+                        to {
+                            opacity: 1;
+                            transform: translateY(0);
+                        }
+                    }
+
+                    @keyframes slideOutBottom {
+                        from {
+                            opacity: 1;
+                            transform: translateY(0);
+                        }
+                        to {
+                            opacity: 0;
+                            transform: translateY(150%);
+                        }
                     }
                 `;
                 document.head.appendChild(style);
@@ -503,9 +520,8 @@
                 clearTimeout(toastObj.timeoutId);
             }
 
-            // Fade out and remove
-            toastObj.element.style.transition = 'opacity 0.3s';
-            toastObj.element.style.opacity = '0';
+            // Slide out to bottom with fade
+            toastObj.element.style.animation = 'slideOutBottom 0.4s ease-in forwards';
 
             setTimeout(() => {
                 if (toastObj.element.parentElement) {
@@ -526,7 +542,7 @@
                     const nextToast = this._toastState.toastQueue.shift();
                     this._renderToast(nextToast);
                 }
-            }, 300);
+            }, 400);
         },
 
         /**
