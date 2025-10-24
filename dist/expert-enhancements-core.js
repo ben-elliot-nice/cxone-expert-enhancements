@@ -101,7 +101,7 @@
 
             } catch (error) {
                 console.error(`[App Manager] Failed to switch to ${appId}:`, error);
-                UI.showMessage(`Failed to load ${app.name}: ${error.message}`, 'error');
+                UI.showToast(`Failed to load ${app.name}: ${error.message}`, 'error');
                 return false;
             }
         },
@@ -333,85 +333,397 @@
 
     const UI = {
         /**
-         * Show message in the message area
+         * Toast notification system with centralized lifecycle management
          */
-        showMessage(text, type = 'info') {
-            const messageArea = document.getElementById('message-area');
-            if (!messageArea) {
-                console.warn('[UI] Message area not found');
-                return;
-            }
-
-            const message = document.createElement('div');
-            message.className = `message ${type}`;
-
-            const textSpan = document.createElement('span');
-            textSpan.className = 'message-text';
-            textSpan.textContent = text;
-
-            const closeBtn = document.createElement('button');
-            closeBtn.className = 'message-close';
-            closeBtn.innerHTML = '×';
-            closeBtn.addEventListener('click', () => message.remove());
-
-            message.appendChild(textSpan);
-            message.appendChild(closeBtn);
-            messageArea.appendChild(message);
-
-            // Auto-remove after 5 seconds
-            setTimeout(() => {
-                if (message.parentElement) {
-                    message.remove();
-                }
-            }, 5000);
+        _toastState: {
+            activeToasts: [],       // Currently displayed toasts: { id, element, timeoutId, state: 'rendering'|'active'|'dismissing' }
+            toastQueue: [],         // Queued toasts waiting: { id, text, type, duration }
+            maxToasts: 3,           // Maximum number of toasts to show at once
+            toastIdCounter: 0,      // Unique ID for each toast
+            lifecycleTimeout: null, // Single debounce timer for lifecycle management
+            isProcessing: false     // Flag to prevent recursive processing
         },
 
         /**
          * Show toast notification (floating)
+         * Public API - only entry point for creating toasts
+         * @param {string} text - The message to display
+         * @param {string} type - The type of toast: 'success', 'warning', 'error', or 'info'
+         * @param {number} duration - How long to show the toast (ms)
          */
-        showToast(text, duration = 4000) {
-            const existing = document.getElementById('enhancements-toast');
-            if (existing) {
-                existing.remove();
+        showToast(text, type = 'info', duration = 4000) {
+            // Find the overlay container
+            const overlay = document.getElementById('expert-enhancements-overlay');
+            if (!overlay) {
+                console.warn('[UI] Overlay not found, cannot show toast');
+                return;
             }
 
+            // Create toast data and add to queue
+            const toastData = {
+                id: ++this._toastState.toastIdCounter,
+                text,
+                type,
+                duration
+            };
+
+            // Always add to queue - lifecycle manager will process it
+            this._toastState.toastQueue.push(toastData);
+
+            // Trigger lifecycle management
+            this._processToastLifecycle();
+        },
+
+        /**
+         * Central toast lifecycle manager
+         * This is the ONLY function that coordinates all toast state transitions
+         * Enforces all business rules: max toasts, queueing, rendering, dismissal
+         */
+        _processToastLifecycle() {
+            // Debounce to handle concurrent operations (dismissals, new toasts, etc.)
+            if (this._toastState.lifecycleTimeout) {
+                clearTimeout(this._toastState.lifecycleTimeout);
+            }
+
+            this._toastState.lifecycleTimeout = setTimeout(() => {
+                // Double RAF ensures DOM is stable before calculations
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        // Prevent recursive processing
+                        if (this._toastState.isProcessing) return;
+                        this._toastState.isProcessing = true;
+
+                        try {
+                            // Step 1: Clean up dismissed toasts (state = 'dismissing' + animation complete)
+                            this._cleanupDismissedToasts();
+
+                            // Step 2: Process queue - move items from queue to active if space available
+                            // Rule: max 3 toasts, excluding those currently dismissing
+                            this._processToastQueue();
+
+                            // Step 3: Update UI - reposition toasts and update dismiss all button
+                            this._updateToastUI();
+                        } finally {
+                            this._toastState.isProcessing = false;
+                        }
+                    });
+                });
+            }, 50); // 50ms debounce window for concurrent operations
+        },
+
+        /**
+         * Step 1: Clean up dismissed toasts
+         * Removes toast elements and data for toasts marked as 'dismissing'
+         */
+        _cleanupDismissedToasts() {
+            const toRemove = this._toastState.activeToasts.filter(t => t.state === 'dismissed');
+
+            toRemove.forEach(toastObj => {
+                // Remove from DOM
+                if (toastObj.element && toastObj.element.parentElement) {
+                    toastObj.element.remove();
+                }
+
+                // Remove from active array
+                const index = this._toastState.activeToasts.indexOf(toastObj);
+                if (index !== -1) {
+                    this._toastState.activeToasts.splice(index, 1);
+                }
+            });
+        },
+
+        /**
+         * Step 2: Process toast queue
+         * Moves toasts from queue to active if space is available
+         * Enforces max toast limit (excluding dismissing toasts)
+         */
+        _processToastQueue() {
+            // Count non-dismissing toasts
+            const activeCount = this._toastState.activeToasts.filter(
+                t => t.state !== 'dismissing'
+            ).length;
+
+            // Process queue while we have space
+            while (
+                this._toastState.toastQueue.length > 0 &&
+                activeCount + (this._toastState.activeToasts.filter(t => t.state === 'rendering').length) < this._toastState.maxToasts
+            ) {
+                const toastData = this._toastState.toastQueue.shift();
+                this._renderToastElement(toastData);
+            }
+        },
+
+        /**
+         * Step 3: Update toast UI
+         * Repositions all toasts and updates dismiss all button
+         */
+        _updateToastUI() {
+            this._repositionToasts();
+            this._updateDismissAllButton();
+        },
+
+        /**
+         * Render a toast element to the screen
+         * Called only by _processToastQueue - not directly
+         */
+        _renderToastElement(toastData) {
+            const overlay = document.getElementById('expert-enhancements-overlay');
+            if (!overlay) return;
+
+            // Color scheme based on type
+            const colors = {
+                success: 'rgba(34, 197, 94, 0.8)',   // Green
+                warning: 'rgba(251, 146, 60, 0.8)',  // Orange
+                error: 'rgba(239, 68, 68, 0.8)',     // Red
+                info: 'rgba(59, 130, 246, 0.8)'      // Blue
+            };
+
+            const backgroundColor = colors[toastData.type] || colors.info;
+
+            // Create toast container
             const toast = document.createElement('div');
-            toast.id = 'enhancements-toast';
-            toast.textContent = text;
-            toast.style.cssText = `
-                position: fixed;
-                bottom: 20px;
-                right: 20px;
-                background: rgba(50, 50, 50, 0.95);
-                color: white;
-                padding: 12px 20px;
-                border-radius: 6px;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-                z-index: 100000;
-                font-size: 14px;
-                animation: slideUp 0.3s ease-out;
+            toast.className = 'enhancements-toast';
+            toast.dataset.toastId = toastData.id;
+
+            // Create text span
+            const textSpan = document.createElement('span');
+            textSpan.textContent = toastData.text;
+            textSpan.style.cssText = `
+                flex: 1;
+                margin-right: 8px;
             `;
 
-            // Add keyframe animation if not exists
+            // Create close button
+            const closeBtn = document.createElement('button');
+            closeBtn.innerHTML = '×';
+            closeBtn.style.cssText = `
+                background: none;
+                border: none;
+                color: white;
+                font-size: 20px;
+                font-weight: bold;
+                cursor: pointer;
+                padding: 0;
+                width: 20px;
+                height: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                opacity: 0.8;
+                transition: opacity 0.2s;
+            `;
+            closeBtn.onmouseover = () => closeBtn.style.opacity = '1';
+            closeBtn.onmouseout = () => closeBtn.style.opacity = '0.8';
+            closeBtn.onclick = () => this._requestDismissToast(toastData.id);
+
+            toast.appendChild(textSpan);
+            toast.appendChild(closeBtn);
+
+            // Calculate z-index based on position in stack (bottom toast = lowest z-index)
+            const zIndex = 10000 + this._toastState.activeToasts.length;
+
+            toast.style.cssText = `
+                position: absolute;
+                right: 20px;
+                background: ${backgroundColor};
+                color: white;
+                padding: 12px 16px;
+                border-radius: 6px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                z-index: ${zIndex};
+                font-size: 14px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                max-width: 400px;
+                pointer-events: auto;
+                animation: slideDown 0.5s ease-out;
+                transition: bottom 0.5s ease-out;
+            `;
+
+            // Add keyframe animations if not exists
             if (!document.getElementById('enhancements-toast-style')) {
                 const style = document.createElement('style');
                 style.id = 'enhancements-toast-style';
                 style.textContent = `
-                    @keyframes slideUp {
-                        from { opacity: 0; transform: translateY(20px); }
-                        to { opacity: 1; transform: translateY(0); }
+                    @keyframes slideDown {
+                        from {
+                            opacity: 0;
+                            transform: translateY(-120%);
+                        }
+                        to {
+                            opacity: 1;
+                            transform: translateY(0);
+                        }
+                    }
+
+                    @keyframes slideOutBottom {
+                        from {
+                            opacity: 1;
+                            transform: translateY(0);
+                        }
+                        to {
+                            opacity: 0;
+                            transform: translateY(150%);
+                        }
                     }
                 `;
                 document.head.appendChild(style);
             }
 
-            document.body.appendChild(toast);
+            overlay.appendChild(toast);
 
+            // Add to active toasts with 'rendering' state
+            const toastObj = {
+                id: toastData.id,
+                element: toast,
+                timeoutId: null,
+                state: 'rendering'
+            };
+            this._toastState.activeToasts.push(toastObj);
+
+            // After animation completes, transition to 'active' state and start auto-dismiss timer
             setTimeout(() => {
-                toast.style.transition = 'opacity 0.3s';
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 300);
-            }, duration);
+                const currentToastObj = this._toastState.activeToasts.find(t => t.id === toastData.id);
+                if (currentToastObj && currentToastObj.state === 'rendering') {
+                    currentToastObj.state = 'active';
+
+                    // Start auto-dismiss timer
+                    currentToastObj.timeoutId = setTimeout(() => {
+                        this._requestDismissToast(toastData.id);
+                    }, toastData.duration);
+                }
+            }, 500); // Wait for slideDown animation (0.5s) to complete
+        },
+
+        /**
+         * Request dismissal of a specific toast
+         * This is the public API for dismissing toasts (called by X button, auto-dismiss timer, etc.)
+         */
+        _requestDismissToast(toastId) {
+            const toastObj = this._toastState.activeToasts.find(t => t.id === toastId);
+            if (!toastObj) return;
+
+            // Ignore if already dismissing or dismissed
+            if (toastObj.state === 'dismissing' || toastObj.state === 'dismissed') return;
+
+            // Clear auto-dismiss timeout if exists
+            if (toastObj.timeoutId) {
+                clearTimeout(toastObj.timeoutId);
+                toastObj.timeoutId = null;
+            }
+
+            // Mark as dismissing and start animation
+            toastObj.state = 'dismissing';
+            toastObj.element.style.animation = 'slideOutBottom 0.5s ease-in forwards';
+
+            // After animation completes, mark as dismissed
+            setTimeout(() => {
+                const currentToastObj = this._toastState.activeToasts.find(t => t.id === toastId);
+                if (currentToastObj && currentToastObj.state === 'dismissing') {
+                    currentToastObj.state = 'dismissed';
+
+                    // Trigger lifecycle to clean up and process queue
+                    this._processToastLifecycle();
+                }
+            }, 500); // Match slideOutBottom animation duration
+        },
+
+        /**
+         * Request dismissal of all active toasts
+         * Public API for "Dismiss All" button
+         */
+        _requestDismissAllToasts() {
+            // Get all toast IDs that aren't already dismissing/dismissed
+            const toastIds = this._toastState.activeToasts
+                .filter(t => t.state !== 'dismissing' && t.state !== 'dismissed')
+                .map(t => t.id);
+
+            // Request dismissal for each
+            toastIds.forEach(id => this._requestDismissToast(id));
+
+            // Clear the queue
+            this._toastState.toastQueue = [];
+        },
+
+        /**
+         * Reposition all toasts in a stack
+         */
+        _repositionToasts() {
+            let bottomOffset = 20;
+
+            // Position toasts from bottom to top
+            this._toastState.activeToasts.forEach((toastObj, index) => {
+                toastObj.element.style.bottom = `${bottomOffset}px`;
+
+                // Update z-index to match stack order (bottom = lowest)
+                toastObj.element.style.zIndex = 10000 + index;
+
+                const height = toastObj.element.offsetHeight;
+                bottomOffset += height + 10; // 10px gap between toasts
+            });
+        },
+
+        /**
+         * Show/hide dismiss all button based on toast count
+         * Only counts non-dismissing toasts
+         */
+        _updateDismissAllButton() {
+            const overlay = document.getElementById('expert-enhancements-overlay');
+            if (!overlay) return;
+
+            let dismissAllBtn = document.getElementById('enhancements-dismiss-all');
+
+            // Count visible toasts (not dismissing/dismissed)
+            const visibleToasts = this._toastState.activeToasts.filter(
+                t => t.state !== 'dismissing' && t.state !== 'dismissed'
+            );
+
+            // Show button if 2+ visible toasts
+            if (visibleToasts.length >= 2) {
+                if (!dismissAllBtn) {
+                    dismissAllBtn = document.createElement('button');
+                    dismissAllBtn.id = 'enhancements-dismiss-all';
+                    dismissAllBtn.textContent = 'Dismiss All';
+                    dismissAllBtn.style.cssText = `
+                        position: absolute;
+                        right: 20px;
+                        background: rgba(30, 30, 30, 0.9);
+                        color: white;
+                        padding: 8px 16px;
+                        border-radius: 6px;
+                        border: 1px solid rgba(255, 255, 255, 0.2);
+                        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+                        z-index: 10100;
+                        font-size: 12px;
+                        cursor: pointer;
+                        pointer-events: auto;
+                        transition: background 0.2s, bottom 0.5s ease-out;
+                    `;
+                    dismissAllBtn.onmouseover = () => {
+                        dismissAllBtn.style.background = 'rgba(50, 50, 50, 0.9)';
+                    };
+                    dismissAllBtn.onmouseout = () => {
+                        dismissAllBtn.style.background = 'rgba(30, 30, 30, 0.9)';
+                    };
+                    dismissAllBtn.onclick = () => this._requestDismissAllToasts();
+
+                    overlay.appendChild(dismissAllBtn);
+                }
+
+                // Position above the topmost visible toast
+                if (visibleToasts.length > 0) {
+                    const topmostToast = visibleToasts[visibleToasts.length - 1];
+                    const topmostBottom = parseInt(topmostToast.element.style.bottom);
+                    const topmostHeight = topmostToast.element.offsetHeight;
+                    dismissAllBtn.style.bottom = `${topmostBottom + topmostHeight + 10}px`;
+                }
+            } else {
+                // Remove button if less than 2 visible toasts
+                if (dismissAllBtn) {
+                    dismissAllBtn.remove();
+                }
+            }
         },
 
         /**

@@ -335,7 +335,7 @@
 
             } catch (error) {
                 console.error('[CSS Editor] Failed to load data:', error);
-                context.UI.showMessage('Failed to load CSS: ' + error.message, 'error');
+                context.UI.showToast('Failed to load CSS: ' + error.message, 'error');
             }
         },
 
@@ -561,7 +561,7 @@
                     role.active = false;
                 } else {
                     if (activeCount >= MAX_ACTIVE_EDITORS) {
-                        context.UI.showMessage(`Maximum ${MAX_ACTIVE_EDITORS} editors can be open at once`, 'error');
+                        context.UI.showToast(`Maximum ${MAX_ACTIVE_EDITORS} editors can be open at once`, 'warning');
                         return;
                     }
                     role.active = true;
@@ -879,9 +879,9 @@
                 a.click();
                 URL.revokeObjectURL(url);
 
-                context.UI.showMessage(`Exported ${role.label}`, 'success');
+                context.UI.showToast(`Exported ${role.label}`, 'success');
             } catch (error) {
-                context.UI.showMessage(`Failed to export: ${error.message}`, 'error');
+                context.UI.showToast(`Failed to export: ${error.message}`, 'error');
             }
         },
 
@@ -893,7 +893,7 @@
             console.log('[CSS Editor] discardAll called');
 
             if (Object.keys(originalContent).length === 0) {
-                context.UI.showMessage('No original content to revert to', 'error');
+                context.UI.showToast('No original content to revert to', 'warning');
                 return;
             }
 
@@ -960,7 +960,7 @@
             const dropdown = document.querySelector('.save-dropdown');
             if (dropdown) dropdown.classList.remove('open');
 
-            context.UI.showMessage('All changes discarded', 'success');
+            context.UI.showToast('All changes discarded', 'success');
         },
 
         /**
@@ -1026,7 +1026,7 @@
             const menu = document.querySelector(`[data-menu-role="${roleId}"]`);
             if (menu) menu.classList.remove('show');
 
-            context.UI.showMessage(`${role.label} reverted`, 'success');
+            context.UI.showToast(`${role.label} reverted`, 'success');
         },
 
         /**
@@ -1076,6 +1076,12 @@
                     role.content = editor.getValue();
                 }
 
+                // Check if this role has changes
+                if (!role.isDirty && role.content === originalContent[roleId]) {
+                    context.UI.showToast(`${role.label} has no changes to save`, 'warning');
+                    return;
+                }
+
                 // Build form data - send the edited field + original content for others
                 // This ensures only the specific field is saved, not all edited fields
                 const formData = {
@@ -1105,7 +1111,7 @@
                 });
 
                 if (response.ok || response.redirected) {
-                    context.UI.showMessage(`${role.label} saved successfully!`, 'success');
+                    context.UI.showToast(`${role.label} saved successfully!`, 'success');
 
                     // Update original content for this role only
                     originalContent[roleId] = role.content;
@@ -1121,7 +1127,7 @@
 
             } catch (error) {
                 console.error(`[CSS Editor] Save ${roleId} failed:`, error);
-                context.UI.showMessage(`Failed to save: ${error.message}`, 'error');
+                context.UI.showToast(`Failed to save: ${error.message}`, 'error');
             } finally {
                 // Restore button state
                 if (saveBtn) {
@@ -1159,6 +1165,16 @@
                     }
                 });
 
+                // Check if any role has changes
+                const hasChanges = Object.keys(editorState).some(roleId => {
+                    return editorState[roleId].isDirty || editorState[roleId].content !== originalContent[roleId];
+                });
+
+                if (!hasChanges) {
+                    context.UI.showToast('No changes to save', 'warning');
+                    return;
+                }
+
                 // Build form data
                 const formData = {
                     csrf_token: csrfToken,
@@ -1187,7 +1203,7 @@
                 });
 
                 if (response.ok || response.redirected) {
-                    context.UI.showMessage('CSS saved successfully!', 'success');
+                    context.UI.showToast('CSS saved successfully!', 'success');
 
                     // Update original content
                     Object.keys(editorState).forEach(roleId => {
@@ -1205,7 +1221,7 @@
 
             } catch (error) {
                 console.error('[CSS Editor] Save failed:', error);
-                context.UI.showMessage('Failed to save CSS: ' + error.message, 'error');
+                context.UI.showToast('Failed to save CSS: ' + error.message, 'error');
             } finally {
                 // Restore button state
                 if (saveBtn) {
@@ -1231,7 +1247,7 @@
                 const openRoles = Object.keys(editorState).filter(role => editorState[role].active);
 
                 if (openRoles.length === 0) {
-                    context.UI.showMessage('No tabs open to save', 'warning');
+                    context.UI.showToast('No tabs open to save', 'warning');
                     return;
                 }
 
@@ -1249,6 +1265,17 @@
                         editorState[roleId].content = editor.getValue();
                     }
                 });
+
+                // Check if any open tab has changes
+                const hasChanges = openRoles.some(roleId => {
+                    return editorState[roleId].isDirty || editorState[roleId].content !== originalContent[roleId];
+                });
+
+                if (!hasChanges) {
+                    const tabLabel = openRoles.length === 1 ? editorState[openRoles[0]].label : `${openRoles.length} tabs`;
+                    context.UI.showToast(`${tabLabel} have no changes to save`, 'warning');
+                    return;
+                }
 
                 // Build form data - send edited content for open tabs, original for closed tabs
                 const formData = {
@@ -1279,7 +1306,7 @@
 
                 if (response.ok || response.redirected) {
                     const tabLabel = openRoles.length === 1 ? editorState[openRoles[0]].label : `${openRoles.length} tabs`;
-                    context.UI.showMessage(`${tabLabel} saved successfully!`, 'success');
+                    context.UI.showToast(`${tabLabel} saved successfully!`, 'success');
 
                     // Update original content for saved tabs
                     openRoles.forEach(roleId => {
@@ -1295,7 +1322,7 @@
 
             } catch (error) {
                 console.error('[CSS Editor] Save open tabs failed:', error);
-                context.UI.showMessage('Failed to save: ' + error.message, 'error');
+                context.UI.showToast('Failed to save: ' + error.message, 'error');
             } finally {
                 // Restore button state
                 if (saveBtn) {
