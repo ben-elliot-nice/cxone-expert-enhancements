@@ -431,6 +431,9 @@
             toast.appendChild(textSpan);
             toast.appendChild(closeBtn);
 
+            // Calculate z-index based on position in stack (bottom toast = lowest z-index)
+            const zIndex = 10000 + this._toastState.activeToasts.length;
+
             toast.style.cssText = `
                 position: absolute;
                 right: 20px;
@@ -439,7 +442,7 @@
                 padding: 12px 16px;
                 border-radius: 6px;
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-                z-index: 10000;
+                z-index: ${zIndex};
                 font-size: 14px;
                 display: flex;
                 align-items: center;
@@ -489,11 +492,17 @@
                 timeoutId: null
             });
 
-            // Reposition all toasts
-            this._repositionToasts();
+            // Wait for DOM to settle before repositioning
+            // Double RAF ensures layout is fully calculated
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    // Reposition all toasts
+                    this._repositionToasts();
 
-            // Update dismiss all button
-            this._updateDismissAllButton();
+                    // Update dismiss all button
+                    this._updateDismissAllButton();
+                });
+            });
 
             // Start timer AFTER rendering (next tick to ensure it's in DOM)
             requestAnimationFrame(() => {
@@ -531,17 +540,25 @@
                 // Remove from active list
                 this._toastState.activeToasts.splice(index, 1);
 
-                // Reposition remaining toasts
-                this._repositionToasts();
+                // Wait for removal animation to complete, then reposition
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        // Reposition remaining toasts
+                        this._repositionToasts();
 
-                // Update dismiss all button
-                this._updateDismissAllButton();
+                        // Update dismiss all button
+                        this._updateDismissAllButton();
 
-                // Show next queued toast if any
-                if (this._toastState.toastQueue.length > 0) {
-                    const nextToast = this._toastState.toastQueue.shift();
-                    this._renderToast(nextToast);
-                }
+                        // Show next queued toast AFTER repositioning is complete
+                        // Small delay prevents race conditions
+                        if (this._toastState.toastQueue.length > 0) {
+                            setTimeout(() => {
+                                const nextToast = this._toastState.toastQueue.shift();
+                                this._renderToast(nextToast);
+                            }, 50); // 50ms delay to ensure layout is stable
+                        }
+                    });
+                });
             }, 500);
         },
 
@@ -566,8 +583,12 @@
             let bottomOffset = 20;
 
             // Position toasts from bottom to top
-            this._toastState.activeToasts.forEach((toastObj) => {
+            this._toastState.activeToasts.forEach((toastObj, index) => {
                 toastObj.element.style.bottom = `${bottomOffset}px`;
+
+                // Update z-index to match stack order (bottom = lowest)
+                toastObj.element.style.zIndex = 10000 + index;
+
                 const height = toastObj.element.offsetHeight;
                 bottomOffset += height + 10; // 10px gap between toasts
             });
@@ -597,7 +618,7 @@
                         border-radius: 6px;
                         border: 1px solid rgba(255, 255, 255, 0.2);
                         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-                        z-index: 10001;
+                        z-index: 10100;
                         font-size: 12px;
                         cursor: pointer;
                         pointer-events: auto;
