@@ -333,37 +333,14 @@
 
     const UI = {
         /**
-         * Show message in the message area
+         * Toast management system
+         * Supports multiple toasts with max limit, queueing, and dismiss all
          */
-        showMessage(text, type = 'info') {
-            const messageArea = document.getElementById('message-area');
-            if (!messageArea) {
-                console.warn('[UI] Message area not found');
-                return;
-            }
-
-            const message = document.createElement('div');
-            message.className = `message ${type}`;
-
-            const textSpan = document.createElement('span');
-            textSpan.className = 'message-text';
-            textSpan.textContent = text;
-
-            const closeBtn = document.createElement('button');
-            closeBtn.className = 'message-close';
-            closeBtn.innerHTML = '×';
-            closeBtn.addEventListener('click', () => message.remove());
-
-            message.appendChild(textSpan);
-            message.appendChild(closeBtn);
-            messageArea.appendChild(message);
-
-            // Auto-remove after 5 seconds
-            setTimeout(() => {
-                if (message.parentElement) {
-                    message.remove();
-                }
-            }, 5000);
+        _toastState: {
+            activeToasts: [],      // Currently displayed toasts
+            toastQueue: [],        // Queued toasts waiting to be shown
+            maxToasts: 3,          // Maximum number of toasts to show at once
+            toastIdCounter: 0      // Unique ID for each toast
         },
 
         /**
@@ -373,17 +350,37 @@
          * @param {number} duration - How long to show the toast (ms)
          */
         showToast(text, type = 'info', duration = 4000) {
-            const existing = document.getElementById('enhancements-toast');
-            if (existing) {
-                existing.remove();
-            }
-
             // Find the overlay container
             const overlay = document.getElementById('expert-enhancements-overlay');
             if (!overlay) {
                 console.warn('[UI] Overlay not found, cannot show toast');
                 return;
             }
+
+            // Create toast data
+            const toastData = {
+                id: ++this._toastState.toastIdCounter,
+                text,
+                type,
+                duration
+            };
+
+            // If we're at max capacity, queue it
+            if (this._toastState.activeToasts.length >= this._toastState.maxToasts) {
+                this._toastState.toastQueue.push(toastData);
+                return;
+            }
+
+            // Otherwise, show it immediately
+            this._renderToast(toastData);
+        },
+
+        /**
+         * Render a toast to the screen
+         */
+        _renderToast(toastData) {
+            const overlay = document.getElementById('expert-enhancements-overlay');
+            if (!overlay) return;
 
             // Color scheme based on type
             const colors = {
@@ -393,14 +390,16 @@
                 info: 'rgba(59, 130, 246, 0.8)'      // Blue
             };
 
-            const backgroundColor = colors[type] || colors.info;
+            const backgroundColor = colors[toastData.type] || colors.info;
 
+            // Create toast container
             const toast = document.createElement('div');
-            toast.id = 'enhancements-toast';
+            toast.className = 'enhancements-toast';
+            toast.dataset.toastId = toastData.id;
 
             // Create text span
             const textSpan = document.createElement('span');
-            textSpan.textContent = text;
+            textSpan.textContent = toastData.text;
             textSpan.style.cssText = `
                 flex: 1;
                 margin-right: 8px;
@@ -427,18 +426,13 @@
             `;
             closeBtn.onmouseover = () => closeBtn.style.opacity = '1';
             closeBtn.onmouseout = () => closeBtn.style.opacity = '0.8';
-            closeBtn.onclick = () => {
-                toast.style.transition = 'opacity 0.3s';
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 300);
-            };
+            closeBtn.onclick = () => this._dismissToast(toastData.id);
 
             toast.appendChild(textSpan);
             toast.appendChild(closeBtn);
 
             toast.style.cssText = `
                 position: absolute;
-                bottom: 20px;
                 right: 20px;
                 background: ${backgroundColor};
                 color: white;
@@ -447,12 +441,13 @@
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
                 z-index: 10000;
                 font-size: 14px;
-                animation: slideUp 0.3s ease-out;
                 display: flex;
                 align-items: center;
                 gap: 8px;
                 max-width: 400px;
                 pointer-events: auto;
+                animation: slideUp 0.3s ease-out;
+                transition: bottom 0.3s ease-out, opacity 0.3s;
             `;
 
             // Add keyframe animation if not exists
@@ -470,21 +465,152 @@
 
             overlay.appendChild(toast);
 
-            // Auto-remove after duration
-            const timeoutId = setTimeout(() => {
-                if (toast.parentElement) {
-                    toast.style.transition = 'opacity 0.3s';
-                    toast.style.opacity = '0';
-                    setTimeout(() => {
-                        if (toast.parentElement) {
-                            toast.remove();
-                        }
-                    }, 300);
-                }
-            }, duration);
+            // Add to active toasts
+            this._toastState.activeToasts.push({
+                id: toastData.id,
+                element: toast,
+                timeoutId: null
+            });
 
-            // Clear timeout if manually closed
-            closeBtn.addEventListener('click', () => clearTimeout(timeoutId), { once: true });
+            // Reposition all toasts
+            this._repositionToasts();
+
+            // Update dismiss all button
+            this._updateDismissAllButton();
+
+            // Start timer AFTER rendering (next tick to ensure it's in DOM)
+            requestAnimationFrame(() => {
+                const toastObj = this._toastState.activeToasts.find(t => t.id === toastData.id);
+                if (toastObj) {
+                    toastObj.timeoutId = setTimeout(() => {
+                        this._dismissToast(toastData.id);
+                    }, toastData.duration);
+                }
+            });
+        },
+
+        /**
+         * Dismiss a specific toast by ID
+         */
+        _dismissToast(toastId) {
+            const index = this._toastState.activeToasts.findIndex(t => t.id === toastId);
+            if (index === -1) return;
+
+            const toastObj = this._toastState.activeToasts[index];
+
+            // Clear timeout
+            if (toastObj.timeoutId) {
+                clearTimeout(toastObj.timeoutId);
+            }
+
+            // Fade out and remove
+            toastObj.element.style.transition = 'opacity 0.3s';
+            toastObj.element.style.opacity = '0';
+
+            setTimeout(() => {
+                if (toastObj.element.parentElement) {
+                    toastObj.element.remove();
+                }
+
+                // Remove from active list
+                this._toastState.activeToasts.splice(index, 1);
+
+                // Reposition remaining toasts
+                this._repositionToasts();
+
+                // Update dismiss all button
+                this._updateDismissAllButton();
+
+                // Show next queued toast if any
+                if (this._toastState.toastQueue.length > 0) {
+                    const nextToast = this._toastState.toastQueue.shift();
+                    this._renderToast(nextToast);
+                }
+            }, 300);
+        },
+
+        /**
+         * Dismiss all active toasts
+         */
+        _dismissAllToasts() {
+            // Get all current toast IDs (make a copy since array will be modified)
+            const toastIds = this._toastState.activeToasts.map(t => t.id);
+
+            // Dismiss each toast
+            toastIds.forEach(id => this._dismissToast(id));
+
+            // Clear the queue too
+            this._toastState.toastQueue = [];
+        },
+
+        /**
+         * Reposition all toasts in a stack
+         */
+        _repositionToasts() {
+            let bottomOffset = 20;
+
+            // Position toasts from bottom to top
+            this._toastState.activeToasts.forEach((toastObj) => {
+                toastObj.element.style.bottom = `${bottomOffset}px`;
+                const height = toastObj.element.offsetHeight;
+                bottomOffset += height + 10; // 10px gap between toasts
+            });
+        },
+
+        /**
+         * Show/hide dismiss all button based on toast count
+         */
+        _updateDismissAllButton() {
+            const overlay = document.getElementById('expert-enhancements-overlay');
+            if (!overlay) return;
+
+            let dismissAllBtn = document.getElementById('enhancements-dismiss-all');
+
+            // Show button if 2+ toasts
+            if (this._toastState.activeToasts.length >= 2) {
+                if (!dismissAllBtn) {
+                    dismissAllBtn = document.createElement('button');
+                    dismissAllBtn.id = 'enhancements-dismiss-all';
+                    dismissAllBtn.textContent = 'Dismiss All';
+                    dismissAllBtn.style.cssText = `
+                        position: absolute;
+                        right: 20px;
+                        background: rgba(30, 30, 30, 0.9);
+                        color: white;
+                        padding: 8px 16px;
+                        border-radius: 6px;
+                        border: 1px solid rgba(255, 255, 255, 0.2);
+                        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+                        z-index: 10001;
+                        font-size: 12px;
+                        cursor: pointer;
+                        pointer-events: auto;
+                        transition: background 0.2s, bottom 0.3s ease-out;
+                    `;
+                    dismissAllBtn.onmouseover = () => {
+                        dismissAllBtn.style.background = 'rgba(50, 50, 50, 0.9)';
+                    };
+                    dismissAllBtn.onmouseout = () => {
+                        dismissAllBtn.style.background = 'rgba(30, 30, 30, 0.9)';
+                    };
+                    dismissAllBtn.onclick = () => this._dismissAllToasts();
+
+                    overlay.appendChild(dismissAllBtn);
+                }
+
+                // Position above the topmost toast
+                if (this._toastState.activeToasts.length > 0) {
+                    const topmostToast = this._toastState.activeToasts[this._toastState.activeToasts.length - 1];
+                    const topmostBottom = parseInt(topmostToast.element.style.bottom);
+                    const topmostHeight = topmostToast.element.offsetHeight;
+                    dismissAllBtn.style.bottom = `${topmostBottom + topmostHeight + 10}px`;
+                }
+            } else {
+                // Remove button if less than 2 toasts
+                if (dismissAllBtn) {
+                    dismissAllBtn.remove();
+                }
+            }
         },
 
         /**
