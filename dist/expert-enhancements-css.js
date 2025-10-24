@@ -335,7 +335,7 @@
 
             } catch (error) {
                 console.error('[CSS Editor] Failed to load data:', error);
-                context.UI.showMessage('Failed to load CSS: ' + error.message, 'error');
+                context.UI.showToast('Failed to load CSS: ' + error.message, 'error');
             }
         },
 
@@ -561,7 +561,7 @@
                     role.active = false;
                 } else {
                     if (activeCount >= MAX_ACTIVE_EDITORS) {
-                        context.UI.showMessage(`Maximum ${MAX_ACTIVE_EDITORS} editors can be open at once`, 'error');
+                        context.UI.showToast(`Maximum ${MAX_ACTIVE_EDITORS} editors can be open at once`, 'warning');
                         return;
                     }
                     role.active = true;
@@ -879,9 +879,9 @@
                 a.click();
                 URL.revokeObjectURL(url);
 
-                context.UI.showMessage(`Exported ${role.label}`, 'success');
+                context.UI.showToast(`Exported ${role.label}`, 'success');
             } catch (error) {
-                context.UI.showMessage(`Failed to export: ${error.message}`, 'error');
+                context.UI.showToast(`Failed to export: ${error.message}`, 'error');
             }
         },
 
@@ -893,7 +893,7 @@
             console.log('[CSS Editor] discardAll called');
 
             if (Object.keys(originalContent).length === 0) {
-                context.UI.showMessage('No original content to revert to', 'error');
+                context.UI.showToast('No original content to revert to', 'warning');
                 return;
             }
 
@@ -960,7 +960,7 @@
             const dropdown = document.querySelector('.save-dropdown');
             if (dropdown) dropdown.classList.remove('open');
 
-            context.UI.showMessage('All changes discarded', 'success');
+            context.UI.showToast('All changes discarded', 'success');
         },
 
         /**
@@ -1026,7 +1026,7 @@
             const menu = document.querySelector(`[data-menu-role="${roleId}"]`);
             if (menu) menu.classList.remove('show');
 
-            context.UI.showMessage(`${role.label} reverted`, 'success');
+            context.UI.showToast(`${role.label} reverted`, 'success');
         },
 
         /**

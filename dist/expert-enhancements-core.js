@@ -101,7 +101,7 @@
 
             } catch (error) {
                 console.error(`[App Manager] Failed to switch to ${appId}:`, error);
-                UI.showMessage(`Failed to load ${app.name}: ${error.message}`, 'error');
+                UI.showToast(`Failed to load ${app.name}: ${error.message}`, 'error');
                 return false;
             }
         },

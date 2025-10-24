@@ -352,7 +352,7 @@
 
             } catch (error) {
                 console.error('[HTML Editor] Failed to load data:', error);
-                context.UI.showMessage('Failed to load HTML: ' + error.message, 'error');
+                context.UI.showToast('Failed to load HTML: ' + error.message, 'error');
             }
         },
 
@@ -535,7 +535,7 @@
                     field.active = false;
                 } else {
                     if (activeCount >= MAX_ACTIVE_EDITORS) {
-                        context.UI.showMessage(`Maximum ${MAX_ACTIVE_EDITORS} editors can be open at once`, 'error');
+                        context.UI.showToast(`Maximum ${MAX_ACTIVE_EDITORS} editors can be open at once`, 'warning');
                         return;
                     }
                     field.active = true;
@@ -846,9 +846,9 @@
                 a.click();
                 URL.revokeObjectURL(url);
 
-                context.UI.showMessage(`Exported ${field.label}`, 'success');
+                context.UI.showToast(`Exported ${field.label}`, 'success');
             } catch (error) {
-                context.UI.showMessage(`Failed to export: ${error.message}`, 'error');
+                context.UI.showToast(`Failed to export: ${error.message}`, 'error');
             }
         },
 
@@ -901,7 +901,7 @@
                 this.saveState();
             }
 
-            context.UI.showMessage('All changes discarded', 'success');
+            context.UI.showToast('All changes discarded', 'success');
         },
 
         /**
@@ -962,7 +962,7 @@
                 this.saveState();
             }
 
-            context.UI.showMessage(`${field.label} reverted`, 'success');
+            context.UI.showToast(`${field.label} reverted`, 'success');
         },
 
         /**
