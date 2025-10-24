@@ -1093,7 +1093,7 @@
                 });
 
                 if (response.ok || response.redirected) {
-                    context.UI.showMessage(`${role.label} saved successfully!`, 'success');
+                    context.UI.showToast(`${role.label} saved successfully!`);
 
                     // Update original content for this role only
                     originalContent[roleId] = role.content;
@@ -1109,7 +1109,7 @@
 
             } catch (error) {
                 console.error(`[CSS Editor] Save ${roleId} failed:`, error);
-                context.UI.showMessage(`Failed to save: ${error.message}`, 'error');
+                context.UI.showToast(`Failed to save: ${error.message}`);
             }
         },
 
@@ -1156,7 +1156,7 @@
                 });
 
                 if (response.ok || response.redirected) {
-                    context.UI.showMessage('CSS saved successfully!', 'success');
+                    context.UI.showToast('CSS saved successfully!');
 
                     // Update original content
                     Object.keys(editorState).forEach(roleId => {
@@ -1174,7 +1174,7 @@
 
             } catch (error) {
                 console.error('[CSS Editor] Save failed:', error);
-                context.UI.showMessage('Failed to save CSS: ' + error.message, 'error');
+                context.UI.showToast('Failed to save CSS: ' + error.message);
             }
         },
 
@@ -1186,7 +1186,7 @@
                 const openRoles = Object.keys(editorState).filter(role => editorState[role].active);
 
                 if (openRoles.length === 0) {
-                    context.UI.showMessage('No tabs open to save', 'warning');
+                    context.UI.showToast('No tabs open to save');
                     return;
                 }
 
@@ -1229,7 +1229,7 @@
 
                 if (response.ok || response.redirected) {
                     const tabLabel = openRoles.length === 1 ? editorState[openRoles[0]].label : `${openRoles.length} tabs`;
-                    context.UI.showMessage(`${tabLabel} saved successfully!`, 'success');
+                    context.UI.showToast(`${tabLabel} saved successfully!`);
 
                     // Update original content for saved tabs
                     openRoles.forEach(roleId => {
@@ -1245,7 +1245,7 @@
 
             } catch (error) {
                 console.error('[CSS Editor] Save open tabs failed:', error);
-                context.UI.showMessage('Failed to save: ' + error.message, 'error');
+                context.UI.showToast('Failed to save: ' + error.message);
             }
         },
 
