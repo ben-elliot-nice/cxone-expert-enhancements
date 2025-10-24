@@ -1050,6 +1050,13 @@
          * Save a single CSS role
          */
         async saveRole(roleId) {
+            const saveBtn = document.querySelector(`[data-save-role="${roleId}"]`);
+            if (!saveBtn) return;
+
+            // Store original button state
+            const originalText = saveBtn.textContent;
+            const wasDisabled = saveBtn.disabled;
+
             try {
                 console.log(`[CSS Editor] Saving ${roleId}...`);
 
@@ -1057,6 +1064,11 @@
                 if (!role) {
                     throw new Error(`Role ${roleId} not found`);
                 }
+
+                // Show loading state
+                saveBtn.disabled = true;
+                saveBtn.classList.add('saving');
+                saveBtn.innerHTML = '<span class="spinner"></span> Saving...';
 
                 // Sync this editor's value to state
                 const editor = monacoEditors[roleId];
@@ -1110,6 +1122,13 @@
             } catch (error) {
                 console.error(`[CSS Editor] Save ${roleId} failed:`, error);
                 context.UI.showMessage(`Failed to save: ${error.message}`, 'error');
+            } finally {
+                // Restore button state
+                if (saveBtn) {
+                    saveBtn.disabled = wasDisabled;
+                    saveBtn.classList.remove('saving');
+                    saveBtn.textContent = originalText;
+                }
             }
         },
 
@@ -1117,8 +1136,20 @@
          * Save all CSS
          */
         async saveAll() {
+            const saveBtn = document.getElementById('save-btn');
+            if (!saveBtn) return;
+
+            // Store original button state
+            const originalText = saveBtn.textContent;
+            const wasDisabled = saveBtn.disabled;
+
             try {
                 console.log('[CSS Editor] Saving all CSS...');
+
+                // Show loading state
+                saveBtn.disabled = true;
+                saveBtn.classList.add('saving');
+                saveBtn.innerHTML = '<span class="spinner"></span> Saving...';
 
                 // Sync editor values to state
                 Object.keys(monacoEditors).forEach(roleId => {
@@ -1175,6 +1206,13 @@
             } catch (error) {
                 console.error('[CSS Editor] Save failed:', error);
                 context.UI.showMessage('Failed to save CSS: ' + error.message, 'error');
+            } finally {
+                // Restore button state
+                if (saveBtn) {
+                    saveBtn.disabled = wasDisabled;
+                    saveBtn.classList.remove('saving');
+                    saveBtn.textContent = originalText;
+                }
             }
         },
 
@@ -1182,6 +1220,13 @@
          * Save only the currently open tabs
          */
         async saveOpenTabs() {
+            const saveBtn = document.getElementById('save-btn');
+            if (!saveBtn) return;
+
+            // Store original button state
+            const originalText = saveBtn.textContent;
+            const wasDisabled = saveBtn.disabled;
+
             try {
                 const openRoles = Object.keys(editorState).filter(role => editorState[role].active);
 
@@ -1191,6 +1236,11 @@
                 }
 
                 console.log(`[CSS Editor] Saving ${openRoles.length} open tab(s):`, openRoles);
+
+                // Show loading state
+                saveBtn.disabled = true;
+                saveBtn.classList.add('saving');
+                saveBtn.innerHTML = '<span class="spinner"></span> Saving...';
 
                 // Sync editor values to state for open tabs
                 openRoles.forEach(roleId => {
@@ -1246,6 +1296,13 @@
             } catch (error) {
                 console.error('[CSS Editor] Save open tabs failed:', error);
                 context.UI.showMessage('Failed to save: ' + error.message, 'error');
+            } finally {
+                // Restore button state
+                if (saveBtn) {
+                    saveBtn.disabled = wasDisabled;
+                    saveBtn.classList.remove('saving');
+                    saveBtn.textContent = originalText;
+                }
             }
         },
 
