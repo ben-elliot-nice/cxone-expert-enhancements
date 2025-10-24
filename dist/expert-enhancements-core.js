@@ -340,7 +340,8 @@
             activeToasts: [],      // Currently displayed toasts
             toastQueue: [],        // Queued toasts waiting to be shown
             maxToasts: 3,          // Maximum number of toasts to show at once
-            toastIdCounter: 0      // Unique ID for each toast
+            toastIdCounter: 0,     // Unique ID for each toast
+            repositionTimeout: null // Debounce timer for repositioning
         },
 
         /**
@@ -489,7 +490,8 @@
             this._toastState.activeToasts.push({
                 id: toastData.id,
                 element: toast,
-                timeoutId: null
+                timeoutId: null,
+                dismissing: false
             });
 
             // Wait for DOM to settle before repositioning
@@ -519,10 +521,12 @@
          * Dismiss a specific toast by ID
          */
         _dismissToast(toastId) {
-            const index = this._toastState.activeToasts.findIndex(t => t.id === toastId);
-            if (index === -1) return;
+            const toastObj = this._toastState.activeToasts.find(t => t.id === toastId);
+            if (!toastObj) return;
 
-            const toastObj = this._toastState.activeToasts[index];
+            // Prevent duplicate dismiss operations
+            if (toastObj.dismissing) return;
+            toastObj.dismissing = true;
 
             // Clear timeout
             if (toastObj.timeoutId) {
@@ -537,10 +541,29 @@
                     toastObj.element.remove();
                 }
 
-                // Remove from active list
-                this._toastState.activeToasts.splice(index, 1);
+                // Find current index by ID (may have changed due to other dismissals)
+                const currentIndex = this._toastState.activeToasts.findIndex(t => t.id === toastId);
+                if (currentIndex !== -1) {
+                    this._toastState.activeToasts.splice(currentIndex, 1);
+                }
 
-                // Wait for removal animation to complete, then reposition
+                // Debounce repositioning and queue processing
+                this._scheduleRepositioning();
+            }, 500);
+        },
+
+        /**
+         * Debounced repositioning and queue processing
+         * Prevents multiple simultaneous dismissals from causing chaos
+         */
+        _scheduleRepositioning() {
+            // Clear any pending reposition
+            if (this._toastState.repositionTimeout) {
+                clearTimeout(this._toastState.repositionTimeout);
+            }
+
+            // Schedule a single reposition after all concurrent dismissals
+            this._toastState.repositionTimeout = setTimeout(() => {
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
                         // Reposition remaining toasts
@@ -549,17 +572,16 @@
                         // Update dismiss all button
                         this._updateDismissAllButton();
 
-                        // Show next queued toast AFTER repositioning is complete
-                        // Small delay prevents race conditions
+                        // Process queue only once
                         if (this._toastState.toastQueue.length > 0) {
                             setTimeout(() => {
                                 const nextToast = this._toastState.toastQueue.shift();
                                 this._renderToast(nextToast);
-                            }, 50); // 50ms delay to ensure layout is stable
+                            }, 50);
                         }
                     });
                 });
-            }, 500);
+            }, 50); // Wait 50ms for other dismissals to complete
         },
 
         /**
