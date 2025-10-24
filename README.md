@@ -1,306 +1,231 @@
 # CXone Expert Enhancements
 
-Extensible toolkit loader for CXone Expert with modular enhancement modules including CSS editor, live preview, and more.
+Extensible developer toolkit for CXone Expert with CSS/HTML editors, live preview, and more.
 
 ## 🚀 Quick Start
 
-### Installation
+Add this single line to the `<head>` of your CXone Expert site:
 
-Add this script to the `<head>` of your CXone Expert site:
-
-#### Option 1: Latest Version (Recommended - Auto-Updates)
+### Latest Version (Recommended)
 
 ```html
-<script src="https://releases.benelliot-nice.com/cxone-expert-enhancements/latest/css-editor-embed.js"></script>
+<script src="https://releases.benelliot-nice.com/cxone-expert-enhancements/latest/expert-enhancements-embed.js"></script>
 ```
 
-This URL always points to the latest released version. You'll automatically receive updates when new versions are deployed.
+✅ Auto-updates to newest releases
+✅ Always get bug fixes and features
+✅ Recommended for most users
 
-#### Option 2: Pinned Version (No Auto-Updates)
+### Pinned Version (Stable)
 
 ```html
-<script src="https://releases.benelliot-nice.com/cxone-expert-enhancements/releases/v1.2.0/css-editor-embed.js"></script>
+<script src="https://releases.benelliot-nice.com/cxone-expert-enhancements/releases/v1.2.0/expert-enhancements-embed.js"></script>
 ```
 
-Pin to a specific version to prevent automatic updates. Replace `vX.X.X` with your desired version (e.g., `v0.0.7`).
+✅ Stays on specific version forever
+✅ Perfect for production stability
+✅ Replace `v1.2.0` with your desired version
 
-### What You Get
+### That's it!
 
-Once loaded, a floating toggle button appears in the top-right corner. Click it to access:
-
-- **CSS Editor** - Live CSS editing with syntax highlighting (Monaco Editor)
-- **Role-Based Editing** - Edit CSS for different user roles independently
-- **Live Preview** - See changes in real-time before saving
-- **Auto-Complete** - Context-aware CSS suggestions based on page elements
-- **Persistent Storage** - Your changes are saved automatically
+Once loaded, a floating toggle button appears in the top-right corner. Click it to access the editor tools.
 
 ## ✨ Features
 
-- **🎈 Floating Overlay Mode** - Draggable, resizable CSS editor overlay
-- **🔴 Live CSS Preview** - See your CSS changes reflected instantly (no save required!)
-- **Monaco Editor Integration** - Same editor as VS Code with full syntax highlighting
-- **Toggle-Based Split View** - Show/hide up to 3 editors simultaneously
-- **Multiple Role Support** - Edit CSS for all user roles (All Roles, Anonymous, Community Member, Pro Member, Admin, Legacy Browser)
-- **Draggable & Resizable** - Move and resize the editor window to fit your workflow
+### 🎨 CSS Editor
+- **Live Preview** - See changes in real-time without saving
+- **Monaco Editor** - Same powerful editor as VS Code
+- **Role-Based Editing** - Separate CSS for different user roles
+  - All Roles
+  - Anonymous
+  - Community Member
+  - Pro Member
+  - Admin
+  - Legacy Browser
+- **Auto-Complete** - Context-aware CSS suggestions from your page
+- **Syntax Highlighting** - Full CSS language support
+- **Dirty State Tracking** - Visual indicators show unsaved changes (✓/●)
+
+### 🛠️ Editor Features
+- **Draggable & Resizable** - Position and size to fit your workflow
+- **Fullscreen Mode** - Double-click header to maximize
 - **Mobile Responsive** - Automatically adapts to smaller screens
-- **State Management** - CSS content persists even when editors are toggled off
-- **localStorage Persistence** - Your changes survive page reloads
-- **Export Functionality** - Export individual or active CSS files
-- **Direct Save** - Saves changes directly back to the legacy control panel
-- **CSRF Protection** - Automatically handles CSRF tokens
-- **Dirty State Tracking** - Visual indicators (✓/●) show saved vs unsaved changes
-- **Context-Aware Autocomplete** - Suggests classes, IDs, and selectors from the current page
+- **Persistent Storage** - Your changes survive page reloads
+- **Direct Save** - Saves directly to CXone Expert control panel
+- **Export** - Download individual or all CSS files
+- **Multiple Editors** - Toggle between CSS and HTML editors
+- **Split View** - Show up to 3 editors simultaneously
 
-## 🏗️ Development
+### 🔒 Security & Reliability
+- **CSRF Protection** - Automatic security token handling
+- **localStorage Backup** - Never lose your work
+- **Error Recovery** - Graceful handling of save failures
 
-### Prerequisites
+## 📸 Screenshots
 
-- Node.js 18+
-- Digital Ocean Spaces credentials (for deployment)
-- Git
+*Coming soon - screenshots of the editor in action*
 
-### Local Setup
+## 💡 Usage Examples
 
-1. Clone the repository:
-```bash
-git clone git@github.com:ben-elliot-nice/cxone-expert-enhancements.git
-cd cxone-expert-enhancements
-```
+### Editing CSS for All Users
 
-2. Install dependencies:
-```bash
-npm install
-```
+1. Click the floating toggle button
+2. Select "CSS Editor" from the dropdown
+3. Click "All Roles" tab
+4. Start typing your CSS
+5. See live preview instantly
+6. Click "Save All" when ready
 
-3. Create `.env` file (see [.env.example](.env.example)):
-```bash
-cp .env.example .env
-# Edit .env with your Digital Ocean Spaces credentials
-```
+### Editing CSS for Specific Roles
 
-4. Make changes to files in `/dist/`
+1. Open CSS Editor
+2. Click the role tab you want to edit (e.g., "Anonymous")
+3. Make your changes
+4. Each role's CSS is saved independently
 
-5. Deploy to test:
-```bash
-npm run deploy
-```
+### Exporting Your CSS
 
-This will deploy to a path based on your current git branch.
-
-### Git Workflow
-
-This project uses a structured git flow with automated deployments:
-
-- **`main`** → Deploy to `main/`, `latest/`, and `releases/v{version}/` + create GitHub release
-- **`develop`** → Deploy to `develop/` for integration testing
-- **Any other branch** → Deploy to `{sanitized-branch-name}/` for testing (supports feature/, hotfix/, bugfix/, refactor/, etc.)
-
-See [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md) for detailed workflow instructions.
-
-#### Branch Naming Best Practices
-
-While the deployment system supports any branch name, we recommend following these conventions:
-
-- ✅ **Good:** `feature/user-auth`, `hotfix/bug-123`, `bugfix/issue-456`, `refactor/cleanup-css`
-- ⚠️ **Works but ugly:** `mybranch`, `test123`, `quick-fix`
-- ❌ **Avoid:** Special characters are stripped (e.g., `test@#$%` becomes `test-----`)
-
-**Rules:**
-- Branch names are sanitized: only `a-z`, `0-9`, `-`, `_`, `/` are kept
-- Other characters are replaced with `-`
-- Use descriptive, lowercase names with slashes for categorization
-- Main and develop are protected and won't be deployed as feature branches
-
-### Branch-Specific Deployments
-
-Each branch automatically deploys to its own path on Digital Ocean Spaces:
-
-| Branch | Deployment Path | Use Case |
-|--------|----------------|----------|
-| `main` | `main/`, `latest/`, `releases/v{version}/` | Production releases |
-| `develop` | `develop/` | Integration testing |
-| `feature/my-feature` | `feature-my-feature/` | Feature development & testing |
-| `hotfix/bug-123` | `hotfix-bug-123/` | Hotfix testing |
-| `bugfix/issue-456` | `bugfix-issue-456/` | Bug fix testing |
-| Any other branch | `{sanitized-name}/` | Branch testing |
-
-**Example URLs:**
-```
-https://releases.benelliot-nice.com/cxone-expert-enhancements/
-├── main/css-editor-embed.js                    (main branch)
-├── latest/css-editor-embed.js                  (latest release - auto-updates)
-├── releases/
-│   ├── v0.0.5/css-editor-embed.js              (pinned version - immutable)
-│   └── vX.X.X/css-editor-embed.js              (other versions)
-├── develop/css-editor-embed.js                 (develop branch)
-├── feature-auto-load-css/css-editor-embed.js   (feature branch)
-├── hotfix-bug-123/css-editor-embed.js          (hotfix branch)
-└── bugfix-issue-456/css-editor-embed.js        (bugfix branch)
-```
-
-## 📦 Releases
-
-### Creating a Release
-
-1. Ensure all changes are merged to `develop`
-2. Bump version in `package.json`:
-```bash
-npm version patch  # For bug fixes (0.0.1 → 0.0.2)
-npm version minor  # For new features (0.0.1 → 0.1.0)
-npm version major  # For breaking changes (0.0.1 → 1.0.0)
-```
-
-3. Create PR from `develop` → `main`
-4. Merge PR - this triggers automatic:
-   - Git tag creation (`v0.0.X`)
-   - GitHub release with changelog
-   - Deployment to 3 locations (`main/`, `latest/`, `releases/v{version}/`)
-
-### Version Pinning Strategy
-
-Users can choose how they receive updates:
-
-**Auto-update (latest) - Recommended:**
-```html
-<script src="https://releases.benelliot-nice.com/cxone-expert-enhancements/latest/css-editor-embed.js"></script>
-```
-- Always gets the newest release automatically
-- Cached with `no-cache` headers for quick updates
-- Good for: Most users who want bug fixes and features
-
-**Pinned version - For stability:**
-```html
-<script src="https://releases.benelliot-nice.com/cxone-expert-enhancements/releases/v1.2.0/css-editor-embed.js"></script>
-```
-- Stays on that specific version forever
-- Cached permanently (immutable)
-- Good for: Production sites requiring stability
-- Replace `vX.X.X` with your desired version (e.g., `v0.0.7`)
-
-**Develop - Bleeding edge:**
-```html
-<script src="https://releases.benelliot-nice.com/cxone-expert-enhancements/develop/css-editor-embed.js"></script>
-```
-- Latest development code
-- May be unstable
-- Good for: Testing upcoming features
-
-## 🔧 GitHub Actions Setup
-
-### Required Secrets
-
-Configure these secrets in your GitHub repository (Settings → Secrets and variables → Actions):
-
-| Secret Name | Description | Where to Get |
-|-------------|-------------|--------------|
-| `AWS_ACCESS_KEY_ID` | Digital Ocean Spaces Access Key | DO Spaces → API |
-| `AWS_SECRET_ACCESS_KEY` | Digital Ocean Spaces Secret Key | DO Spaces → API |
-| `DO_SPACES_BUCKET` | Target bucket name | `benelliot-nice` |
-| `DO_SPACES_ENDPOINT` | Region endpoint | `syd1.digitaloceanspaces.com` |
-
-### Workflows
-
-Three automated workflows handle deployments:
-
-1. **`feature-deploy.yml`** - Deploys feature branches to `feature/{name}/`
-   - Triggers: Push to `feature/**` branches
-   - Creates PR comments with deployment URLs
-
-2. **`develop-deploy.yml`** - Deploys develop branch to `develop/`
-   - Triggers: Push to `develop` branch
-   - Creates deployment summary
-
-3. **`release.yml`** - Deploys main to multiple locations + creates release
-   - Triggers: Push to `main` branch
-   - Creates git tag (e.g., `v0.0.1`)
-   - Generates GitHub release with changelog
-   - Deploys to `main/`, `latest/`, `releases/v{version}/`
-
-## 📁 Project Structure
-
-```
-cxone-expert-enhancements/
-├── dist/
-│   ├── css-editor.css         # Styles for the editor
-│   ├── css-editor.js          # Main editor logic
-│   └── css-editor-embed.js    # Embed loader script
-├── .github/
-│   └── workflows/
-│       ├── feature-deploy.yml # Feature branch CI/CD
-│       ├── develop-deploy.yml # Develop branch CI/CD
-│       └── release.yml        # Release & main CI/CD
-├── deploy.js                  # Environment-aware deployment script
-├── package.json               # Project metadata & version
-├── .env.example               # Environment template
-├── .env                       # Local credentials (gitignored)
-├── docs/GIT_WORKFLOW.md            # Detailed workflow guide
-└── README.md                  # This file
-```
+1. Open CSS Editor
+2. Click dropdown arrow next to "Save All"
+3. Select "Export All" or individual role exports
 
 ## 🎯 Roadmap
 
-This project is designed to be extensible. Future modules planned:
+Upcoming features and modules:
 
-- **JavaScript Editor** - Live JS editing similar to CSS editor
-- **DOM Inspector** - Element picker and live inspection
-- **Analytics Dashboard** - Real-time usage metrics
-- **Permissions Manager** - Visual permission configuration
-- **Accessibility Checker** - WCAG compliance scanning
-- **Theme Previewer** - Live theme switching
-- **Module Loader** - Dynamic module loading system
+- **IntelliSense/Autocomplete** (#42) - Enhanced CSS property suggestions
+- **Code Formatting** (#44) - Auto-format CSS/HTML on save
+- **Drag & Drop Import** (#45) - Import CSS files by dragging
+- **Browser Extension** (#54) - Replace bookmarklet with proper extension
+- **New Apps:**
+  - Demo Builder (#57) - Build demos with CSS extraction
+  - Image Optimizer (#56) - Optimize images for performance
+  - Styling Best Practices Checker (#58) - Lint your CSS
+
+See [open issues](https://github.com/ben-elliot-nice/cxone-expert-enhancements/issues) for full roadmap.
 
 ## 🐛 Troubleshooting
 
-### Authentication Errors
-- Check that your tokens are current and properly copied
-- Ensure quotes are included where needed
-- Try logging in again and getting fresh tokens
+### Editor Not Appearing
 
-### Deployment Fails
-- Verify GitHub secrets are configured correctly
-- Check Digital Ocean Spaces credentials
-- Ensure bucket and endpoint are correct
+**Problem:** No floating toggle button visible
+**Solutions:**
+- Hard refresh: Ctrl+Shift+R (Windows) or Cmd+Shift+R (Mac)
+- Check browser console for errors (F12)
+- Verify embed script URL is correct
+- Ensure you have admin permissions on CXone Expert
 
-### CSS Not Loading
-- Check browser console for errors
-- Verify the embed script URL is correct
-- Ensure you have admin permissions
+### CSS Not Saving
 
-### Local Deploy Issues
-- Make sure `.env` file exists with correct credentials
-- Run `npm install` to ensure dependencies are installed
-- Check that you're on a git branch (deploy.js needs branch name)
+**Problem:** Save button does nothing or shows error
+**Solutions:**
+- Check that you're logged in to CXone Expert
+- Verify you have permission to edit CSS
+- Try refreshing and loading the editor again
+- Check browser console for error messages
+
+### Changes Disappear After Page Reload
+
+**Problem:** CSS reverts to previous version
+**Solutions:**
+- Click "Save All" before closing (not just preview)
+- Check that save completed successfully (green checkmark)
+- Verify localStorage is enabled in your browser
+
+### Editor is Slow or Laggy
+
+**Problem:** Performance issues when typing
+**Solutions:**
+- Close other browser tabs to free memory
+- Disable live preview toggle if too slow
+- Try refreshing the page
+- Clear browser cache
+
+### localStorage Quota Exceeded
+
+**Problem:** "Storage quota exceeded" error
+**Solutions:**
+- Export your CSS before clearing
+- Clear old localStorage data in DevTools
+- Typical quota: 5-10MB per domain
+
+### Can't See Live Preview
+
+**Problem:** Changes don't appear until saved
+**Solutions:**
+- Ensure live preview toggle is ON (check for indicator)
+- Try typing in the editor to trigger preview
+- Refresh page and re-open editor
+
+## ❓ FAQ
+
+**Q: Is this safe to use in production?**
+A: Yes! The latest version is stable and tested. For maximum safety, use a pinned version.
+
+**Q: Will this slow down my site?**
+A: No. The embed script is tiny (~10KB) and loads asynchronously. Editors only load when you click the toggle button.
+
+**Q: Can I use this on multiple CXone Expert sites?**
+A: Yes! Just add the embed script to each site's `<head>`.
+
+**Q: What happens if I have unsaved changes and close the editor?**
+A: Your changes are preserved in localStorage. Re-open the editor to continue editing.
+
+**Q: Can multiple people edit CSS at the same time?**
+A: The editor doesn't have real-time collaboration. Last save wins. Coordinate with your team to avoid conflicts.
+
+**Q: How do I uninstall?**
+A: Simply remove the `<script>` tag from your site's `<head>`. No other cleanup needed.
+
+**Q: Does this work offline?**
+A: No. The editor requires internet connection to load Monaco Editor from CDN.
+
+**Q: Which browsers are supported?**
+A: Chrome 90+, Firefox 88+, Safari 14+, Edge 90+. Modern browsers only.
+
+**Q: Can I customize the colors or position?**
+A: Not yet, but configurable options are planned (#48). For now, you can drag/resize the overlay.
+
+**Q: Where is my CSS actually saved?**
+A: Two places: (1) CXone Expert's database when you click "Save All", (2) Your browser's localStorage as a backup.
+
+## 🤝 Contributing
+
+We welcome contributions! To get started:
+
+1. Read the [Development Guide](docs/DEVELOPMENT.md)
+2. Check [open issues](https://github.com/ben-elliot-nice/cxone-expert-enhancements/issues)
+3. Fork the repository
+4. Create a feature branch
+5. Submit a pull request
+
+**Developer Resources:**
+- [Development Setup](docs/DEVELOPMENT.md) - Local setup and workflow
+- [Git Workflow](docs/GIT_WORKFLOW.md) - Branching and release process
+- [Deployment Guide](docs/DEPLOYMENT.md) - CI/CD and deployments
+- [Architecture](docs/ARCHITECTURE.md) - Technical architecture
 
 ## 📄 License
 
 ISC
 
-## 🤝 Contributing
+## 📞 Support
 
-1. Fork the repository
-2. Create a feature branch from `develop`:
-```bash
-git checkout develop
-git pull
-git checkout -b feature/amazing-feature
-```
-3. Make your changes
-4. Commit following conventional commits
-5. Push your branch
-6. Open a Pull Request to `develop`
-
-See [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md) for detailed contribution guidelines.
+- **Issues:** [GitHub Issues](https://github.com/ben-elliot-nice/cxone-expert-enhancements/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/ben-elliot-nice/cxone-expert-enhancements/discussions)
+- **Documentation:** [docs/](docs/)
 
 ## 🙏 Acknowledgments
 
 - Built with [Monaco Editor](https://microsoft.github.io/monaco-editor/) - The code editor that powers VS Code
-- Deployed to [Digital Ocean Spaces](https://www.digitalocean.com/products/spaces)
+- Hosted on [Digital Ocean Spaces](https://www.digitalocean.com/products/spaces)
 - Automated with [GitHub Actions](https://github.com/features/actions)
 
-## 📞 Support
+## 🔖 Version
 
-- **Issues**: https://github.com/ben-elliot-nice/cxone-expert-enhancements/issues
-- **Discussions**: https://github.com/ben-elliot-nice/cxone-expert-enhancements/discussions
+Current version: **1.2.0**
+
+See [releases](https://github.com/ben-elliot-nice/cxone-expert-enhancements/releases) for changelog and version history.
 
 ---
 
