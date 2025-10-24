@@ -333,19 +333,20 @@
 
     const UI = {
         /**
-         * Toast management system
-         * Supports multiple toasts with max limit, queueing, and dismiss all
+         * Toast notification system with centralized lifecycle management
          */
         _toastState: {
-            activeToasts: [],      // Currently displayed toasts
-            toastQueue: [],        // Queued toasts waiting to be shown
-            maxToasts: 3,          // Maximum number of toasts to show at once
-            toastIdCounter: 0,     // Unique ID for each toast
-            repositionTimeout: null // Debounce timer for repositioning
+            activeToasts: [],       // Currently displayed toasts: { id, element, timeoutId, state: 'rendering'|'active'|'dismissing' }
+            toastQueue: [],         // Queued toasts waiting: { id, text, type, duration }
+            maxToasts: 3,           // Maximum number of toasts to show at once
+            toastIdCounter: 0,      // Unique ID for each toast
+            lifecycleTimeout: null, // Single debounce timer for lifecycle management
+            isProcessing: false     // Flag to prevent recursive processing
         },
 
         /**
          * Show toast notification (floating)
+         * Public API - only entry point for creating toasts
          * @param {string} text - The message to display
          * @param {string} type - The type of toast: 'success', 'warning', 'error', or 'info'
          * @param {number} duration - How long to show the toast (ms)
@@ -358,7 +359,7 @@
                 return;
             }
 
-            // Create toast data
+            // Create toast data and add to queue
             const toastData = {
                 id: ++this._toastState.toastIdCounter,
                 text,
@@ -366,20 +367,106 @@
                 duration
             };
 
-            // If we're at max capacity, queue it
-            if (this._toastState.activeToasts.length >= this._toastState.maxToasts) {
-                this._toastState.toastQueue.push(toastData);
-                return;
-            }
+            // Always add to queue - lifecycle manager will process it
+            this._toastState.toastQueue.push(toastData);
 
-            // Otherwise, show it immediately
-            this._renderToast(toastData);
+            // Trigger lifecycle management
+            this._processToastLifecycle();
         },
 
         /**
-         * Render a toast to the screen
+         * Central toast lifecycle manager
+         * This is the ONLY function that coordinates all toast state transitions
+         * Enforces all business rules: max toasts, queueing, rendering, dismissal
          */
-        _renderToast(toastData) {
+        _processToastLifecycle() {
+            // Debounce to handle concurrent operations (dismissals, new toasts, etc.)
+            if (this._toastState.lifecycleTimeout) {
+                clearTimeout(this._toastState.lifecycleTimeout);
+            }
+
+            this._toastState.lifecycleTimeout = setTimeout(() => {
+                // Double RAF ensures DOM is stable before calculations
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        // Prevent recursive processing
+                        if (this._toastState.isProcessing) return;
+                        this._toastState.isProcessing = true;
+
+                        try {
+                            // Step 1: Clean up dismissed toasts (state = 'dismissing' + animation complete)
+                            this._cleanupDismissedToasts();
+
+                            // Step 2: Process queue - move items from queue to active if space available
+                            // Rule: max 3 toasts, excluding those currently dismissing
+                            this._processToastQueue();
+
+                            // Step 3: Update UI - reposition toasts and update dismiss all button
+                            this._updateToastUI();
+                        } finally {
+                            this._toastState.isProcessing = false;
+                        }
+                    });
+                });
+            }, 50); // 50ms debounce window for concurrent operations
+        },
+
+        /**
+         * Step 1: Clean up dismissed toasts
+         * Removes toast elements and data for toasts marked as 'dismissing'
+         */
+        _cleanupDismissedToasts() {
+            const toRemove = this._toastState.activeToasts.filter(t => t.state === 'dismissed');
+
+            toRemove.forEach(toastObj => {
+                // Remove from DOM
+                if (toastObj.element && toastObj.element.parentElement) {
+                    toastObj.element.remove();
+                }
+
+                // Remove from active array
+                const index = this._toastState.activeToasts.indexOf(toastObj);
+                if (index !== -1) {
+                    this._toastState.activeToasts.splice(index, 1);
+                }
+            });
+        },
+
+        /**
+         * Step 2: Process toast queue
+         * Moves toasts from queue to active if space is available
+         * Enforces max toast limit (excluding dismissing toasts)
+         */
+        _processToastQueue() {
+            // Count non-dismissing toasts
+            const activeCount = this._toastState.activeToasts.filter(
+                t => t.state !== 'dismissing'
+            ).length;
+
+            // Process queue while we have space
+            while (
+                this._toastState.toastQueue.length > 0 &&
+                activeCount + (this._toastState.activeToasts.filter(t => t.state === 'rendering').length) < this._toastState.maxToasts
+            ) {
+                const toastData = this._toastState.toastQueue.shift();
+                this._renderToastElement(toastData);
+            }
+        },
+
+        /**
+         * Step 3: Update toast UI
+         * Repositions all toasts and updates dismiss all button
+         */
+        _updateToastUI() {
+            this._repositionToasts();
+            this._updateDismissAllButton();
+        },
+
+        /**
+         * Render a toast element to the screen
+         * Called only by _processToastQueue - not directly
+         */
+        _renderToastElement(toastData) {
             const overlay = document.getElementById('expert-enhancements-overlay');
             if (!overlay) return;
 
@@ -427,7 +514,7 @@
             `;
             closeBtn.onmouseover = () => closeBtn.style.opacity = '1';
             closeBtn.onmouseout = () => closeBtn.style.opacity = '0.8';
-            closeBtn.onclick = () => this._dismissToast(toastData.id);
+            closeBtn.onclick = () => this._requestDismissToast(toastData.id);
 
             toast.appendChild(textSpan);
             toast.appendChild(closeBtn);
@@ -486,115 +573,76 @@
 
             overlay.appendChild(toast);
 
-            // Add to active toasts
-            this._toastState.activeToasts.push({
+            // Add to active toasts with 'rendering' state
+            const toastObj = {
                 id: toastData.id,
                 element: toast,
                 timeoutId: null,
-                dismissing: false
-            });
+                state: 'rendering'
+            };
+            this._toastState.activeToasts.push(toastObj);
 
-            // Wait for DOM to settle before repositioning
-            // Double RAF ensures layout is fully calculated
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    // Reposition all toasts
-                    this._repositionToasts();
+            // After animation completes, transition to 'active' state and start auto-dismiss timer
+            setTimeout(() => {
+                const currentToastObj = this._toastState.activeToasts.find(t => t.id === toastData.id);
+                if (currentToastObj && currentToastObj.state === 'rendering') {
+                    currentToastObj.state = 'active';
 
-                    // Update dismiss all button
-                    this._updateDismissAllButton();
-                });
-            });
-
-            // Start timer AFTER rendering (next tick to ensure it's in DOM)
-            requestAnimationFrame(() => {
-                const toastObj = this._toastState.activeToasts.find(t => t.id === toastData.id);
-                if (toastObj) {
-                    toastObj.timeoutId = setTimeout(() => {
-                        this._dismissToast(toastData.id);
+                    // Start auto-dismiss timer
+                    currentToastObj.timeoutId = setTimeout(() => {
+                        this._requestDismissToast(toastData.id);
                     }, toastData.duration);
                 }
-            });
+            }, 500); // Wait for slideDown animation (0.5s) to complete
         },
 
         /**
-         * Dismiss a specific toast by ID
+         * Request dismissal of a specific toast
+         * This is the public API for dismissing toasts (called by X button, auto-dismiss timer, etc.)
          */
-        _dismissToast(toastId) {
+        _requestDismissToast(toastId) {
             const toastObj = this._toastState.activeToasts.find(t => t.id === toastId);
             if (!toastObj) return;
 
-            // Prevent duplicate dismiss operations
-            if (toastObj.dismissing) return;
-            toastObj.dismissing = true;
+            // Ignore if already dismissing or dismissed
+            if (toastObj.state === 'dismissing' || toastObj.state === 'dismissed') return;
 
-            // Clear timeout
+            // Clear auto-dismiss timeout if exists
             if (toastObj.timeoutId) {
                 clearTimeout(toastObj.timeoutId);
+                toastObj.timeoutId = null;
             }
 
-            // Slide out to bottom with fade
+            // Mark as dismissing and start animation
+            toastObj.state = 'dismissing';
             toastObj.element.style.animation = 'slideOutBottom 0.5s ease-in forwards';
 
+            // After animation completes, mark as dismissed
             setTimeout(() => {
-                if (toastObj.element.parentElement) {
-                    toastObj.element.remove();
-                }
+                const currentToastObj = this._toastState.activeToasts.find(t => t.id === toastId);
+                if (currentToastObj && currentToastObj.state === 'dismissing') {
+                    currentToastObj.state = 'dismissed';
 
-                // Find current index by ID (may have changed due to other dismissals)
-                const currentIndex = this._toastState.activeToasts.findIndex(t => t.id === toastId);
-                if (currentIndex !== -1) {
-                    this._toastState.activeToasts.splice(currentIndex, 1);
+                    // Trigger lifecycle to clean up and process queue
+                    this._processToastLifecycle();
                 }
-
-                // Debounce repositioning and queue processing
-                this._scheduleRepositioning();
-            }, 500);
+            }, 500); // Match slideOutBottom animation duration
         },
 
         /**
-         * Debounced repositioning and queue processing
-         * Prevents multiple simultaneous dismissals from causing chaos
+         * Request dismissal of all active toasts
+         * Public API for "Dismiss All" button
          */
-        _scheduleRepositioning() {
-            // Clear any pending reposition
-            if (this._toastState.repositionTimeout) {
-                clearTimeout(this._toastState.repositionTimeout);
-            }
+        _requestDismissAllToasts() {
+            // Get all toast IDs that aren't already dismissing/dismissed
+            const toastIds = this._toastState.activeToasts
+                .filter(t => t.state !== 'dismissing' && t.state !== 'dismissed')
+                .map(t => t.id);
 
-            // Schedule a single reposition after all concurrent dismissals
-            this._toastState.repositionTimeout = setTimeout(() => {
-                requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        // Reposition remaining toasts
-                        this._repositionToasts();
+            // Request dismissal for each
+            toastIds.forEach(id => this._requestDismissToast(id));
 
-                        // Update dismiss all button
-                        this._updateDismissAllButton();
-
-                        // Process queue only once
-                        if (this._toastState.toastQueue.length > 0) {
-                            setTimeout(() => {
-                                const nextToast = this._toastState.toastQueue.shift();
-                                this._renderToast(nextToast);
-                            }, 50);
-                        }
-                    });
-                });
-            }, 50); // Wait 50ms for other dismissals to complete
-        },
-
-        /**
-         * Dismiss all active toasts
-         */
-        _dismissAllToasts() {
-            // Get all current toast IDs (make a copy since array will be modified)
-            const toastIds = this._toastState.activeToasts.map(t => t.id);
-
-            // Dismiss each toast
-            toastIds.forEach(id => this._dismissToast(id));
-
-            // Clear the queue too
+            // Clear the queue
             this._toastState.toastQueue = [];
         },
 
@@ -618,6 +666,7 @@
 
         /**
          * Show/hide dismiss all button based on toast count
+         * Only counts non-dismissing toasts
          */
         _updateDismissAllButton() {
             const overlay = document.getElementById('expert-enhancements-overlay');
@@ -625,8 +674,13 @@
 
             let dismissAllBtn = document.getElementById('enhancements-dismiss-all');
 
-            // Show button if 2+ toasts
-            if (this._toastState.activeToasts.length >= 2) {
+            // Count visible toasts (not dismissing/dismissed)
+            const visibleToasts = this._toastState.activeToasts.filter(
+                t => t.state !== 'dismissing' && t.state !== 'dismissed'
+            );
+
+            // Show button if 2+ visible toasts
+            if (visibleToasts.length >= 2) {
                 if (!dismissAllBtn) {
                     dismissAllBtn = document.createElement('button');
                     dismissAllBtn.id = 'enhancements-dismiss-all';
@@ -652,20 +706,20 @@
                     dismissAllBtn.onmouseout = () => {
                         dismissAllBtn.style.background = 'rgba(30, 30, 30, 0.9)';
                     };
-                    dismissAllBtn.onclick = () => this._dismissAllToasts();
+                    dismissAllBtn.onclick = () => this._requestDismissAllToasts();
 
                     overlay.appendChild(dismissAllBtn);
                 }
 
-                // Position above the topmost toast
-                if (this._toastState.activeToasts.length > 0) {
-                    const topmostToast = this._toastState.activeToasts[this._toastState.activeToasts.length - 1];
+                // Position above the topmost visible toast
+                if (visibleToasts.length > 0) {
+                    const topmostToast = visibleToasts[visibleToasts.length - 1];
                     const topmostBottom = parseInt(topmostToast.element.style.bottom);
                     const topmostHeight = topmostToast.element.offsetHeight;
                     dismissAllBtn.style.bottom = `${topmostBottom + topmostHeight + 10}px`;
                 }
             } else {
-                // Remove button if less than 2 toasts
+                // Remove button if less than 2 visible toasts
                 if (dismissAllBtn) {
                     dismissAllBtn.remove();
                 }
