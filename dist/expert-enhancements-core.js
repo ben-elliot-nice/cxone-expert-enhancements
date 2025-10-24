@@ -368,28 +368,91 @@
 
         /**
          * Show toast notification (floating)
+         * @param {string} text - The message to display
+         * @param {string} type - The type of toast: 'success', 'warning', 'error', or 'info'
+         * @param {number} duration - How long to show the toast (ms)
          */
-        showToast(text, duration = 4000) {
+        showToast(text, type = 'info', duration = 4000) {
             const existing = document.getElementById('enhancements-toast');
             if (existing) {
                 existing.remove();
             }
 
+            // Find the overlay container
+            const overlay = document.getElementById('expert-enhancements-overlay');
+            if (!overlay) {
+                console.warn('[UI] Overlay not found, cannot show toast');
+                return;
+            }
+
+            // Color scheme based on type
+            const colors = {
+                success: 'rgba(34, 197, 94, 0.8)',   // Green
+                warning: 'rgba(251, 146, 60, 0.8)',  // Orange
+                error: 'rgba(239, 68, 68, 0.8)',     // Red
+                info: 'rgba(59, 130, 246, 0.8)'      // Blue
+            };
+
+            const backgroundColor = colors[type] || colors.info;
+
             const toast = document.createElement('div');
             toast.id = 'enhancements-toast';
-            toast.textContent = text;
+
+            // Create text span
+            const textSpan = document.createElement('span');
+            textSpan.textContent = text;
+            textSpan.style.cssText = `
+                flex: 1;
+                margin-right: 8px;
+            `;
+
+            // Create close button
+            const closeBtn = document.createElement('button');
+            closeBtn.innerHTML = '×';
+            closeBtn.style.cssText = `
+                background: none;
+                border: none;
+                color: white;
+                font-size: 20px;
+                font-weight: bold;
+                cursor: pointer;
+                padding: 0;
+                width: 20px;
+                height: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                opacity: 0.8;
+                transition: opacity 0.2s;
+            `;
+            closeBtn.onmouseover = () => closeBtn.style.opacity = '1';
+            closeBtn.onmouseout = () => closeBtn.style.opacity = '0.8';
+            closeBtn.onclick = () => {
+                toast.style.transition = 'opacity 0.3s';
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            };
+
+            toast.appendChild(textSpan);
+            toast.appendChild(closeBtn);
+
             toast.style.cssText = `
-                position: fixed;
+                position: absolute;
                 bottom: 20px;
                 right: 20px;
-                background: rgba(50, 50, 50, 0.95);
+                background: ${backgroundColor};
                 color: white;
-                padding: 12px 20px;
+                padding: 12px 16px;
                 border-radius: 6px;
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-                z-index: 100000;
+                z-index: 10000;
                 font-size: 14px;
                 animation: slideUp 0.3s ease-out;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                max-width: 400px;
+                pointer-events: auto;
             `;
 
             // Add keyframe animation if not exists
@@ -405,13 +468,23 @@
                 document.head.appendChild(style);
             }
 
-            document.body.appendChild(toast);
+            overlay.appendChild(toast);
 
-            setTimeout(() => {
-                toast.style.transition = 'opacity 0.3s';
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 300);
+            // Auto-remove after duration
+            const timeoutId = setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.style.transition = 'opacity 0.3s';
+                    toast.style.opacity = '0';
+                    setTimeout(() => {
+                        if (toast.parentElement) {
+                            toast.remove();
+                        }
+                    }, 300);
+                }
             }, duration);
+
+            // Clear timeout if manually closed
+            closeBtn.addEventListener('click', () => clearTimeout(timeoutId), { once: true });
         },
 
         /**

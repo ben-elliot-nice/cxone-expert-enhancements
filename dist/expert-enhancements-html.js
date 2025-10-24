@@ -1026,7 +1026,7 @@
                 });
 
                 if (response.ok || response.redirected) {
-                    context.UI.showToast(`${field.label} saved successfully!`);
+                    context.UI.showToast(`${field.label} saved successfully!`, 'success');
 
                     // Update original content for this field only
                     originalContent[fieldId] = field.content;
@@ -1042,7 +1042,7 @@
 
             } catch (error) {
                 console.error(`[HTML Editor] Save ${fieldId} failed:`, error);
-                context.UI.showToast(`Failed to save: ${error.message}`);
+                context.UI.showToast(`Failed to save: ${error.message}`, 'error');
             }
         },
 
@@ -1085,7 +1085,7 @@
                 });
 
                 if (response.ok || response.redirected) {
-                    context.UI.showToast('HTML saved successfully!');
+                    context.UI.showToast('HTML saved successfully!', 'success');
 
                     // Update original content
                     Object.keys(editorState).forEach(fieldId => {
@@ -1103,7 +1103,7 @@
 
             } catch (error) {
                 console.error('[HTML Editor] Save failed:', error);
-                context.UI.showToast('Failed to save HTML: ' + error.message);
+                context.UI.showToast('Failed to save HTML: ' + error.message, 'error');
             }
         },
 
@@ -1115,7 +1115,7 @@
                 const openFields = Object.keys(editorState).filter(field => editorState[field].active);
 
                 if (openFields.length === 0) {
-                    context.UI.showToast('No tabs open to save');
+                    context.UI.showToast('No tabs open to save', 'warning');
                     return;
                 }
 
@@ -1154,7 +1154,7 @@
 
                 if (response.ok || response.redirected) {
                     const tabLabel = openFields.length === 1 ? editorState[openFields[0]].label : `${openFields.length} tabs`;
-                    context.UI.showToast(`${tabLabel} saved successfully!`);
+                    context.UI.showToast(`${tabLabel} saved successfully!`, 'success');
 
                     // Update original content for saved tabs
                     openFields.forEach(fieldId => {
@@ -1170,7 +1170,7 @@
 
             } catch (error) {
                 console.error('[HTML Editor] Save open tabs failed:', error);
-                context.UI.showToast('Failed to save: ' + error.message);
+                context.UI.showToast('Failed to save: ' + error.message, 'error');
             }
         },
 
