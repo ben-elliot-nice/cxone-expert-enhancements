@@ -1001,6 +1001,12 @@
                     field.content = editor.getValue();
                 }
 
+                // Check if this field has changes
+                if (!field.isDirty && field.content === originalContent[fieldId]) {
+                    context.UI.showToast(`${field.label} has no changes to save`, 'warning');
+                    return;
+                }
+
                 // Build form data - send the edited field + original content for others
                 // This ensures only the specific field is saved, not all edited fields
                 const formData = {
@@ -1060,6 +1066,16 @@
                         editorState[fieldId].content = editor.getValue();
                     }
                 });
+
+                // Check if any field has changes
+                const hasChanges = Object.keys(editorState).some(fieldId => {
+                    return editorState[fieldId].isDirty || editorState[fieldId].content !== originalContent[fieldId];
+                });
+
+                if (!hasChanges) {
+                    context.UI.showToast('No changes to save', 'warning');
+                    return;
+                }
 
                 // Build form data
                 const formData = {
@@ -1128,6 +1144,17 @@
                         editorState[fieldId].content = editor.getValue();
                     }
                 });
+
+                // Check if any open tab has changes
+                const hasChanges = openFields.some(fieldId => {
+                    return editorState[fieldId].isDirty || editorState[fieldId].content !== originalContent[fieldId];
+                });
+
+                if (!hasChanges) {
+                    const tabLabel = openFields.length === 1 ? editorState[openFields[0]].label : `${openFields.length} tabs`;
+                    context.UI.showToast(`${tabLabel} have no changes to save`, 'warning');
+                    return;
+                }
 
                 // Build form data - send edited content for open tabs, original for closed tabs
                 const formData = {

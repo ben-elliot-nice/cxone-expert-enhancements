@@ -1064,6 +1064,12 @@
                     role.content = editor.getValue();
                 }
 
+                // Check if this role has changes
+                if (!role.isDirty && role.content === originalContent[roleId]) {
+                    context.UI.showToast(`${role.label} has no changes to save`, 'warning');
+                    return;
+                }
+
                 // Build form data - send the edited field + original content for others
                 // This ensures only the specific field is saved, not all edited fields
                 const formData = {
@@ -1127,6 +1133,16 @@
                         editorState[roleId].content = editor.getValue();
                     }
                 });
+
+                // Check if any role has changes
+                const hasChanges = Object.keys(editorState).some(roleId => {
+                    return editorState[roleId].isDirty || editorState[roleId].content !== originalContent[roleId];
+                });
+
+                if (!hasChanges) {
+                    context.UI.showToast('No changes to save', 'warning');
+                    return;
+                }
 
                 // Build form data
                 const formData = {
@@ -1199,6 +1215,17 @@
                         editorState[roleId].content = editor.getValue();
                     }
                 });
+
+                // Check if any open tab has changes
+                const hasChanges = openRoles.some(roleId => {
+                    return editorState[roleId].isDirty || editorState[roleId].content !== originalContent[roleId];
+                });
+
+                if (!hasChanges) {
+                    const tabLabel = openRoles.length === 1 ? editorState[openRoles[0]].label : `${openRoles.length} tabs`;
+                    context.UI.showToast(`${tabLabel} have no changes to save`, 'warning');
+                    return;
+                }
 
                 // Build form data - send edited content for open tabs, original for closed tabs
                 const formData = {
