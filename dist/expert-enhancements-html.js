@@ -78,7 +78,6 @@
             container.innerHTML = `
                 <div class="enhancements-app-container">
                     <div id="message-area"></div>
-                    <div id="loading" class="loading" style="display: block;">Loading HTML from system...</div>
                     <div id="html-editor-container" style="display: none;">
                         <div class="toggle-bar" id="toggle-bar"></div>
                         <div id="editors-grid" class="editors-grid"></div>
@@ -86,58 +85,81 @@
                 </div>
             `;
 
-            // Restore state if available
-            const savedState = context.Storage.getAppState(this.id);
-            let hasDirtyEdits = false;
-
-            if (savedState) {
-                console.log('[HTML Editor] Restoring state:', savedState);
-                this.setState(savedState);
-
-                // Check if any fields are dirty
-                hasDirtyEdits = savedState.isDirty && Object.values(savedState.isDirty).some(dirty => dirty);
-                console.log('[HTML Editor] Has dirty edits in saved state:', hasDirtyEdits);
-            }
-
-            // Load HTML data - skip full fetch if we have dirty edits (checkpoint protection)
-            await this.loadData(hasDirtyEdits);
-
-            // Check viewport width to set mobile/desktop view
-            this.checkViewportWidth();
-
-            // Setup save dropdown structure (one-time)
-            this.setupSaveDropdownStructure();
-
-            // Build toggle bar (buttons or dropdown based on viewport)
-            this.buildToggleBar();
-
-            // Initialize editors - skip default if we have saved state
-            const skipDefault = !!savedState;
-            console.log('[HTML Editor] Initializing editors, skip default:', skipDefault);
-            this.initializeEditors(skipDefault);
-
-            // Setup keyboard shortcuts
-            this.setupKeyboardShortcuts();
-
-            // Setup click listener to close dropdowns when clicking outside
-            document.addEventListener('click', (e) => {
-                // Close global dropdown
-                const dropdown = document.querySelector('.save-dropdown');
-                const dropdownMenu = document.getElementById('save-dropdown-menu');
-                if (dropdown && dropdownMenu && !dropdown.contains(e.target)) {
-                    dropdownMenu.classList.remove('show');
-                    dropdown.classList.remove('open');
-                }
-
-                // Close editor dropdowns
-                if (!e.target.closest('.editor-save-dropdown')) {
-                    document.querySelectorAll('.editor-save-dropdown-menu.show').forEach(menu => {
-                        menu.classList.remove('show');
-                    });
-                }
+            // Show loading overlay
+            context.LoadingOverlay.show('Loading HTML from system...', {
+                timeout: 30000,
+                showProgress: true
             });
 
-            console.log('[HTML Editor] Mounted');
+            try {
+                // Restore state if available
+                const savedState = context.Storage.getAppState(this.id);
+                let hasDirtyEdits = false;
+
+                if (savedState) {
+                    console.log('[HTML Editor] Restoring state:', savedState);
+                    context.LoadingOverlay.setMessage('Restoring saved state...');
+                    this.setState(savedState);
+
+                    // Check if any fields are dirty
+                    hasDirtyEdits = savedState.isDirty && Object.values(savedState.isDirty).some(dirty => dirty);
+                    console.log('[HTML Editor] Has dirty edits in saved state:', hasDirtyEdits);
+                }
+
+                // Load HTML data - skip full fetch if we have dirty edits (checkpoint protection)
+                if (hasDirtyEdits) {
+                    context.LoadingOverlay.setMessage('Loading saved edits...');
+                } else {
+                    context.LoadingOverlay.setMessage('Fetching HTML from server...');
+                }
+                await this.loadData(hasDirtyEdits);
+
+                // Check viewport width to set mobile/desktop view
+                this.checkViewportWidth();
+
+                // Setup save dropdown structure (one-time)
+                this.setupSaveDropdownStructure();
+
+                // Build toggle bar (buttons or dropdown based on viewport)
+                this.buildToggleBar();
+
+                // Initialize editors - skip default if we have saved state
+                context.LoadingOverlay.setMessage('Initializing Monaco editors...');
+                const skipDefault = !!savedState;
+                console.log('[HTML Editor] Initializing editors, skip default:', skipDefault);
+                this.initializeEditors(skipDefault);
+
+                // Setup keyboard shortcuts
+                this.setupKeyboardShortcuts();
+
+                // Setup click listener to close dropdowns when clicking outside
+                document.addEventListener('click', (e) => {
+                    // Close global dropdown
+                    const dropdown = document.querySelector('.save-dropdown');
+                    const dropdownMenu = document.getElementById('save-dropdown-menu');
+                    if (dropdown && dropdownMenu && !dropdown.contains(e.target)) {
+                        dropdownMenu.classList.remove('show');
+                        dropdown.classList.remove('open');
+                    }
+
+                    // Close editor dropdowns
+                    if (!e.target.closest('.editor-save-dropdown')) {
+                        document.querySelectorAll('.editor-save-dropdown-menu.show').forEach(menu => {
+                            menu.classList.remove('show');
+                        });
+                    }
+                });
+
+                // Hide loading overlay
+                context.LoadingOverlay.hide();
+
+                console.log('[HTML Editor] Mounted');
+
+            } catch (error) {
+                console.error('[HTML Editor] Mount failed:', error);
+                context.LoadingOverlay.showError('Failed to load HTML Editor: ' + error.message);
+                throw error;
+            }
         },
 
         /**

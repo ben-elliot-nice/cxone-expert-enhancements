@@ -61,7 +61,8 @@
                         Storage,
                         UI,
                         DOM,
-                        Overlay
+                        Overlay,
+                        LoadingOverlay
                     };
                     await app.init(context);
                     initializedApps.add(appId);
@@ -828,6 +829,187 @@
     };
 
     // ============================================================================
+    // Loading Overlay Utility
+    // ============================================================================
+
+    let loadingOverlay = null;
+    let loadingTimeout = null;
+    let loadingProgressInterval = null;
+    let loadingStartTime = null;
+
+    const LoadingOverlay = {
+        /**
+         * Show loading overlay with optional message
+         */
+        show(message = 'Loading...', options = {}) {
+            const {
+                timeout = 30000, // 30 seconds default timeout
+                showProgress = true, // Show progress after 2 seconds
+                onTimeout = null
+            } = options;
+
+            // Remove existing overlay if any
+            this.hide();
+
+            // Create overlay
+            loadingOverlay = document.createElement('div');
+            loadingOverlay.className = 'enhancements-loading-overlay';
+            loadingOverlay.setAttribute('role', 'status');
+            loadingOverlay.setAttribute('aria-live', 'polite');
+            loadingOverlay.setAttribute('aria-label', message);
+
+            loadingOverlay.innerHTML = `
+                <div class="loading-content">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-message">${message}</div>
+                    <div class="loading-progress" style="display: none;">
+                        <div class="loading-progress-bar">
+                            <div class="loading-progress-fill"></div>
+                        </div>
+                        <div class="loading-elapsed">0s</div>
+                    </div>
+                </div>
+            `;
+
+            // Find the overlay content or container to append to
+            const overlayContent = document.getElementById('expert-enhancements-overlay-content');
+            const targetContainer = overlayContent || document.body;
+            targetContainer.appendChild(loadingOverlay);
+
+            // Track start time
+            loadingStartTime = Date.now();
+
+            // Show progress indicator after 2 seconds if enabled
+            if (showProgress) {
+                loadingProgressInterval = setInterval(() => {
+                    const elapsed = Math.floor((Date.now() - loadingStartTime) / 1000);
+                    const progressEl = loadingOverlay.querySelector('.loading-progress');
+                    const elapsedEl = loadingOverlay.querySelector('.loading-elapsed');
+
+                    if (elapsed >= 2 && progressEl) {
+                        progressEl.style.display = 'block';
+                    }
+
+                    if (elapsedEl) {
+                        elapsedEl.textContent = `${elapsed}s`;
+                    }
+
+                    // Animate progress bar (fake progress)
+                    const progressFill = loadingOverlay.querySelector('.loading-progress-fill');
+                    if (progressFill && elapsed >= 2) {
+                        // Asymptotic progress: approaches 90% but never reaches 100%
+                        const progress = Math.min(90, 30 + (elapsed - 2) * 8);
+                        progressFill.style.width = `${progress}%`;
+                    }
+                }, 500);
+            }
+
+            // Set timeout if specified
+            if (timeout > 0) {
+                loadingTimeout = setTimeout(() => {
+                    console.error('[LoadingOverlay] Timeout reached');
+                    this.showError('Loading is taking longer than expected. Please refresh the page or try again later.');
+                    if (onTimeout) onTimeout();
+                }, timeout);
+            }
+
+            console.log('[LoadingOverlay] Shown:', message);
+        },
+
+        /**
+         * Update loading message
+         */
+        setMessage(message) {
+            if (!loadingOverlay) return;
+
+            const messageEl = loadingOverlay.querySelector('.loading-message');
+            if (messageEl) {
+                messageEl.textContent = message;
+                loadingOverlay.setAttribute('aria-label', message);
+            }
+
+            console.log('[LoadingOverlay] Message updated:', message);
+        },
+
+        /**
+         * Update progress (0-100)
+         */
+        setProgress(percent) {
+            if (!loadingOverlay) return;
+
+            const progressFill = loadingOverlay.querySelector('.loading-progress-fill');
+            const progressEl = loadingOverlay.querySelector('.loading-progress');
+
+            if (progressFill && progressEl) {
+                progressEl.style.display = 'block';
+                progressFill.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+            }
+        },
+
+        /**
+         * Hide loading overlay
+         */
+        hide() {
+            // Clear timers
+            if (loadingTimeout) {
+                clearTimeout(loadingTimeout);
+                loadingTimeout = null;
+            }
+
+            if (loadingProgressInterval) {
+                clearInterval(loadingProgressInterval);
+                loadingProgressInterval = null;
+            }
+
+            // Remove overlay with fade out
+            if (loadingOverlay) {
+                loadingOverlay.style.opacity = '0';
+                setTimeout(() => {
+                    if (loadingOverlay && loadingOverlay.parentNode) {
+                        loadingOverlay.remove();
+                    }
+                    loadingOverlay = null;
+                    loadingStartTime = null;
+                }, 300);
+
+                console.log('[LoadingOverlay] Hidden');
+            }
+        },
+
+        /**
+         * Show error message in loading overlay
+         */
+        showError(message) {
+            if (!loadingOverlay) return;
+
+            const content = loadingOverlay.querySelector('.loading-content');
+            if (content) {
+                content.innerHTML = `
+                    <div class="loading-error-icon">⚠</div>
+                    <div class="loading-message error">${message}</div>
+                    <button class="loading-retry-btn" onclick="window.location.reload()">Reload Page</button>
+                `;
+                loadingOverlay.classList.add('error');
+            }
+
+            // Clear intervals
+            if (loadingProgressInterval) {
+                clearInterval(loadingProgressInterval);
+                loadingProgressInterval = null;
+            }
+
+            console.error('[LoadingOverlay] Error shown:', message);
+        },
+
+        /**
+         * Check if loading overlay is currently shown
+         */
+        isShown() {
+            return loadingOverlay !== null;
+        }
+    };
+
+    // ============================================================================
     // DOM Utilities
     // ============================================================================
 
@@ -1343,6 +1525,7 @@
         UI,
         DOM,
         Overlay,
+        LoadingOverlay,
         version: '1.0.0'
     };
 

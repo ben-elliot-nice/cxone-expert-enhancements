@@ -88,7 +88,6 @@
             container.innerHTML = `
                 <div class="enhancements-app-container">
                     <div id="message-area"></div>
-                    <div id="loading" class="loading" style="display: block;">Loading CSS from system...</div>
                     <div id="css-editor-container" style="display: none;">
                         <div class="toggle-bar" id="toggle-bar">
                             <div class="save-dropdown">
@@ -104,43 +103,66 @@
                 </div>
             `;
 
-            // Restore state if available
-            const savedState = context.Storage.getAppState(this.id);
-            let hasDirtyEdits = false;
+            // Show loading overlay
+            context.LoadingOverlay.show('Loading CSS from system...', {
+                timeout: 30000,
+                showProgress: true
+            });
 
-            if (savedState) {
-                console.log('[CSS Editor] Restoring state:', savedState);
-                this.setState(savedState);
+            try {
+                // Restore state if available
+                const savedState = context.Storage.getAppState(this.id);
+                let hasDirtyEdits = false;
 
-                // Check if any fields are dirty
-                hasDirtyEdits = savedState.isDirty && Object.values(savedState.isDirty).some(dirty => dirty);
-                console.log('[CSS Editor] Has dirty edits in saved state:', hasDirtyEdits);
+                if (savedState) {
+                    console.log('[CSS Editor] Restoring state:', savedState);
+                    context.LoadingOverlay.setMessage('Restoring saved state...');
+                    this.setState(savedState);
+
+                    // Check if any fields are dirty
+                    hasDirtyEdits = savedState.isDirty && Object.values(savedState.isDirty).some(dirty => dirty);
+                    console.log('[CSS Editor] Has dirty edits in saved state:', hasDirtyEdits);
+                }
+
+                // Load CSS data - skip full fetch if we have dirty edits (checkpoint protection)
+                if (hasDirtyEdits) {
+                    context.LoadingOverlay.setMessage('Loading saved edits...');
+                } else {
+                    context.LoadingOverlay.setMessage('Fetching CSS from server...');
+                }
+                await this.loadData(hasDirtyEdits);
+
+                // Check viewport width to set mobile/desktop view
+                this.checkViewportWidth();
+
+                // Build toggle bar (buttons or dropdown based on viewport)
+                this.buildToggleBar();
+
+                // Initialize editors - skip default if we have saved state
+                context.LoadingOverlay.setMessage('Initializing Monaco editors...');
+                const skipDefault = !!savedState;
+                console.log('[CSS Editor] Initializing editors, skip default:', skipDefault);
+                this.initializeEditors(skipDefault);
+
+                // Setup save dropdown event listeners
+                this.setupSaveDropdown();
+
+                // Setup keyboard shortcuts
+                this.setupKeyboardShortcuts();
+
+                // Create and mount live preview controls to overlay header
+                this.createLivePreviewControls();
+
+                // Hide loading overlay
+                context.LoadingOverlay.hide();
+
+                console.log('[CSS Editor] Mounted');
+
+            } catch (error) {
+                console.error('[CSS Editor] Mount failed:', error);
+                context.LoadingOverlay.showError('Failed to load CSS Editor: ' + error.message);
+                throw error;
             }
-
-            // Load CSS data - skip full fetch if we have dirty edits (checkpoint protection)
-            await this.loadData(hasDirtyEdits);
-
-            // Check viewport width to set mobile/desktop view
-            this.checkViewportWidth();
-
-            // Build toggle bar (buttons or dropdown based on viewport)
-            this.buildToggleBar();
-
-            // Initialize editors - skip default if we have saved state
-            const skipDefault = !!savedState;
-            console.log('[CSS Editor] Initializing editors, skip default:', skipDefault);
-            this.initializeEditors(skipDefault);
-
-            // Setup save dropdown event listeners
-            this.setupSaveDropdown();
-
-            // Setup keyboard shortcuts
-            this.setupKeyboardShortcuts();
-
-            // Create and mount live preview controls to overlay header
-            this.createLivePreviewControls();
-
-            console.log('[CSS Editor] Mounted');
         },
 
         /**
