@@ -366,8 +366,7 @@
                     });
                 }
 
-                // Hide loading, show editor
-                document.getElementById('loading').style.display = 'none';
+                // Show editor container
                 document.getElementById('html-editor-container').style.display = 'block';
 
                 console.log('[HTML Editor] Data loaded');

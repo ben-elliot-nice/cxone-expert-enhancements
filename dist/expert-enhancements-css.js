@@ -349,8 +349,7 @@
                     });
                 }
 
-                // Hide loading, show editor
-                document.getElementById('loading').style.display = 'none';
+                // Show editor container
                 document.getElementById('css-editor-container').style.display = 'block';
 
                 console.log('[CSS Editor] Data loaded');
