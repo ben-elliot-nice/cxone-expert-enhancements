@@ -193,6 +193,8 @@
     // ============================================================================
 
     async function init() {
+        let loadingShown = false;
+
         try {
             console.log('[Expert Enhancements Embed] Initializing...');
 
@@ -269,6 +271,17 @@
             const lastActiveApp = commonState.lastActiveApp || 'css-editor';
 
             console.log('[Expert Enhancements Embed] Loading last active app:', lastActiveApp);
+
+            // Show loading overlay when switching to app if overlay is open
+            if (commonState.overlayOpen) {
+                // Overlay will be opened, show loading indicator
+                window.ExpertEnhancements.LoadingOverlay.show('Initializing editor...', {
+                    timeout: 30000,
+                    showProgress: true
+                });
+                loadingShown = true;
+            }
+
             await window.ExpertEnhancements.AppManager.switchTo(lastActiveApp);
 
             // 9. Restore overlay state
@@ -276,6 +289,12 @@
                 console.log('[Expert Enhancements Embed] Restoring overlay open state');
                 setTimeout(() => {
                     window.ExpertEnhancements.Overlay.toggle();
+                    // Hide loading overlay after app is mounted
+                    if (loadingShown) {
+                        setTimeout(() => {
+                            window.ExpertEnhancements.LoadingOverlay.hide();
+                        }, 500);
+                    }
                 }, 300);
             }
 
@@ -283,6 +302,13 @@
 
         } catch (error) {
             console.error('[Expert Enhancements Embed] Initialization failed:', error);
+
+            // Show error in loading overlay if it's shown
+            if (loadingShown && window.ExpertEnhancements && window.ExpertEnhancements.LoadingOverlay) {
+                window.ExpertEnhancements.LoadingOverlay.showError(
+                    'Failed to initialize: ' + error.message
+                );
+            }
         }
     }
 
