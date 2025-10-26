@@ -1050,6 +1050,17 @@
          * Save a single CSS role
          */
         async saveRole(roleId) {
+            const saveBtn = document.querySelector(`[data-save-role="${roleId}"]`);
+            if (!saveBtn) return;
+
+            // Get all save buttons to disable them
+            const saveAllBtn = document.getElementById('save-btn');
+            const allSaveBtns = document.querySelectorAll('[data-save-role]');
+
+            // Store original button state
+            const originalText = saveBtn.textContent;
+            const wasDisabled = saveBtn.disabled;
+
             try {
                 console.log(`[CSS Editor] Saving ${roleId}...`);
 
@@ -1057,6 +1068,14 @@
                 if (!role) {
                     throw new Error(`Role ${roleId} not found`);
                 }
+
+                // Disable ALL save buttons
+                if (saveAllBtn) saveAllBtn.disabled = true;
+                allSaveBtns.forEach(btn => btn.disabled = true);
+
+                // Show loading state on this button
+                saveBtn.classList.add('saving');
+                saveBtn.innerHTML = '<span class="spinner"></span> Saving...';
 
                 // Sync this editor's value to state
                 const editor = monacoEditors[roleId];
@@ -1116,6 +1135,13 @@
             } catch (error) {
                 console.error(`[CSS Editor] Save ${roleId} failed:`, error);
                 context.UI.showToast(`Failed to save: ${error.message}`, 'error');
+            } finally {
+                // Restore all button states
+                saveBtn.disabled = wasDisabled;
+                saveBtn.classList.remove('saving');
+                saveBtn.textContent = originalText;
+                if (saveAllBtn) saveAllBtn.disabled = false;
+                allSaveBtns.forEach(btn => btn.disabled = false);
             }
         },
 
@@ -1123,8 +1149,26 @@
          * Save all CSS
          */
         async saveAll() {
+            const saveBtn = document.getElementById('save-btn');
+            if (!saveBtn) return;
+
+            // Get all save buttons to disable them
+            const allSaveBtns = document.querySelectorAll('[data-save-role]');
+
+            // Store original button state
+            const originalText = saveBtn.textContent;
+            const wasDisabled = saveBtn.disabled;
+
             try {
                 console.log('[CSS Editor] Saving all CSS...');
+
+                // Disable ALL save buttons
+                saveBtn.disabled = true;
+                allSaveBtns.forEach(btn => btn.disabled = true);
+
+                // Show loading state on Save All button
+                saveBtn.classList.add('saving');
+                saveBtn.innerHTML = '<span class="spinner"></span> Saving...';
 
                 // Sync editor values to state
                 Object.keys(monacoEditors).forEach(roleId => {
@@ -1191,6 +1235,12 @@
             } catch (error) {
                 console.error('[CSS Editor] Save failed:', error);
                 context.UI.showToast('Failed to save CSS: ' + error.message, 'error');
+            } finally {
+                // Restore all button states
+                saveBtn.disabled = wasDisabled;
+                saveBtn.classList.remove('saving');
+                saveBtn.textContent = originalText;
+                allSaveBtns.forEach(btn => btn.disabled = false);
             }
         },
 
@@ -1198,15 +1248,54 @@
          * Save only the currently open tabs
          */
         async saveOpenTabs() {
-            try {
-                const openRoles = Object.keys(editorState).filter(role => editorState[role].active);
+            const openRoles = Object.keys(editorState).filter(role => editorState[role].active);
 
-                if (openRoles.length === 0) {
-                    context.UI.showToast('No tabs open to save', 'warning');
-                    return;
+            if (openRoles.length === 0) {
+                context.UI.showToast('No tabs open to save', 'warning');
+                return;
+            }
+
+            // Get all save buttons to disable them
+            const saveAllBtn = document.getElementById('save-btn');
+            const allSaveBtns = document.querySelectorAll('[data-save-role]');
+
+            // Store original button states
+            const buttonStates = new Map();
+
+            // Store Save All button state
+            if (saveAllBtn) {
+                buttonStates.set(saveAllBtn, {
+                    text: saveAllBtn.textContent,
+                    disabled: saveAllBtn.disabled
+                });
+            }
+
+            // Store individual editor save button states
+            openRoles.forEach(roleId => {
+                const btn = document.querySelector(`[data-save-role="${roleId}"]`);
+                if (btn) {
+                    buttonStates.set(btn, {
+                        text: btn.textContent,
+                        disabled: btn.disabled
+                    });
                 }
+            });
 
+            try {
                 console.log(`[CSS Editor] Saving ${openRoles.length} open tab(s):`, openRoles);
+
+                // Disable ALL save buttons
+                if (saveAllBtn) saveAllBtn.disabled = true;
+                allSaveBtns.forEach(btn => btn.disabled = true);
+
+                // Show loading state on open editor save buttons
+                openRoles.forEach(roleId => {
+                    const btn = document.querySelector(`[data-save-role="${roleId}"]`);
+                    if (btn) {
+                        btn.classList.add('saving');
+                        btn.innerHTML = '<span class="spinner"></span> Saving...';
+                    }
+                });
 
                 // Sync editor values to state for open tabs
                 openRoles.forEach(roleId => {
@@ -1273,6 +1362,13 @@
             } catch (error) {
                 console.error('[CSS Editor] Save open tabs failed:', error);
                 context.UI.showToast('Failed to save: ' + error.message, 'error');
+            } finally {
+                // Restore all button states
+                buttonStates.forEach((state, btn) => {
+                    btn.disabled = state.disabled;
+                    btn.classList.remove('saving');
+                    btn.textContent = state.text;
+                });
             }
         },
 
