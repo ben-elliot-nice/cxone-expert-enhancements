@@ -227,6 +227,7 @@
     cursor: pointer;
     position: relative;
     transition: background 0.2s;
+    height: 100%;
 }
 
 .split-half:hover {
@@ -240,9 +241,8 @@
 /* Visual rectangle indicators */
 .split-indicator {
     width: 3px;
-    height: 12px;
+    height: 100%;
     background: white;
-    border-radius: 1px;
     pointer-events: none;
 }
 
