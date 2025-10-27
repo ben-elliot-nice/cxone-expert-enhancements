@@ -1817,6 +1817,13 @@
             // Content area
             overlayContent = DOM.create('div', { id: 'expert-enhancements-overlay-content' });
 
+            // App container (child of overlayContent, for mounting apps)
+            const appContentContainer = DOM.create('div', {
+                id: 'app-content-container',
+                style: 'width: 100%; height: 100%; position: relative;'
+            });
+            overlayContent.appendChild(appContentContainer);
+
             // Resize handles
             const leftHandle = DOM.create('div', { className: 'enhancements-resize-handle left' });
             const rightHandle = DOM.create('div', { className: 'enhancements-resize-handle right' });
@@ -1839,8 +1846,8 @@
                 e.stopPropagation();
             }, { passive: true });
 
-            // Set app container
-            AppManager.setContainer(overlayContent);
+            // Set app container (use the dedicated app content container, not overlayContent)
+            AppManager.setContainer(appContentContainer);
 
             // Attach event listeners
             this.attachDragListeners();
@@ -2052,9 +2059,24 @@
 
             // Create drop zone overlay (initially hidden)
             const dropZone = DOM.create('div', {
-                id: 'file-drop-zone',
-                style: 'display: none; pointer-events: none;'
+                id: 'file-drop-zone'
             });
+
+            // Set comprehensive inline styles to ensure visibility when shown
+            dropZone.style.cssText = `
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(102, 126, 234, 0.95);
+                backdrop-filter: blur(8px);
+                z-index: 100000;
+                display: none;
+                align-items: center;
+                justify-content: center;
+                pointer-events: none;
+            `;
 
             const dropZoneContent = DOM.create('div', {
                 className: 'drop-zone-content'
@@ -2579,11 +2601,14 @@
 
                     // Verify drop zone is hidden after import
                     const dropZoneElement = document.getElementById('file-drop-zone');
+                    console.log('[FileImport] Looking for drop zone element:', dropZoneElement ? 'FOUND' : 'NOT FOUND');
                     if (dropZoneElement) {
                         console.log('[FileImport] After import - drop zone display:', dropZoneElement.style.display, 'pointer-events:', dropZoneElement.style.pointerEvents);
                         // Force cleanup
                         dropZoneElement.style.display = 'none';
                         dropZoneElement.style.pointerEvents = 'none';
+                    } else {
+                        console.error('[FileImport] Drop zone element missing after import! It may have been removed.');
                     }
 
                     // Verify overlay content is interactable
