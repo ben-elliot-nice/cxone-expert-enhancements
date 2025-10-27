@@ -1054,6 +1054,12 @@
                     setTimeout(() => {
                         editor.layout();
                         editor.focus();
+
+                        // Ensure editor captures scroll events
+                        const editorDom = editor.getDomNode();
+                        if (editorDom) {
+                            editorDom.style.pointerEvents = 'auto';
+                        }
                     }, 50);
                 }
 
