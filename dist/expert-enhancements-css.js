@@ -998,9 +998,17 @@
                     role.content = newContent;
                     role.isDirty = true;
 
-                    // Update Monaco editor
+                    // Update Monaco editor using executeEdits for undo support
                     if (monacoEditors[roleId]) {
-                        monacoEditors[roleId].setValue(newContent);
+                        const editor = monacoEditors[roleId];
+                        const model = editor.getModel();
+                        const lineCount = model.getLineCount();
+                        const lastLineLength = model.getLineLength(lineCount);
+
+                        editor.executeEdits('import', [{
+                            range: new monaco.Range(lineCount, lastLineLength + 1, lineCount, lastLineLength + 1),
+                            text: separator + importedContent
+                        }]);
                     }
 
                     // Save state and update UI
@@ -1061,9 +1069,17 @@
                 role.content = newContent;
                 role.isDirty = true;
 
-                // Update Monaco editor
+                // Update Monaco editor using executeEdits for undo support
                 if (monacoEditors[selectedRoleId]) {
-                    monacoEditors[selectedRoleId].setValue(newContent);
+                    const editor = monacoEditors[selectedRoleId];
+                    const model = editor.getModel();
+                    const lineCount = model.getLineCount();
+                    const lastLineLength = model.getLineLength(lineCount);
+
+                    editor.executeEdits('import', [{
+                        range: new monaco.Range(lineCount, lastLineLength + 1, lineCount, lastLineLength + 1),
+                        text: separator + fileContent
+                    }]);
                 }
 
                 // Save state and update UI

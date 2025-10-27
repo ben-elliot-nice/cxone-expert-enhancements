@@ -964,9 +964,17 @@
                     field.content = newContent;
                     field.isDirty = true;
 
-                    // Update Monaco editor
+                    // Update Monaco editor using executeEdits for undo support
                     if (monacoEditors[fieldId]) {
-                        monacoEditors[fieldId].setValue(newContent);
+                        const editor = monacoEditors[fieldId];
+                        const model = editor.getModel();
+                        const lineCount = model.getLineCount();
+                        const lastLineLength = model.getLineLength(lineCount);
+
+                        editor.executeEdits('import', [{
+                            range: new monaco.Range(lineCount, lastLineLength + 1, lineCount, lastLineLength + 1),
+                            text: separator + importedContent
+                        }]);
                     }
 
                     // Save state and update UI
@@ -1027,9 +1035,17 @@
                 field.content = newContent;
                 field.isDirty = true;
 
-                // Update Monaco editor
+                // Update Monaco editor using executeEdits for undo support
                 if (monacoEditors[selectedFieldId]) {
-                    monacoEditors[selectedFieldId].setValue(newContent);
+                    const editor = monacoEditors[selectedFieldId];
+                    const model = editor.getModel();
+                    const lineCount = model.getLineCount();
+                    const lastLineLength = model.getLineLength(lineCount);
+
+                    editor.executeEdits('import', [{
+                        range: new monaco.Range(lineCount, lastLineLength + 1, lineCount, lastLineLength + 1),
+                        text: separator + fileContent
+                    }]);
                 }
 
                 // Save state and update UI
