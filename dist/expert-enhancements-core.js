@@ -1422,19 +1422,28 @@
             return new Promise((resolve, reject) => {
                 console.log('[Formatter] Loading Prettier from CDN...');
 
-                // Helper to wait for a global variable with retry
-                const waitForGlobal = (checkFn, name, maxAttempts = 20, interval = 50) => {
+                // Helper to wait for a global variable with exponential backoff
+                // Max timeout: 60 seconds
+                const waitForGlobal = (checkFn, name, maxTimeout = 60000) => {
                     return new Promise((resolve, reject) => {
+                        const startTime = Date.now();
+                        let currentInterval = 50; // Start with 50ms
+                        const maxInterval = 2000; // Cap at 2 seconds
                         let attempts = 0;
+
                         const check = () => {
                             attempts++;
+                            const elapsed = Date.now() - startTime;
+
                             if (checkFn()) {
-                                console.log(`[Formatter] ${name} is ready`);
+                                console.log(`[Formatter] ${name} is ready (${attempts} attempts, ${elapsed}ms elapsed)`);
                                 resolve();
-                            } else if (attempts >= maxAttempts) {
-                                reject(new Error(`${name} not found after ${maxAttempts} attempts`));
+                            } else if (elapsed >= maxTimeout) {
+                                reject(new Error(`${name} not found after ${elapsed}ms (${attempts} attempts)`));
                             } else {
-                                setTimeout(check, interval);
+                                // Exponential backoff with cap
+                                setTimeout(check, currentInterval);
+                                currentInterval = Math.min(currentInterval * 2, maxInterval);
                             }
                         };
                         check();
@@ -1443,7 +1452,7 @@
 
                 // Load Prettier standalone first
                 const prettierScript = document.createElement('script');
-                prettierScript.src = 'https://unpkg.com/prettier@3.3.3/standalone.js';
+                prettierScript.src = 'https://unpkg.com/prettier@3.6.2/standalone.js';
 
                 prettierScript.onload = async () => {
                     console.log('[Formatter] Prettier standalone script loaded');
@@ -1454,7 +1463,7 @@
 
                         // Load CSS parser (postcss)
                         const cssParserScript = document.createElement('script');
-                        cssParserScript.src = 'https://unpkg.com/prettier@3.3.3/plugins/postcss.js';
+                        cssParserScript.src = 'https://unpkg.com/prettier@3.6.2/plugins/postcss.js';
 
                         await new Promise((resolveCSS, rejectCSS) => {
                             cssParserScript.onload = () => {
@@ -1475,7 +1484,7 @@
 
                         // Load HTML parser
                         const htmlParserScript = document.createElement('script');
-                        htmlParserScript.src = 'https://unpkg.com/prettier@3.3.3/plugins/html.js';
+                        htmlParserScript.src = 'https://unpkg.com/prettier@3.6.2/plugins/html.js';
 
                         await new Promise((resolveHTML, rejectHTML) => {
                             htmlParserScript.onload = () => {
