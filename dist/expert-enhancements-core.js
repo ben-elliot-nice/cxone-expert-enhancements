@@ -1429,7 +1429,7 @@
                 className: 'split-half split-left',
                 title: 'Split Left (30%)'
             });
-            splitLeftHalf.textContent = '▌';
+            splitLeftHalf.textContent = '│';
             splitLeftHalf.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.applyPresetSize('split-left');
@@ -1439,7 +1439,7 @@
                 className: 'split-half split-right',
                 title: 'Split Right (30%)'
             });
-            splitRightHalf.textContent = '▐';
+            splitRightHalf.textContent = '│';
             splitRightHalf.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.applyPresetSize('split-right');
@@ -1495,8 +1495,12 @@
             // Restore dimensions
             this.restoreDimensions();
 
-            // Initial check for preset buttons visibility
-            setTimeout(() => this.checkPresetButtonsVisibility(), 150);
+            // Initial check for preset buttons visibility (after render)
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    this.checkPresetButtonsVisibility();
+                });
+            });
 
             console.log('[Overlay] Created');
         },
@@ -1700,6 +1704,8 @@
             if (!isVisible) {
                 setTimeout(() => {
                     AppManager.notifyResize();
+                    // Check preset buttons visibility when showing overlay
+                    this.checkPresetButtonsVisibility();
                 }, 50);
             }
         },
@@ -1934,12 +1940,20 @@
          * Check overlay width and hide/show preset buttons accordingly
          */
         checkPresetButtonsVisibility() {
-            if (!overlay) return;
+            if (!overlay) {
+                console.log('[Overlay] checkPresetButtonsVisibility: overlay not found');
+                return;
+            }
 
             const presetButtons = document.querySelector('.preset-buttons');
-            if (!presetButtons) return;
+            if (!presetButtons) {
+                console.log('[Overlay] checkPresetButtonsVisibility: preset buttons not found');
+                return;
+            }
 
             const width = overlay.offsetWidth;
+            const currentDisplay = presetButtons.style.display;
+            console.log(`[Overlay] checkPresetButtonsVisibility: width=${width}px, currentDisplay="${currentDisplay}"`);
 
             if (width < 620) {
                 // Hide preset buttons
