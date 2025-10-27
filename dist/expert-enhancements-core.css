@@ -206,6 +206,15 @@
     z-index: 1001;
 }
 
+/* Fullscreen button active state indicator */
+.preset-btn.fullscreen-active {
+    background: rgba(255, 204, 0, 0.6) !important;
+}
+
+.preset-btn.fullscreen-active:hover {
+    background: rgba(255, 204, 0, 0.75) !important;
+}
+
 /* Split Button - Combined Left/Right */
 .split-btn {
     width: 28px !important;
