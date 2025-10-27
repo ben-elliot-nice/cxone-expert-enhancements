@@ -109,8 +109,37 @@
                 // Re-add drop zone AFTER app is mounted
                 if (dropZoneSaved && dropZone && appContainer) {
                     appContainer.appendChild(dropZone);
+                    // Force drop zone to be hidden and non-interactive
+                    dropZone.style.display = 'none';
+                    dropZone.style.pointerEvents = 'none';
+                    dropZone.style.visibility = 'hidden';
                     console.log('[App Manager] Drop zone restored after app mount');
+                    console.log('[App Manager] Drop zone forced to hidden state - display:', dropZone.style.display, 'pointer-events:', dropZone.style.pointerEvents);
                 }
+
+                // Notify app to layout editors after mount
+                setTimeout(() => {
+                    AppManager.notifyResize();
+                    console.log('[App Manager] Notified app to resize/layout after switch');
+
+                    // Debug: Check drop zone state after switch
+                    const dzCheck = document.getElementById('file-drop-zone');
+                    if (dzCheck) {
+                        const computed = window.getComputedStyle(dzCheck);
+                        console.log('[App Manager] DROP ZONE CHECK - display:', dzCheck.style.display, 'computed display:', computed.display);
+                        console.log('[App Manager] DROP ZONE CHECK - pointerEvents:', dzCheck.style.pointerEvents, 'computed pointerEvents:', computed.pointerEvents);
+                        console.log('[App Manager] DROP ZONE CHECK - visibility:', dzCheck.style.visibility, 'computed visibility:', computed.visibility);
+                        console.log('[App Manager] DROP ZONE CHECK - zIndex:', computed.zIndex);
+
+                        // If it's somehow visible or interactive, force fix it
+                        if (computed.display !== 'none' || computed.pointerEvents !== 'none') {
+                            console.error('[App Manager] DROP ZONE IS BLOCKING INTERACTION! Forcing hidden state...');
+                            dzCheck.style.display = 'none !important';
+                            dzCheck.style.pointerEvents = 'none !important';
+                            dzCheck.style.visibility = 'hidden !important';
+                        }
+                    }
+                }, 150);
 
                 // Save as last active app
                 Storage.setCommonState({ lastActiveApp: appId });
