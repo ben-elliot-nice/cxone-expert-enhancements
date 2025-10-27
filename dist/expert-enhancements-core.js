@@ -1495,6 +1495,9 @@
             // Restore dimensions
             this.restoreDimensions();
 
+            // Initial check for preset buttons visibility
+            setTimeout(() => this.checkPresetButtonsVisibility(), 150);
+
             console.log('[Overlay] Created');
         },
 
@@ -1646,6 +1649,9 @@
 
                 // Notify app of resize during drag (for immediate mobile view switching)
                 AppManager.notifyResize();
+
+                // Check preset buttons visibility in real-time during resize
+                this.checkPresetButtonsVisibility();
             });
 
             document.addEventListener('mouseup', () => {
