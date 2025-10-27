@@ -110,6 +110,10 @@
             });
 
             try {
+                // Initialize Formatter (load Prettier)
+                context.LoadingOverlay.setMessage('Loading code formatter...');
+                await context.Formatter.init();
+
                 // Restore state if available
                 const savedState = context.Storage.getAppState(this.id);
                 let hasDirtyEdits = false;
@@ -748,6 +752,13 @@
             saveDropdown.appendChild(dropdownToggle);
             saveDropdown.appendChild(dropdownMenu);
 
+            const formatBtn = context.DOM.create('button', {
+                className: 'editor-pane-format',
+                'data-format-role': roleId,
+                title: 'Format CSS (Ctrl+Shift+F)'
+            }, ['Format']);
+            formatBtn.addEventListener('click', () => this.formatRole(roleId));
+
             const exportBtn = context.DOM.create('button', {
                 className: 'editor-pane-export',
                 'data-export-role': roleId
@@ -755,6 +766,7 @@
             exportBtn.addEventListener('click', () => this.exportRole(roleId));
 
             actions.appendChild(saveDropdown);
+            actions.appendChild(formatBtn);
             actions.appendChild(exportBtn);
 
             header.appendChild(titleGroup);
@@ -903,6 +915,71 @@
                 context.UI.showToast(`Exported ${role.label}`, 'success');
             } catch (error) {
                 context.UI.showToast(`Failed to export: ${error.message}`, 'error');
+            }
+        },
+
+        /**
+         * Format CSS for a specific role
+         */
+        async formatRole(roleId) {
+            const role = editorState[roleId];
+            const editor = monacoEditors[roleId];
+
+            if (!role || !editor) return;
+
+            try {
+                console.log(`[CSS Editor] Formatting ${roleId}...`);
+
+                // Get current content
+                const content = editor.getValue();
+
+                if (!content || content.trim() === '') {
+                    context.UI.showToast('Nothing to format', 'warning');
+                    return;
+                }
+
+                // Format using Prettier
+                const formatted = await context.Formatter.formatCSS(content);
+
+                // Update editor with formatted content
+                editor.setValue(formatted);
+
+                // Mark as dirty if content changed
+                role.content = formatted;
+                role.isDirty = role.content !== originalContent[roleId];
+                this.updateToggleButtons();
+
+                context.UI.showToast(`${role.label} formatted`, 'success');
+            } catch (error) {
+                console.error(`[CSS Editor] Format ${roleId} failed:`, error);
+                context.UI.showToast(`Formatting failed: ${error.message}`, 'error');
+            }
+        },
+
+        /**
+         * Format all active editors
+         */
+        async formatAllActive() {
+            const activeRoles = Object.keys(editorState).filter(role => editorState[role].active);
+
+            if (activeRoles.length === 0) {
+                context.UI.showToast('No editors open to format', 'warning');
+                return;
+            }
+
+            try {
+                console.log(`[CSS Editor] Formatting ${activeRoles.length} active editor(s)...`);
+
+                // Format each active editor
+                for (const roleId of activeRoles) {
+                    await this.formatRole(roleId);
+                }
+
+                const label = activeRoles.length === 1 ? editorState[activeRoles[0]].label : `${activeRoles.length} editors`;
+                context.UI.showToast(`${label} formatted`, 'success');
+            } catch (error) {
+                console.error('[CSS Editor] Format all active failed:', error);
+                context.UI.showToast(`Formatting failed: ${error.message}`, 'error');
             }
         },
 
@@ -1104,6 +1181,22 @@
                     role.content = editor.getValue();
                 }
 
+                // Format on save if enabled
+                const settings = context.Storage.getFormatterSettings();
+                if (settings.formatOnSave && role.content && role.content.trim() !== '') {
+                    try {
+                        console.log(`[CSS Editor] Auto-formatting ${roleId} before save...`);
+                        const formatted = await context.Formatter.formatCSS(role.content);
+                        role.content = formatted;
+                        if (editor) {
+                            editor.setValue(formatted);
+                        }
+                    } catch (formatError) {
+                        console.warn(`[CSS Editor] Auto-format failed for ${roleId}:`, formatError);
+                        // Continue with save even if formatting fails
+                    }
+                }
+
                 // Check if this role has changes
                 if (!role.isDirty && role.content === originalContent[roleId]) {
                     context.UI.showToast(`${role.label} has no changes to save`, 'warning');
@@ -1198,6 +1291,28 @@
                         editorState[roleId].content = editor.getValue();
                     }
                 });
+
+                // Format on save if enabled
+                const settings = context.Storage.getFormatterSettings();
+                if (settings.formatOnSave) {
+                    for (const roleId of Object.keys(editorState)) {
+                        const role = editorState[roleId];
+                        if (role.content && role.content.trim() !== '') {
+                            try {
+                                console.log(`[CSS Editor] Auto-formatting ${roleId} before save...`);
+                                const formatted = await context.Formatter.formatCSS(role.content);
+                                role.content = formatted;
+                                const editor = monacoEditors[roleId];
+                                if (editor) {
+                                    editor.setValue(formatted);
+                                }
+                            } catch (formatError) {
+                                console.warn(`[CSS Editor] Auto-format failed for ${roleId}:`, formatError);
+                                // Continue with save even if formatting fails
+                            }
+                        }
+                    }
+                }
 
                 // Check if any role has changes
                 const hasChanges = Object.keys(editorState).some(roleId => {
@@ -1326,6 +1441,28 @@
                     }
                 });
 
+                // Format on save if enabled
+                const settings = context.Storage.getFormatterSettings();
+                if (settings.formatOnSave) {
+                    for (const roleId of openRoles) {
+                        const role = editorState[roleId];
+                        if (role.content && role.content.trim() !== '') {
+                            try {
+                                console.log(`[CSS Editor] Auto-formatting ${roleId} before save...`);
+                                const formatted = await context.Formatter.formatCSS(role.content);
+                                role.content = formatted;
+                                const editor = monacoEditors[roleId];
+                                if (editor) {
+                                    editor.setValue(formatted);
+                                }
+                            } catch (formatError) {
+                                console.warn(`[CSS Editor] Auto-format failed for ${roleId}:`, formatError);
+                                // Continue with save even if formatting fails
+                            }
+                        }
+                    }
+                }
+
                 // Check if any open tab has changes
                 const hasChanges = openRoles.some(roleId => {
                     return editorState[roleId].isDirty || editorState[roleId].content !== originalContent[roleId];
@@ -1408,10 +1545,15 @@
                     e.preventDefault();
                     this.saveAll();
                 }
+                // Ctrl+Shift+F or Cmd+Shift+F - Format active editors
+                else if ((e.ctrlKey || e.metaKey) && e.key === 'F' && e.shiftKey) {
+                    e.preventDefault();
+                    this.formatAllActive();
+                }
             };
 
             document.addEventListener('keydown', keyboardHandler);
-            console.log('[CSS Editor] Keyboard shortcuts registered: Ctrl+S (save open), Ctrl+Shift+S (save all)');
+            console.log('[CSS Editor] Keyboard shortcuts registered: Ctrl+S (save open), Ctrl+Shift+S (save all), Ctrl+Shift+F (format)');
         },
 
         /**

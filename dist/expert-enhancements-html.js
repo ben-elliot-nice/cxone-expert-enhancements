@@ -92,6 +92,10 @@
             });
 
             try {
+                // Initialize Formatter (load Prettier)
+                context.LoadingOverlay.setMessage('Loading code formatter...');
+                await context.Formatter.init();
+
                 // Restore state if available
                 const savedState = context.Storage.getAppState(this.id);
                 let hasDirtyEdits = false;
@@ -721,6 +725,13 @@
             saveDropdown.appendChild(dropdownToggle);
             saveDropdown.appendChild(dropdownMenu);
 
+            const formatBtn = context.DOM.create('button', {
+                className: 'editor-pane-format',
+                'data-format-field': fieldId,
+                title: 'Format HTML (Ctrl+Shift+F)'
+            }, ['Format']);
+            formatBtn.addEventListener('click', () => this.formatField(fieldId));
+
             const exportBtn = context.DOM.create('button', {
                 className: 'editor-pane-export',
                 'data-export-field': fieldId
@@ -728,6 +739,7 @@
             exportBtn.addEventListener('click', () => this.exportField(fieldId));
 
             actions.appendChild(saveDropdown);
+            actions.appendChild(formatBtn);
             actions.appendChild(exportBtn);
 
             header.appendChild(titleGroup);
@@ -869,6 +881,71 @@
                 context.UI.showToast(`Exported ${field.label}`, 'success');
             } catch (error) {
                 context.UI.showToast(`Failed to export: ${error.message}`, 'error');
+            }
+        },
+
+        /**
+         * Format HTML for a specific field
+         */
+        async formatField(fieldId) {
+            const field = editorState[fieldId];
+            const editor = monacoEditors[fieldId];
+
+            if (!field || !editor) return;
+
+            try {
+                console.log(`[HTML Editor] Formatting ${fieldId}...`);
+
+                // Get current content
+                const content = editor.getValue();
+
+                if (!content || content.trim() === '') {
+                    context.UI.showToast('Nothing to format', 'warning');
+                    return;
+                }
+
+                // Format using Prettier
+                const formatted = await context.Formatter.formatHTML(content);
+
+                // Update editor with formatted content
+                editor.setValue(formatted);
+
+                // Mark as dirty if content changed
+                field.content = formatted;
+                field.isDirty = field.content !== originalContent[fieldId];
+                this.updateToggleButtons();
+
+                context.UI.showToast(`${field.label} formatted`, 'success');
+            } catch (error) {
+                console.error(`[HTML Editor] Format ${fieldId} failed:`, error);
+                context.UI.showToast(`Formatting failed: ${error.message}`, 'error');
+            }
+        },
+
+        /**
+         * Format all active editors
+         */
+        async formatAllActive() {
+            const activeFields = Object.keys(editorState).filter(field => editorState[field].active);
+
+            if (activeFields.length === 0) {
+                context.UI.showToast('No editors open to format', 'warning');
+                return;
+            }
+
+            try {
+                console.log(`[HTML Editor] Formatting ${activeFields.length} active editor(s)...`);
+
+                // Format each active editor
+                for (const fieldId of activeFields) {
+                    await this.formatField(fieldId);
+                }
+
+                const label = activeFields.length === 1 ? editorState[activeFields[0]].label : `${activeFields.length} editors`;
+                context.UI.showToast(`${label} formatted`, 'success');
+            } catch (error) {
+                console.error('[HTML Editor] Format all active failed:', error);
+                context.UI.showToast(`Formatting failed: ${error.message}`, 'error');
             }
         },
 
@@ -1021,6 +1098,22 @@
                     field.content = editor.getValue();
                 }
 
+                // Format on save if enabled
+                const settings = context.Storage.getFormatterSettings();
+                if (settings.formatOnSave && field.content && field.content.trim() !== '') {
+                    try {
+                        console.log(`[HTML Editor] Auto-formatting ${fieldId} before save...`);
+                        const formatted = await context.Formatter.formatHTML(field.content);
+                        field.content = formatted;
+                        if (editor) {
+                            editor.setValue(formatted);
+                        }
+                    } catch (formatError) {
+                        console.warn(`[HTML Editor] Auto-format failed for ${fieldId}:`, formatError);
+                        // Continue with save even if formatting fails
+                    }
+                }
+
                 // Check if this field has changes
                 if (!field.isDirty && field.content === originalContent[fieldId]) {
                     context.UI.showToast(`${field.label} has no changes to save`, 'warning');
@@ -1086,6 +1179,28 @@
                         editorState[fieldId].content = editor.getValue();
                     }
                 });
+
+                // Format on save if enabled
+                const settings = context.Storage.getFormatterSettings();
+                if (settings.formatOnSave) {
+                    for (const fieldId of Object.keys(editorState)) {
+                        const field = editorState[fieldId];
+                        if (field.content && field.content.trim() !== '') {
+                            try {
+                                console.log(`[HTML Editor] Auto-formatting ${fieldId} before save...`);
+                                const formatted = await context.Formatter.formatHTML(field.content);
+                                field.content = formatted;
+                                const editor = monacoEditors[fieldId];
+                                if (editor) {
+                                    editor.setValue(formatted);
+                                }
+                            } catch (formatError) {
+                                console.warn(`[HTML Editor] Auto-format failed for ${fieldId}:`, formatError);
+                                // Continue with save even if formatting fails
+                            }
+                        }
+                    }
+                }
 
                 // Check if any field has changes
                 const hasChanges = Object.keys(editorState).some(fieldId => {
@@ -1165,6 +1280,28 @@
                     }
                 });
 
+                // Format on save if enabled
+                const settings = context.Storage.getFormatterSettings();
+                if (settings.formatOnSave) {
+                    for (const fieldId of openFields) {
+                        const field = editorState[fieldId];
+                        if (field.content && field.content.trim() !== '') {
+                            try {
+                                console.log(`[HTML Editor] Auto-formatting ${fieldId} before save...`);
+                                const formatted = await context.Formatter.formatHTML(field.content);
+                                field.content = formatted;
+                                const editor = monacoEditors[fieldId];
+                                if (editor) {
+                                    editor.setValue(formatted);
+                                }
+                            } catch (formatError) {
+                                console.warn(`[HTML Editor] Auto-format failed for ${fieldId}:`, formatError);
+                                // Continue with save even if formatting fails
+                            }
+                        }
+                    }
+                }
+
                 // Check if any open tab has changes
                 const hasChanges = openFields.some(fieldId => {
                     return editorState[fieldId].isDirty || editorState[fieldId].content !== originalContent[fieldId];
@@ -1236,10 +1373,15 @@
                     e.preventDefault();
                     this.saveAll();
                 }
+                // Ctrl+Shift+F or Cmd+Shift+F - Format active editors
+                else if ((e.ctrlKey || e.metaKey) && e.key === 'F' && e.shiftKey) {
+                    e.preventDefault();
+                    this.formatAllActive();
+                }
             };
 
             document.addEventListener('keydown', keyboardHandler);
-            console.log('[HTML Editor] Keyboard shortcuts registered: Ctrl+S (save open), Ctrl+Shift+S (save all)');
+            console.log('[HTML Editor] Keyboard shortcuts registered: Ctrl+S (save open), Ctrl+Shift+S (save all), Ctrl+Shift+F (format)');
         }
     };
 

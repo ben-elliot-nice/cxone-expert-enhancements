@@ -62,7 +62,8 @@
                         UI,
                         DOM,
                         Overlay,
-                        LoadingOverlay
+                        LoadingOverlay,
+                        Formatter
                     };
                     await app.init(context);
                     initializedApps.add(appId);
@@ -324,6 +325,49 @@
                 localStorage.removeItem(`${STORAGE_PREFIX}:app:${appId}`);
             } catch (error) {
                 console.warn(`[Storage] Failed to clear state for ${appId}:`, error);
+            }
+        },
+
+        /**
+         * Get formatter settings
+         */
+        getFormatterSettings() {
+            try {
+                const saved = localStorage.getItem(`${STORAGE_PREFIX}:formatter`);
+                const defaults = {
+                    formatOnSave: true,
+                    indentStyle: 'spaces',
+                    indentSize: 2,
+                    quoteStyle: 'single',
+                    cssSettings: {
+                        parser: 'css'
+                    },
+                    htmlSettings: {
+                        parser: 'html'
+                    }
+                };
+                return saved ? { ...defaults, ...JSON.parse(saved) } : defaults;
+            } catch (error) {
+                console.warn('[Storage] Failed to get formatter settings:', error);
+                return {
+                    formatOnSave: true,
+                    indentStyle: 'spaces',
+                    indentSize: 2,
+                    quoteStyle: 'single',
+                    cssSettings: { parser: 'css' },
+                    htmlSettings: { parser: 'html' }
+                };
+            }
+        },
+
+        /**
+         * Set formatter settings
+         */
+        setFormatterSettings(settings) {
+            try {
+                localStorage.setItem(`${STORAGE_PREFIX}:formatter`, JSON.stringify(settings));
+            } catch (error) {
+                console.warn('[Storage] Failed to set formatter settings:', error);
             }
         }
     };
@@ -1355,6 +1399,196 @@
     };
 
     // ============================================================================
+    // Code Formatter Utilities (Prettier)
+    // ============================================================================
+
+    let prettierLoaded = false;
+    let prettierLoadCallbacks = [];
+    let prettierLoadError = null;
+
+    const Formatter = {
+        /**
+         * Initialize Prettier (load from CDN)
+         */
+        async init() {
+            if (prettierLoaded) {
+                return true;
+            }
+
+            if (prettierLoadError) {
+                throw prettierLoadError;
+            }
+
+            return new Promise((resolve, reject) => {
+                console.log('[Formatter] Loading Prettier from CDN...');
+
+                // Load Prettier standalone
+                const prettierScript = document.createElement('script');
+                prettierScript.src = 'https://cdn.jsdelivr.net/npm/prettier@3.2.5/standalone.js';
+                prettierScript.async = true;
+
+                prettierScript.onload = () => {
+                    console.log('[Formatter] Prettier standalone loaded');
+
+                    // Load CSS parser (postcss)
+                    const cssParserScript = document.createElement('script');
+                    cssParserScript.src = 'https://cdn.jsdelivr.net/npm/prettier@3.2.5/plugins/postcss.js';
+                    cssParserScript.async = true;
+
+                    cssParserScript.onload = () => {
+                        console.log('[Formatter] Prettier CSS parser loaded');
+
+                        // Load HTML parser
+                        const htmlParserScript = document.createElement('script');
+                        htmlParserScript.src = 'https://cdn.jsdelivr.net/npm/prettier@3.2.5/plugins/html.js';
+                        htmlParserScript.async = true;
+
+                        htmlParserScript.onload = () => {
+                            console.log('[Formatter] Prettier HTML parser loaded');
+                            console.log('[Formatter] All Prettier components loaded successfully');
+
+                            prettierLoaded = true;
+
+                            // Call any waiting callbacks
+                            prettierLoadCallbacks.forEach(cb => cb());
+                            prettierLoadCallbacks = [];
+
+                            resolve(true);
+                        };
+
+                        htmlParserScript.onerror = (error) => {
+                            console.error('[Formatter] Failed to load Prettier HTML parser:', error);
+                            prettierLoadError = new Error('Failed to load Prettier HTML parser');
+                            reject(prettierLoadError);
+                        };
+
+                        document.head.appendChild(htmlParserScript);
+                    };
+
+                    cssParserScript.onerror = (error) => {
+                        console.error('[Formatter] Failed to load Prettier CSS parser:', error);
+                        prettierLoadError = new Error('Failed to load Prettier CSS parser');
+                        reject(prettierLoadError);
+                    };
+
+                    document.head.appendChild(cssParserScript);
+                };
+
+                prettierScript.onerror = (error) => {
+                    console.error('[Formatter] Failed to load Prettier standalone:', error);
+                    prettierLoadError = new Error('Failed to load Prettier standalone');
+                    reject(prettierLoadError);
+                };
+
+                document.head.appendChild(prettierScript);
+            });
+        },
+
+        /**
+         * Check if Prettier is loaded
+         */
+        isReady() {
+            return prettierLoaded;
+        },
+
+        /**
+         * Execute callback when Prettier is ready
+         */
+        onReady(callback) {
+            if (prettierLoaded) {
+                callback();
+            } else {
+                prettierLoadCallbacks.push(callback);
+            }
+        },
+
+        /**
+         * Format CSS code
+         * @param {string} code - CSS code to format
+         * @returns {Promise<string>} - Formatted CSS code
+         */
+        async formatCSS(code) {
+            if (!prettierLoaded) {
+                throw new Error('Prettier not loaded. Call Formatter.init() first.');
+            }
+
+            if (!window.prettier) {
+                throw new Error('Prettier global not found');
+            }
+
+            try {
+                const settings = Storage.getFormatterSettings();
+
+                const options = {
+                    parser: 'css',
+                    plugins: window.prettierPlugins,
+                    useTabs: settings.indentStyle === 'tabs',
+                    tabWidth: settings.indentSize,
+                    singleQuote: settings.quoteStyle === 'single',
+                    ...settings.cssSettings
+                };
+
+                const formatted = await window.prettier.format(code, options);
+                console.log('[Formatter] CSS formatted successfully');
+                return formatted;
+            } catch (error) {
+                console.error('[Formatter] CSS formatting failed:', error);
+                throw new Error(`CSS formatting failed: ${error.message}`);
+            }
+        },
+
+        /**
+         * Format HTML code
+         * @param {string} code - HTML code to format
+         * @returns {Promise<string>} - Formatted HTML code
+         */
+        async formatHTML(code) {
+            if (!prettierLoaded) {
+                throw new Error('Prettier not loaded. Call Formatter.init() first.');
+            }
+
+            if (!window.prettier) {
+                throw new Error('Prettier global not found');
+            }
+
+            try {
+                const settings = Storage.getFormatterSettings();
+
+                const options = {
+                    parser: 'html',
+                    plugins: window.prettierPlugins,
+                    useTabs: settings.indentStyle === 'tabs',
+                    tabWidth: settings.indentSize,
+                    singleQuote: settings.quoteStyle === 'single',
+                    ...settings.htmlSettings
+                };
+
+                const formatted = await window.prettier.format(code, options);
+                console.log('[Formatter] HTML formatted successfully');
+                return formatted;
+            } catch (error) {
+                console.error('[Formatter] HTML formatting failed:', error);
+                throw new Error(`HTML formatting failed: ${error.message}`);
+            }
+        },
+
+        /**
+         * Get current formatter settings
+         */
+        getSettings() {
+            return Storage.getFormatterSettings();
+        },
+
+        /**
+         * Update formatter settings
+         */
+        setSettings(settings) {
+            Storage.setFormatterSettings(settings);
+            console.log('[Formatter] Settings updated:', settings);
+        }
+    };
+
+    // ============================================================================
     // Overlay Management
     // ============================================================================
 
@@ -1849,6 +2083,7 @@
         DOM,
         Overlay,
         LoadingOverlay,
+        Formatter,
         version: '1.0.0'
     };
 
