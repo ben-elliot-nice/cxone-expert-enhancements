@@ -1422,94 +1422,102 @@
             return new Promise((resolve, reject) => {
                 console.log('[Formatter] Loading Prettier from CDN...');
 
-                // Load Prettier standalone (using unpkg for better browser UMD support)
+                // Helper to wait for a global variable with retry
+                const waitForGlobal = (checkFn, name, maxAttempts = 20, interval = 50) => {
+                    return new Promise((resolve, reject) => {
+                        let attempts = 0;
+                        const check = () => {
+                            attempts++;
+                            if (checkFn()) {
+                                console.log(`[Formatter] ${name} is ready`);
+                                resolve();
+                            } else if (attempts >= maxAttempts) {
+                                reject(new Error(`${name} not found after ${maxAttempts} attempts`));
+                            } else {
+                                setTimeout(check, interval);
+                            }
+                        };
+                        check();
+                    });
+                };
+
+                // Load Prettier standalone first
                 const prettierScript = document.createElement('script');
                 prettierScript.src = 'https://unpkg.com/prettier@3.3.3/standalone.js';
-                prettierScript.async = true;
 
-                prettierScript.onload = () => {
-                    console.log('[Formatter] Prettier standalone loaded');
+                prettierScript.onload = async () => {
+                    console.log('[Formatter] Prettier standalone script loaded');
 
-                    // Give browser a moment to process the global
-                    setTimeout(() => {
-                        // Check if window.prettier is available
-                        if (!window.prettier) {
-                            const error = new Error('Prettier loaded but global not found');
-                            console.error('[Formatter]', error);
-                            console.error('[Formatter] Available globals:', Object.keys(window).filter(k => k.toLowerCase().includes('prettier')));
-                            prettierLoadError = error;
-                            reject(error);
-                            return;
-                        }
-
-                        console.log('[Formatter] Prettier global confirmed');
+                    try {
+                        // Wait for window.prettier to be available
+                        await waitForGlobal(() => window.prettier, 'window.prettier');
 
                         // Load CSS parser (postcss)
                         const cssParserScript = document.createElement('script');
                         cssParserScript.src = 'https://unpkg.com/prettier@3.3.3/plugins/postcss.js';
-                        cssParserScript.async = true;
 
-                        cssParserScript.onload = () => {
-                            console.log('[Formatter] Prettier CSS parser loaded');
+                        await new Promise((resolveCSS, rejectCSS) => {
+                            cssParserScript.onload = () => {
+                                console.log('[Formatter] PostCSS plugin script loaded');
+                                resolveCSS();
+                            };
+                            cssParserScript.onerror = () => {
+                                rejectCSS(new Error('Failed to load PostCSS plugin'));
+                            };
+                            document.head.appendChild(cssParserScript);
+                        });
 
-                            setTimeout(() => {
-                                // Store CSS parser plugin - it exposes itself as prettierPlugins.postcss
-                                if (window.prettierPlugins && window.prettierPlugins.postcss) {
-                                    console.log('[Formatter] PostCSS plugin found');
-                                }
+                        // Wait for prettierPlugins.postcss to be available
+                        await waitForGlobal(
+                            () => window.prettierPlugins && window.prettierPlugins.postcss,
+                            'prettierPlugins.postcss'
+                        );
 
-                                // Load HTML parser
-                                const htmlParserScript = document.createElement('script');
-                                htmlParserScript.src = 'https://unpkg.com/prettier@3.3.3/plugins/html.js';
-                                htmlParserScript.async = true;
+                        // Load HTML parser
+                        const htmlParserScript = document.createElement('script');
+                        htmlParserScript.src = 'https://unpkg.com/prettier@3.3.3/plugins/html.js';
 
-                                htmlParserScript.onload = () => {
-                                    console.log('[Formatter] Prettier HTML parser loaded');
+                        await new Promise((resolveHTML, rejectHTML) => {
+                            htmlParserScript.onload = () => {
+                                console.log('[Formatter] HTML plugin script loaded');
+                                resolveHTML();
+                            };
+                            htmlParserScript.onerror = () => {
+                                rejectHTML(new Error('Failed to load HTML plugin'));
+                            };
+                            document.head.appendChild(htmlParserScript);
+                        });
 
-                                    setTimeout(() => {
-                                        // HTML plugin exposes itself as prettierPlugins.html
-                                        if (window.prettierPlugins && window.prettierPlugins.html) {
-                                            console.log('[Formatter] HTML plugin found');
-                                        }
+                        // Wait for prettierPlugins.html to be available
+                        await waitForGlobal(
+                            () => window.prettierPlugins && window.prettierPlugins.html,
+                            'prettierPlugins.html'
+                        );
 
-                                        console.log('[Formatter] All Prettier components loaded successfully');
-                                        console.log('[Formatter] Prettier global:', typeof window.prettier);
-                                        console.log('[Formatter] Prettier plugins:', window.prettierPlugins);
+                        console.log('[Formatter] All Prettier components loaded successfully');
+                        console.log('[Formatter] Prettier version:', window.prettier.version);
+                        console.log('[Formatter] Available plugins:', Object.keys(window.prettierPlugins || {}));
 
-                                        prettierLoaded = true;
+                        prettierLoaded = true;
 
-                                        // Call any waiting callbacks
-                                        prettierLoadCallbacks.forEach(cb => cb());
-                                        prettierLoadCallbacks = [];
+                        // Call any waiting callbacks
+                        prettierLoadCallbacks.forEach(cb => cb());
+                        prettierLoadCallbacks = [];
 
-                                        resolve(true);
-                                    }, 100);
-                                };
+                        resolve(true);
 
-                                htmlParserScript.onerror = (error) => {
-                                    console.error('[Formatter] Failed to load Prettier HTML parser:', error);
-                                    prettierLoadError = new Error('Failed to load Prettier HTML parser');
-                                    reject(prettierLoadError);
-                                };
-
-                                document.head.appendChild(htmlParserScript);
-                            }, 100);
-                        };
-
-                        cssParserScript.onerror = (error) => {
-                            console.error('[Formatter] Failed to load Prettier CSS parser:', error);
-                            prettierLoadError = new Error('Failed to load Prettier CSS parser');
-                            reject(prettierLoadError);
-                        };
-
-                        document.head.appendChild(cssParserScript);
-                    }, 100);
+                    } catch (error) {
+                        console.error('[Formatter] Error during initialization:', error);
+                        prettierLoadError = error;
+                        reject(error);
+                    }
                 };
 
-                prettierScript.onerror = (error) => {
-                    console.error('[Formatter] Failed to load Prettier standalone:', error);
-                    prettierLoadError = new Error('Failed to load Prettier standalone');
-                    reject(prettierLoadError);
+                prettierScript.onerror = () => {
+                    const error = new Error('Failed to load Prettier standalone script');
+                    console.error('[Formatter]', error);
+                    prettierLoadError = error;
+                    reject(error);
                 };
 
                 document.head.appendChild(prettierScript);

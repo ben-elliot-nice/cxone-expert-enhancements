@@ -114,7 +114,7 @@
                 try {
                     context.LoadingOverlay.setMessage('Loading code formatter...');
                     await context.Formatter.init();
-                    console.log('[CSS Editor] Code formatter available');
+                    console.log('[CSS Editor] Code formatter loaded successfully');
                 } catch (formatterError) {
                     console.warn('[CSS Editor] Code formatter unavailable:', formatterError);
                     context.UI.showToast('Code formatting unavailable - editor will load without formatting features', 'warning');
