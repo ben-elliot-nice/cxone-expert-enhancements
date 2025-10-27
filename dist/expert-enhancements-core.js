@@ -1466,9 +1466,18 @@
                 prettierScript.onload = async () => {
                     console.log('[Formatter] Prettier standalone script loaded');
 
+                    // Restore AMD immediately after standalone loads
+                    if (originalDefine) window.define = originalDefine;
+                    if (originalRequire) window.require = originalRequire;
+                    console.log('[Formatter] AMD restored after standalone load');
+
                     try {
-                        // Load all plugin scripts immediately (don't wait for prettier global first)
+                        // Load all plugin scripts
                         console.log('[Formatter] Loading plugin scripts...');
+
+                        // Hide AMD before loading CSS plugin
+                        window.define = undefined;
+                        window.require = undefined;
 
                         // Load CSS parser (postcss)
                         const cssParserScript = document.createElement('script');
@@ -1477,13 +1486,26 @@
                         const cssLoaded = new Promise((resolveCSS, rejectCSS) => {
                             cssParserScript.onload = () => {
                                 console.log('[Formatter] PostCSS plugin script loaded');
+                                // Restore AMD immediately after CSS plugin loads
+                                if (originalDefine) window.define = originalDefine;
+                                if (originalRequire) window.require = originalRequire;
                                 resolveCSS();
                             };
                             cssParserScript.onerror = () => {
+                                // Restore AMD even on error
+                                if (originalDefine) window.define = originalDefine;
+                                if (originalRequire) window.require = originalRequire;
                                 rejectCSS(new Error('Failed to load PostCSS plugin'));
                             };
                         });
                         document.head.appendChild(cssParserScript);
+
+                        // Wait for CSS plugin to finish
+                        await cssLoaded;
+
+                        // Hide AMD before loading HTML plugin
+                        window.define = undefined;
+                        window.require = undefined;
 
                         // Load HTML parser
                         const htmlParserScript = document.createElement('script');
@@ -1492,24 +1514,26 @@
                         const htmlLoaded = new Promise((resolveHTML, rejectHTML) => {
                             htmlParserScript.onload = () => {
                                 console.log('[Formatter] HTML plugin script loaded');
+                                // Restore AMD immediately after HTML plugin loads
+                                if (originalDefine) window.define = originalDefine;
+                                if (originalRequire) window.require = originalRequire;
                                 resolveHTML();
                             };
                             htmlParserScript.onerror = () => {
+                                // Restore AMD even on error
+                                if (originalDefine) window.define = originalDefine;
+                                if (originalRequire) window.require = originalRequire;
                                 rejectHTML(new Error('Failed to load HTML plugin'));
                             };
                         });
                         document.head.appendChild(htmlParserScript);
 
-                        // Wait for all scripts to finish loading
-                        await Promise.all([cssLoaded, htmlLoaded]);
-                        console.log('[Formatter] All plugin scripts loaded');
+                        // Wait for HTML plugin to finish
+                        await htmlLoaded;
 
-                        // Restore AMD (Monaco's define/require)
-                        if (originalDefine) window.define = originalDefine;
-                        if (originalRequire) window.require = originalRequire;
-                        console.log('[Formatter] AMD restored, waiting for globals...');
+                        console.log('[Formatter] All plugin scripts loaded, waiting for globals...');
 
-                        // Now wait for all globals to be available
+                        // Now wait for all globals to be available (AMD already restored)
                         await waitForGlobal(() => window.prettier, 'window.prettier');
                         await waitForGlobal(
                             () => window.prettierPlugins && window.prettierPlugins.postcss,
