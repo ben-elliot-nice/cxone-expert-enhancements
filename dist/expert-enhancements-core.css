@@ -206,6 +206,68 @@
     z-index: 1001;
 }
 
+/* Split Button - Combined Left/Right */
+.split-btn {
+    width: 48px !important;
+    padding: 0 !important;
+    display: flex !important;
+    overflow: hidden;
+}
+
+.split-btn:hover::after,
+.split-btn:hover::before {
+    display: none;
+}
+
+.split-half {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    font-size: 16px;
+    line-height: 1;
+    transition: background 0.2s;
+}
+
+.split-half:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.split-left {
+    border-right: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.split-half:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: -32px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 1000;
+    font-weight: normal;
+}
+
+.split-half:hover::before {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 4px solid transparent;
+    border-bottom-color: rgba(0, 0, 0, 0.9);
+    pointer-events: none;
+    z-index: 1001;
+}
+
 /* ============================================================================
    Overlay Content (App Container)
    ============================================================================ */

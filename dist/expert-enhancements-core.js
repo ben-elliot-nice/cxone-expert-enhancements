@@ -1420,24 +1420,37 @@
             fullscreenBtn.textContent = '⛶';
             fullscreenBtn.addEventListener('click', () => this.applyPresetSize('fullscreen'));
 
-            const splitLeftBtn = DOM.create('button', {
-                className: 'header-btn preset-btn',
+            // Combined split button (left half = split left, right half = split right)
+            const splitBtn = DOM.create('button', {
+                className: 'header-btn preset-btn split-btn'
+            });
+
+            const splitLeftHalf = DOM.create('span', {
+                className: 'split-half split-left',
                 title: 'Split Left (30%)'
             });
-            splitLeftBtn.textContent = '▐';
-            splitLeftBtn.addEventListener('click', () => this.applyPresetSize('split-left'));
+            splitLeftHalf.textContent = '▌';
+            splitLeftHalf.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.applyPresetSize('split-left');
+            });
 
-            const splitRightBtn = DOM.create('button', {
-                className: 'header-btn preset-btn',
+            const splitRightHalf = DOM.create('span', {
+                className: 'split-half split-right',
                 title: 'Split Right (30%)'
             });
-            splitRightBtn.textContent = '▌';
-            splitRightBtn.addEventListener('click', () => this.applyPresetSize('split-right'));
+            splitRightHalf.textContent = '▐';
+            splitRightHalf.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.applyPresetSize('split-right');
+            });
+
+            splitBtn.appendChild(splitLeftHalf);
+            splitBtn.appendChild(splitRightHalf);
 
             presetContainer.appendChild(smallBtn);
             presetContainer.appendChild(fullscreenBtn);
-            presetContainer.appendChild(splitLeftBtn);
-            presetContainer.appendChild(splitRightBtn);
+            presetContainer.appendChild(splitBtn);
 
             const minimizeBtn = DOM.create('button', {
                 className: 'header-btn',
