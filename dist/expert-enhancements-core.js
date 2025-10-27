@@ -62,7 +62,8 @@
                         UI,
                         DOM,
                         Overlay,
-                        LoadingOverlay
+                        LoadingOverlay,
+                        Formatter
                     };
                     await app.init(context);
                     initializedApps.add(appId);
@@ -324,6 +325,49 @@
                 localStorage.removeItem(`${STORAGE_PREFIX}:app:${appId}`);
             } catch (error) {
                 console.warn(`[Storage] Failed to clear state for ${appId}:`, error);
+            }
+        },
+
+        /**
+         * Get formatter settings
+         */
+        getFormatterSettings() {
+            try {
+                const saved = localStorage.getItem(`${STORAGE_PREFIX}:formatter`);
+                const defaults = {
+                    formatOnSave: true,
+                    indentStyle: 'spaces',
+                    indentSize: 2,
+                    quoteStyle: 'single',
+                    cssSettings: {
+                        parser: 'css'
+                    },
+                    htmlSettings: {
+                        parser: 'html'
+                    }
+                };
+                return saved ? { ...defaults, ...JSON.parse(saved) } : defaults;
+            } catch (error) {
+                console.warn('[Storage] Failed to get formatter settings:', error);
+                return {
+                    formatOnSave: true,
+                    indentStyle: 'spaces',
+                    indentSize: 2,
+                    quoteStyle: 'single',
+                    cssSettings: { parser: 'css' },
+                    htmlSettings: { parser: 'html' }
+                };
+            }
+        },
+
+        /**
+         * Set formatter settings
+         */
+        setFormatterSettings(settings) {
+            try {
+                localStorage.setItem(`${STORAGE_PREFIX}:formatter`, JSON.stringify(settings));
+            } catch (error) {
+                console.warn('[Storage] Failed to set formatter settings:', error);
             }
         }
     };
@@ -1355,6 +1399,308 @@
     };
 
     // ============================================================================
+    // Code Formatter Utilities (Prettier)
+    // ============================================================================
+
+    let prettierLoaded = false;
+    let prettierLoadCallbacks = [];
+    let prettierLoadError = null;
+
+    const Formatter = {
+        /**
+         * Initialize Prettier (load from CDN)
+         */
+        async init() {
+            if (prettierLoaded) {
+                return true;
+            }
+
+            if (prettierLoadError) {
+                throw prettierLoadError;
+            }
+
+            return new Promise((resolve, reject) => {
+                console.log('[Formatter] Loading Prettier from CDN...');
+
+                // Save original AMD (Monaco's define/require) and hide it temporarily
+                // Prettier's UMD will detect AMD and try to use it, conflicting with Monaco
+                const originalDefine = window.define;
+                const originalRequire = window.require;
+
+                console.log('[Formatter] Temporarily hiding AMD to avoid Monaco conflict');
+                window.define = undefined;
+                window.require = undefined;
+
+                // Helper to wait for a global variable with exponential backoff
+                // Max timeout: 60 seconds
+                const waitForGlobal = (checkFn, name, maxTimeout = 60000) => {
+                    return new Promise((resolve, reject) => {
+                        const startTime = Date.now();
+                        let currentInterval = 50; // Start with 50ms
+                        const maxInterval = 2000; // Cap at 2 seconds
+                        let attempts = 0;
+
+                        const check = () => {
+                            attempts++;
+                            const elapsed = Date.now() - startTime;
+
+                            if (checkFn()) {
+                                console.log(`[Formatter] ${name} is ready (${attempts} attempts, ${elapsed}ms elapsed)`);
+                                resolve();
+                            } else if (elapsed >= maxTimeout) {
+                                reject(new Error(`${name} not found after ${elapsed}ms (${attempts} attempts)`));
+                            } else {
+                                // Exponential backoff with cap
+                                setTimeout(check, currentInterval);
+                                currentInterval = Math.min(currentInterval * 2, maxInterval);
+                            }
+                        };
+                        check();
+                    });
+                };
+
+                // Load Prettier standalone first
+                const prettierScript = document.createElement('script');
+                prettierScript.src = 'https://unpkg.com/prettier@3.6.2/standalone.js';
+
+                prettierScript.onload = async () => {
+                    console.log('[Formatter] Prettier standalone script loaded');
+
+                    // Restore AMD immediately after standalone loads
+                    if (originalDefine) window.define = originalDefine;
+                    if (originalRequire) window.require = originalRequire;
+                    console.log('[Formatter] AMD restored after standalone load');
+
+                    try {
+                        // Load all plugin scripts
+                        console.log('[Formatter] Loading plugin scripts...');
+
+                        // Hide AMD before loading CSS plugin
+                        window.define = undefined;
+                        window.require = undefined;
+
+                        // Load CSS parser (postcss)
+                        const cssParserScript = document.createElement('script');
+                        cssParserScript.src = 'https://unpkg.com/prettier@3.6.2/plugins/postcss.js';
+
+                        const cssLoaded = new Promise((resolveCSS, rejectCSS) => {
+                            cssParserScript.onload = () => {
+                                console.log('[Formatter] PostCSS plugin script loaded');
+                                // Restore AMD immediately after CSS plugin loads
+                                if (originalDefine) window.define = originalDefine;
+                                if (originalRequire) window.require = originalRequire;
+                                resolveCSS();
+                            };
+                            cssParserScript.onerror = () => {
+                                // Restore AMD even on error
+                                if (originalDefine) window.define = originalDefine;
+                                if (originalRequire) window.require = originalRequire;
+                                rejectCSS(new Error('Failed to load PostCSS plugin'));
+                            };
+                        });
+                        document.head.appendChild(cssParserScript);
+
+                        // Wait for CSS plugin to finish
+                        await cssLoaded;
+
+                        // Hide AMD before loading HTML plugin
+                        window.define = undefined;
+                        window.require = undefined;
+
+                        // Load HTML parser
+                        const htmlParserScript = document.createElement('script');
+                        htmlParserScript.src = 'https://unpkg.com/prettier@3.6.2/plugins/html.js';
+
+                        const htmlLoaded = new Promise((resolveHTML, rejectHTML) => {
+                            htmlParserScript.onload = () => {
+                                console.log('[Formatter] HTML plugin script loaded');
+                                // Restore AMD immediately after HTML plugin loads
+                                if (originalDefine) window.define = originalDefine;
+                                if (originalRequire) window.require = originalRequire;
+                                resolveHTML();
+                            };
+                            htmlParserScript.onerror = () => {
+                                // Restore AMD even on error
+                                if (originalDefine) window.define = originalDefine;
+                                if (originalRequire) window.require = originalRequire;
+                                rejectHTML(new Error('Failed to load HTML plugin'));
+                            };
+                        });
+                        document.head.appendChild(htmlParserScript);
+
+                        // Wait for HTML plugin to finish
+                        await htmlLoaded;
+
+                        console.log('[Formatter] All plugin scripts loaded, waiting for globals...');
+
+                        // Now wait for all globals to be available (AMD already restored)
+                        await waitForGlobal(() => window.prettier, 'window.prettier');
+                        await waitForGlobal(
+                            () => window.prettierPlugins && window.prettierPlugins.postcss,
+                            'prettierPlugins.postcss'
+                        );
+                        await waitForGlobal(
+                            () => window.prettierPlugins && window.prettierPlugins.html,
+                            'prettierPlugins.html'
+                        );
+
+                        console.log('[Formatter] All Prettier components loaded successfully');
+                        console.log('[Formatter] Prettier version:', window.prettier.version);
+                        console.log('[Formatter] Available plugins:', Object.keys(window.prettierPlugins || {}));
+
+                        prettierLoaded = true;
+
+                        // Call any waiting callbacks
+                        prettierLoadCallbacks.forEach(cb => cb());
+                        prettierLoadCallbacks = [];
+
+                        resolve(true);
+
+                    } catch (error) {
+                        console.error('[Formatter] Error during initialization:', error);
+
+                        // Restore AMD even on error
+                        if (originalDefine) window.define = originalDefine;
+                        if (originalRequire) window.require = originalRequire;
+
+                        prettierLoadError = error;
+                        reject(error);
+                    }
+                };
+
+                prettierScript.onerror = () => {
+                    const error = new Error('Failed to load Prettier standalone script');
+                    console.error('[Formatter]', error);
+
+                    // Restore AMD even on error
+                    if (originalDefine) window.define = originalDefine;
+                    if (originalRequire) window.require = originalRequire;
+
+                    prettierLoadError = error;
+                    reject(error);
+                };
+
+                document.head.appendChild(prettierScript);
+            });
+        },
+
+        /**
+         * Check if Prettier is loaded
+         */
+        isReady() {
+            return prettierLoaded;
+        },
+
+        /**
+         * Execute callback when Prettier is ready
+         */
+        onReady(callback) {
+            if (prettierLoaded) {
+                callback();
+            } else {
+                prettierLoadCallbacks.push(callback);
+            }
+        },
+
+        /**
+         * Format CSS code
+         * @param {string} code - CSS code to format
+         * @returns {Promise<string>} - Formatted CSS code
+         */
+        async formatCSS(code) {
+            if (!prettierLoaded) {
+                throw new Error('Prettier not loaded. Call Formatter.init() first.');
+            }
+
+            if (!window.prettier) {
+                throw new Error('Prettier global not found');
+            }
+
+            if (!window.prettierPlugins) {
+                throw new Error('Prettier plugins not found');
+            }
+
+            try {
+                const settings = Storage.getFormatterSettings();
+
+                const options = {
+                    parser: 'css',
+                    plugins: prettierPlugins,
+                    useTabs: settings.indentStyle === 'tabs',
+                    tabWidth: settings.indentSize,
+                    singleQuote: settings.quoteStyle === 'single',
+                    ...settings.cssSettings
+                };
+
+                const formatted = await prettier.format(code, options);
+                console.log('[Formatter] CSS formatted successfully');
+
+                // Strip trailing newline (Prettier always adds one, but server strips it)
+                return formatted.endsWith('\n') ? formatted.slice(0, -1) : formatted;
+            } catch (error) {
+                console.error('[Formatter] CSS formatting failed:', error);
+                throw new Error(`CSS formatting failed: ${error.message}`);
+            }
+        },
+
+        /**
+         * Format HTML code
+         * @param {string} code - HTML code to format
+         * @returns {Promise<string>} - Formatted HTML code
+         */
+        async formatHTML(code) {
+            if (!prettierLoaded) {
+                throw new Error('Prettier not loaded. Call Formatter.init() first.');
+            }
+
+            if (!window.prettier) {
+                throw new Error('Prettier global not found');
+            }
+
+            if (!window.prettierPlugins) {
+                throw new Error('Prettier plugins not found');
+            }
+
+            try {
+                const settings = Storage.getFormatterSettings();
+
+                const options = {
+                    parser: 'html',
+                    plugins: prettierPlugins,
+                    useTabs: settings.indentStyle === 'tabs',
+                    tabWidth: settings.indentSize,
+                    singleQuote: settings.quoteStyle === 'single',
+                    ...settings.htmlSettings
+                };
+
+                const formatted = await prettier.format(code, options);
+                console.log('[Formatter] HTML formatted successfully');
+
+                // Strip trailing newline (Prettier always adds one, but server strips it)
+                return formatted.endsWith('\n') ? formatted.slice(0, -1) : formatted;
+            } catch (error) {
+                console.error('[Formatter] HTML formatting failed:', error);
+                throw new Error(`HTML formatting failed: ${error.message}`);
+            }
+        },
+
+        /**
+         * Get current formatter settings
+         */
+        getSettings() {
+            return Storage.getFormatterSettings();
+        },
+
+        /**
+         * Update formatter settings
+         */
+        setSettings(settings) {
+            Storage.setFormatterSettings(settings);
+            console.log('[Formatter] Settings updated:', settings);
+        }
+    };
+
+    // ============================================================================
     // Overlay Management
     // ============================================================================
 
@@ -1370,6 +1716,7 @@
     let currentResizeHandle = null;
     let isFullscreen = false;
     let preFullscreenDimensions = null;
+    let fullscreenBtn = null;
 
     const Overlay = {
         /**
@@ -1413,7 +1760,7 @@
             smallBtn.textContent = '▢';
             smallBtn.addEventListener('click', () => this.applyPresetSize('small'));
 
-            const fullscreenBtn = DOM.create('button', {
+            fullscreenBtn = DOM.create('button', {
                 className: 'header-btn preset-btn',
                 title: 'Fullscreen (95%)'
             });
@@ -1485,6 +1832,11 @@
             overlay.appendChild(cornerLeftHandle);
 
             document.body.appendChild(overlay);
+
+            // Prevent scroll events from reaching the underlying page
+            overlay.addEventListener('wheel', (e) => {
+                e.stopPropagation();
+            }, { passive: true });
 
             // Set app container
             AppManager.setContainer(overlayContent);
@@ -1741,6 +2093,7 @@
                 isFullscreen = true;
                 preFullscreenDimensions = state.preFullscreenDimensions || null;
                 this.applyFullscreen();
+                this.updateFullscreenButtonState();
                 // Check preset buttons visibility after a short delay to ensure DOM is ready
                 setTimeout(() => this.checkPresetButtonsVisibility(), 100);
                 return;
@@ -1803,6 +2156,9 @@
             // Update state
             isFullscreen = true;
 
+            // Update button visual state
+            this.updateFullscreenButtonState();
+
             // Save to localStorage
             Storage.setCommonState({
                 isFullscreen: true,
@@ -1836,6 +2192,9 @@
             isFullscreen = false;
             preFullscreenDimensions = null;
 
+            // Update button visual state
+            this.updateFullscreenButtonState();
+
             // Save to localStorage
             Storage.setCommonState({
                 isFullscreen: false,
@@ -1864,6 +2223,19 @@
         },
 
         /**
+         * Update fullscreen button visual state
+         */
+        updateFullscreenButtonState() {
+            if (!fullscreenBtn) return;
+
+            if (isFullscreen) {
+                fullscreenBtn.classList.add('fullscreen-active');
+            } else {
+                fullscreenBtn.classList.remove('fullscreen-active');
+            }
+        },
+
+        /**
          * Apply preset size
          * @param {string} preset - Preset type: 'small', 'fullscreen', 'split-left', 'split-right'
          */
@@ -1876,6 +2248,7 @@
             if (isFullscreen && preset !== 'fullscreen') {
                 isFullscreen = false;
                 preFullscreenDimensions = null;
+                this.updateFullscreenButtonState();
                 Storage.setCommonState({
                     isFullscreen: false,
                     preFullscreenDimensions: null
@@ -2048,6 +2421,7 @@
         DOM,
         Overlay,
         LoadingOverlay,
+        Formatter,
         version: '1.0.0'
     };
 
