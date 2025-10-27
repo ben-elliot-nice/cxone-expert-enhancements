@@ -2078,6 +2078,10 @@
             dropZone.appendChild(dropZoneContent);
             overlayContent.appendChild(dropZone);
 
+            console.log('[Drop Zone] Created and appended, initial display:', dropZone.style.display);
+            console.log('[Drop Zone] Parent:', dropZone.parentElement?.id);
+            console.log('[Drop Zone] Has children:', dropZone.children.length);
+
             let dragCounter = 0; // Track enter/leave to prevent flickering
 
             // Prevent default drag behavior
@@ -2088,7 +2092,14 @@
                 if (dragCounter === 1) {
                     dropZone.style.display = 'flex';
                     dropZone.style.pointerEvents = 'auto';
+                    // Force very visible styling for debugging
+                    dropZone.style.opacity = '1';
+                    dropZone.style.visibility = 'visible';
                     console.log('[Drop Zone] Showing drop zone');
+
+                    // Log computed style to verify it's actually visible
+                    const computed = window.getComputedStyle(dropZone);
+                    console.log('[Drop Zone] Computed - display:', computed.display, 'z-index:', computed.zIndex, 'opacity:', computed.opacity, 'visibility:', computed.visibility);
                 }
             }, true); // Use capture phase to catch events before children
 
@@ -2667,15 +2678,28 @@
                     style: 'padding: 8px 16px; border: none; background: #2196F3; color: white; border-radius: 4px; cursor: pointer; font-size: 14px;'
                 }, ['Import']);
 
+                const cleanup = () => {
+                    try {
+                        if (backdrop.parentNode) {
+                            backdrop.parentNode.removeChild(backdrop);
+                            console.log('[FileImport] Role selector dialog removed');
+                        }
+                    } catch (err) {
+                        console.error('[FileImport] Error removing dialog:', err);
+                    }
+                };
+
                 cancelBtn.addEventListener('click', () => {
-                    document.body.removeChild(backdrop);
+                    cleanup();
+                    console.log('[FileImport] User cancelled role selection');
                     resolve(null);
                 });
 
                 form.addEventListener('submit', (e) => {
                     e.preventDefault();
                     const selectedRole = form.querySelector('input[name="role"]:checked').value;
-                    document.body.removeChild(backdrop);
+                    cleanup();
+                    console.log('[FileImport] User selected role:', selectedRole);
                     resolve(selectedRole);
                 });
 
