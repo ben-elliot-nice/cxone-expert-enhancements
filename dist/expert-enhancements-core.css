@@ -211,7 +211,7 @@
     width: 28px !important;
     padding: 0 !important;
     display: flex !important;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .split-btn:hover::after,
@@ -237,11 +237,13 @@
 
 .split-left {
     border-right: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px 0 0 4px;
 }
 
 .split-right {
     /* Match border width with transparent border for equal sizing */
     border-right: 1px solid transparent;
+    border-radius: 0 4px 4px 0;
 }
 
 /* Visual rectangle indicators */
