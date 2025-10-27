@@ -88,7 +88,6 @@
             container.innerHTML = `
                 <div class="enhancements-app-container">
                     <div id="message-area"></div>
-                    <div id="loading" class="loading" style="display: block;">Loading CSS from system...</div>
                     <div id="css-editor-container" style="display: none;">
                         <div class="toggle-bar" id="toggle-bar">
                             <div class="save-dropdown">
@@ -104,43 +103,77 @@
                 </div>
             `;
 
-            // Restore state if available
-            const savedState = context.Storage.getAppState(this.id);
-            let hasDirtyEdits = false;
+            // Show loading overlay
+            context.LoadingOverlay.show('Loading CSS from system...', {
+                timeout: 30000,
+                showProgress: true
+            });
 
-            if (savedState) {
-                console.log('[CSS Editor] Restoring state:', savedState);
-                this.setState(savedState);
+            try {
+                // Start loading Prettier in background (non-blocking)
+                context.Formatter.init()
+                    .then(() => {
+                        console.log('[CSS Editor] Code formatter loaded successfully');
+                        // Inject format buttons into all rendered panes
+                        this.injectFormatButtons();
+                    })
+                    .catch((error) => {
+                        console.warn('[CSS Editor] Code formatter unavailable:', error);
+                        // Silent failure - editor already loaded without formatting
+                    });
 
-                // Check if any fields are dirty
-                hasDirtyEdits = savedState.isDirty && Object.values(savedState.isDirty).some(dirty => dirty);
-                console.log('[CSS Editor] Has dirty edits in saved state:', hasDirtyEdits);
+                // Restore state if available
+                const savedState = context.Storage.getAppState(this.id);
+                let hasDirtyEdits = false;
+
+                if (savedState) {
+                    console.log('[CSS Editor] Restoring state:', savedState);
+                    context.LoadingOverlay.setMessage('Restoring saved state...');
+                    this.setState(savedState);
+
+                    // Check if any fields are dirty
+                    hasDirtyEdits = savedState.isDirty && Object.values(savedState.isDirty).some(dirty => dirty);
+                    console.log('[CSS Editor] Has dirty edits in saved state:', hasDirtyEdits);
+                }
+
+                // Load CSS data - skip full fetch if we have dirty edits (checkpoint protection)
+                if (hasDirtyEdits) {
+                    context.LoadingOverlay.setMessage('Loading saved edits...');
+                } else {
+                    context.LoadingOverlay.setMessage('Fetching CSS from server...');
+                }
+                await this.loadData(hasDirtyEdits);
+
+                // Build toggle bar (buttons or dropdown based on viewport)
+                // Note: Don't check viewport width here - overlay dimensions aren't ready yet
+                // onResize() will be called after mount and will properly detect viewport
+                this.buildToggleBar();
+
+                // Initialize editors - skip default if we have saved state
+                context.LoadingOverlay.setMessage('Initializing Monaco editors...');
+                const skipDefault = !!savedState;
+                console.log('[CSS Editor] Initializing editors, skip default:', skipDefault);
+                this.initializeEditors(skipDefault);
+
+                // Setup save dropdown event listeners
+                this.setupSaveDropdown();
+
+                // Setup keyboard shortcuts
+                this.setupKeyboardShortcuts();
+
+                // Create and mount live preview controls to overlay header
+                this.createLivePreviewControls();
+
+                // Hide loading overlay
+                context.LoadingOverlay.hide();
+
+                console.log('[CSS Editor] Mounted');
+
+            } catch (error) {
+                console.error('[CSS Editor] Mount failed:', error);
+                context.LoadingOverlay.showError('Failed to load CSS Editor: ' + error.message);
+                throw error;
             }
-
-            // Load CSS data - skip full fetch if we have dirty edits (checkpoint protection)
-            await this.loadData(hasDirtyEdits);
-
-            // Check viewport width to set mobile/desktop view
-            this.checkViewportWidth();
-
-            // Build toggle bar (buttons or dropdown based on viewport)
-            this.buildToggleBar();
-
-            // Initialize editors - skip default if we have saved state
-            const skipDefault = !!savedState;
-            console.log('[CSS Editor] Initializing editors, skip default:', skipDefault);
-            this.initializeEditors(skipDefault);
-
-            // Setup save dropdown event listeners
-            this.setupSaveDropdown();
-
-            // Setup keyboard shortcuts
-            this.setupKeyboardShortcuts();
-
-            // Create and mount live preview controls to overlay header
-            this.createLivePreviewControls();
-
-            console.log('[CSS Editor] Mounted');
         },
 
         /**
@@ -298,15 +331,12 @@
 
                 // Always extract CSRF token
                 csrfToken = data.csrf_token;
-                console.log('[CSS Editor] CSRF token extracted');
 
                 if (skipContent) {
                     // Checkpoint protection: we have dirty edits, so don't fetch CSS content
                     // This prevents other people's changes from overwriting work-in-progress
-                    console.log('[CSS Editor] Skipping content fetch - using saved edits (checkpoint protection)');
                 } else {
                     // No dirty edits - safe to fetch fresh CSS from server
-                    console.log('[CSS Editor] Fetching fresh CSS content from server');
 
                     const textareas = {
                         'css_template_all': 'all',
@@ -327,15 +357,14 @@
                     });
                 }
 
-                // Hide loading, show editor
-                document.getElementById('loading').style.display = 'none';
+                // Show editor container
                 document.getElementById('css-editor-container').style.display = 'block';
 
                 console.log('[CSS Editor] Data loaded');
 
             } catch (error) {
                 console.error('[CSS Editor] Failed to load data:', error);
-                context.UI.showMessage('Failed to load CSS: ' + error.message, 'error');
+                context.UI.showToast('Failed to load CSS: ' + error.message, 'error');
             }
         },
 
@@ -345,24 +374,22 @@
         checkViewportWidth() {
             const wasMobileView = isMobileView;
 
-            // Get container width to determine mobile/desktop view
-            const container = document.getElementById('css-editor-container');
-            if (container) {
-                const containerWidth = container.offsetWidth;
+            // Get overlay width to determine mobile/desktop view
+            // Use overlay instead of editor container to avoid issues when container is hidden
+            const overlay = document.getElementById('expert-enhancements-overlay');
+            if (overlay) {
+                const containerWidth = overlay.offsetWidth;
                 isMobileView = containerWidth < 920;
-                console.log(`[CSS Editor] checkViewportWidth: width=${containerWidth}px, mobile=${isMobileView}`);
             }
 
             // If view mode changed, rebuild the toggle bar
             if (wasMobileView !== isMobileView) {
-                console.log(`[CSS Editor] View mode changed to ${isMobileView ? 'mobile' : 'desktop'}`);
                 this.buildToggleBar();
 
                 // If switching to mobile and multiple editors are active, keep only the first
                 if (isMobileView) {
                     const activeRoles = Object.keys(editorState).filter(role => editorState[role].active);
                     if (activeRoles.length > 1) {
-                        console.log(`[CSS Editor] Multiple editors active in mobile view, keeping only: ${activeRoles[0]}`);
                         // Deactivate all except the first
                         activeRoles.slice(1).forEach(roleId => {
                             editorState[roleId].active = false;
@@ -385,7 +412,6 @@
             const toggleBar = document.getElementById('toggle-bar');
             if (!toggleBar) return;
 
-            console.log(`[CSS Editor] buildToggleBar for ${isMobileView ? 'mobile' : 'desktop'} view`);
 
             // Clear existing buttons/selectors (but keep save dropdown)
             const existingButtons = toggleBar.querySelectorAll('.toggle-btn, .mobile-selector-wrapper');
@@ -424,14 +450,11 @@
                     const firstRole = ROLE_CONFIG[0].id;
                     editorState[firstRole].active = true;
                     activeRole = firstRole;
-                    console.log(`[CSS Editor] No active editor found, activating first: ${activeRole}`);
                     // Need to render the editor
                     setTimeout(() => {
                         this.updateGrid();
                         this.saveState();
                     }, 0);
-                } else {
-                    console.log(`[CSS Editor] Using existing active editor: ${activeRole}`);
                 }
 
                 select.value = activeRole;
@@ -506,7 +529,6 @@
 
             if (saveBtn) {
                 saveBtn.addEventListener('click', () => this.saveAll());
-                console.log('[CSS Editor] Save button listener attached');
             }
 
             if (discardBtn) {
@@ -514,7 +536,6 @@
                     e.stopPropagation();
                     this.discardAll();
                 });
-                console.log('[CSS Editor] Discard button listener attached');
             }
 
             if (dropdownToggle && dropdownMenu && dropdown) {
@@ -523,7 +544,6 @@
                     dropdownMenu.classList.toggle('show');
                     dropdown.classList.toggle('open');
                 });
-                console.log('[CSS Editor] Dropdown toggle listener attached');
             }
 
             // Close dropdowns when clicking outside
@@ -561,7 +581,7 @@
                     role.active = false;
                 } else {
                     if (activeCount >= MAX_ACTIVE_EDITORS) {
-                        context.UI.showMessage(`Maximum ${MAX_ACTIVE_EDITORS} editors can be open at once`, 'error');
+                        context.UI.showToast(`Maximum ${MAX_ACTIVE_EDITORS} editors can be open at once`, 'warning');
                         return;
                     }
                     role.active = true;
@@ -593,7 +613,6 @@
         saveState() {
             const state = this.getState();
             context.Storage.setAppState(this.id, state);
-            console.log('[CSS Editor] State saved:', state);
         },
 
         /**
@@ -669,6 +688,12 @@
             const pane = context.DOM.create('div', { className: 'editor-pane' });
             const header = context.DOM.create('div', { className: 'editor-pane-header' });
 
+            // Left side: Title + Status only
+            const headerLeft = context.DOM.create('div', {
+                className: 'header-left',
+                style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }
+            });
+
             const titleGroup = context.DOM.create('div', {
                 style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }
             });
@@ -681,11 +706,12 @@
 
             titleGroup.appendChild(status);
             titleGroup.appendChild(title);
+            headerLeft.appendChild(titleGroup);
 
-            // Action buttons
-            const actions = context.DOM.create('div', {
-                className: 'editor-pane-actions',
-                style: { display: 'flex', gap: '0.5rem', alignItems: 'center' }
+            // Right side: Save dropdown + Actions dropdown
+            const headerRight = context.DOM.create('div', {
+                className: 'header-right',
+                style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }
             });
 
             // Save dropdown group
@@ -727,18 +753,90 @@
             saveDropdown.appendChild(dropdownToggle);
             saveDropdown.appendChild(dropdownMenu);
 
-            const exportBtn = context.DOM.create('button', {
-                className: 'editor-pane-export',
+            // Actions dropdown
+            const actionsDropdown = context.DOM.create('div', {
+                className: 'editor-actions-dropdown',
+                style: { position: 'relative' }
+            });
+
+            const actionsBtn = context.DOM.create('button', {
+                className: 'editor-actions-btn',
+                'data-actions-role': roleId
+            }, ['Actions ▼']);
+            actionsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleActionsDropdown(roleId);
+            });
+
+            const actionsMenu = context.DOM.create('div', {
+                className: 'editor-actions-menu',
+                'data-actions-menu-role': roleId
+            });
+
+            // Format option (only if Prettier available)
+            if (context.Formatter.isReady()) {
+                const formatOption = context.DOM.create('button', {
+                    className: 'editor-actions-item',
+                    'data-format-role': roleId
+                }, ['Format']);
+                formatOption.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.formatRole(roleId);
+                    this.toggleActionsDropdown(roleId); // Close menu
+                });
+                actionsMenu.appendChild(formatOption);
+            }
+
+            // Import option with hidden file input
+            const fileInput = context.DOM.create('input', {
+                type: 'file',
+                accept: '.css',
+                style: 'display: none;',
+                id: `file-input-${roleId}`
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files[0]) {
+                    this.importRole(roleId, e.target.files[0]);
+                    e.target.value = ''; // Reset input to allow re-importing same file
+                }
+            });
+
+            const importOption = context.DOM.create('button', {
+                className: 'editor-actions-item',
+                'data-import-role': roleId
+            }, ['Import']);
+            importOption.addEventListener('click', (e) => {
+                e.stopPropagation();
+                fileInput.click();
+                this.toggleActionsDropdown(roleId); // Close menu
+            });
+
+            // Export option
+            const exportOption = context.DOM.create('button', {
+                className: 'editor-actions-item',
                 'data-export-role': roleId
             }, ['Export']);
-            exportBtn.addEventListener('click', () => this.exportRole(roleId));
+            exportOption.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.exportRole(roleId);
+                this.toggleActionsDropdown(roleId); // Close menu
+            });
 
-            actions.appendChild(saveDropdown);
-            actions.appendChild(exportBtn);
+            actionsMenu.appendChild(importOption);
+            actionsMenu.appendChild(exportOption);
+            actionsDropdown.appendChild(actionsBtn);
+            actionsDropdown.appendChild(actionsMenu);
 
-            header.appendChild(titleGroup);
-            header.appendChild(actions);
+            // Add both dropdowns to right side
+            headerRight.appendChild(saveDropdown);
+            headerRight.appendChild(actionsDropdown);
+
+            // Assemble header
+            header.appendChild(headerLeft);
+            header.appendChild(headerRight);
             pane.appendChild(header);
+            pane.appendChild(fileInput);
 
             const editorContainer = context.DOM.create('div', {
                 className: 'editor-instance',
@@ -879,9 +977,306 @@
                 a.click();
                 URL.revokeObjectURL(url);
 
-                context.UI.showMessage(`Exported ${role.label}`, 'success');
+                context.UI.showToast(`Exported ${role.label}`, 'success');
             } catch (error) {
-                context.UI.showMessage(`Failed to export: ${error.message}`, 'error');
+                context.UI.showToast(`Failed to export: ${error.message}`, 'error');
+            }
+        },
+
+        /**
+         * Import CSS file into a role (appends content)
+         */
+        importRole(roleId, file) {
+            const role = editorState[roleId];
+            if (!role) return;
+
+            // Validate file type
+            if (!file.name.endsWith('.css')) {
+                context.UI.showToast('Please select a CSS file (.css)', 'error');
+                return;
+            }
+
+            // Validate file size (max 5MB)
+            const maxSize = 5 * 1024 * 1024;
+            if (file.size > maxSize) {
+                context.UI.showToast(`File too large. Maximum size is 5MB (file is ${(file.size / 1024 / 1024).toFixed(2)}MB)`, 'error');
+                return;
+            }
+
+            // Check for empty files
+            if (file.size === 0) {
+                context.UI.showToast('Cannot import empty file', 'error');
+                return;
+            }
+
+            // Show loading state
+            context.LoadingOverlay.show(`Importing ${file.name}...`);
+
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                try {
+                    const importedContent = e.target.result;
+
+                    // Create separator comment
+                    const separator = `\n\n/* ========================================\n   Imported from: ${file.name}\n   Date: ${new Date().toLocaleString()}\n   ======================================== */\n`;
+
+                    // Append content to existing
+                    const currentContent = role.content || '';
+                    const newContent = currentContent + separator + importedContent;
+
+                    // Update state
+                    role.content = newContent;
+                    role.isDirty = true;
+
+                    // Update Monaco editor using executeEdits for undo support
+                    if (monacoEditors[roleId]) {
+                        const editor = monacoEditors[roleId];
+                        const model = editor.getModel();
+                        const lineCount = model.getLineCount();
+                        const lastLineLength = model.getLineLength(lineCount);
+
+                        editor.executeEdits('import', [{
+                            range: new monaco.Range(lineCount, lastLineLength + 1, lineCount, lastLineLength + 1),
+                            text: separator + importedContent
+                        }]);
+                    }
+
+                    // Save state and update UI
+                    this.saveState();
+                    this.updateToggleButtons();
+
+                    context.LoadingOverlay.hide();
+                    context.UI.showToast(`Content from ${file.name} appended to ${role.label}`, 'success', 5000);
+                } catch (error) {
+                    context.LoadingOverlay.hide();
+                    context.UI.showToast(`Failed to import: ${error.message}`, 'error');
+                }
+            };
+
+            reader.onerror = () => {
+                context.LoadingOverlay.hide();
+                context.UI.showToast('Failed to read file', 'error');
+            };
+
+            reader.readAsText(file);
+        },
+
+        /**
+         * Import CSS file via drag & drop (with role selector)
+         */
+        async importFile(fileContent, fileName) {
+            try {
+                // Hide loading overlay before showing role selector (waiting for user input)
+                context.LoadingOverlay.hide();
+
+                // Prepare role list for selector
+                const roles = Object.keys(editorState).map(roleId => ({
+                    id: roleId,
+                    label: editorState[roleId].label
+                }));
+
+                // Show role selector dialog
+                const selectedRoleId = await context.FileImport.showRoleSelector(roles, 'css');
+
+                if (!selectedRoleId) {
+                    context.LoadingOverlay.hide();
+                    context.UI.showToast('Import cancelled', 'info');
+                    return;
+                }
+
+                const role = editorState[selectedRoleId];
+                if (!role) {
+                    context.LoadingOverlay.hide();
+                    context.UI.showToast('Selected role not found', 'error');
+                    return;
+                }
+
+                // Create separator comment
+                const separator = `\n\n/* ========================================\n   Imported from: ${fileName}\n   Date: ${new Date().toLocaleString()}\n   ======================================== */\n`;
+
+                // Append content to existing
+                const currentContent = role.content || '';
+                const newContent = currentContent + separator + fileContent;
+
+                // Update state
+                role.content = newContent;
+                role.isDirty = true;
+
+                // Update Monaco editor using executeEdits for undo support
+                if (monacoEditors[selectedRoleId]) {
+                    const editor = monacoEditors[selectedRoleId];
+                    const model = editor.getModel();
+                    const lineCount = model.getLineCount();
+                    const lastLineLength = model.getLineLength(lineCount);
+
+                    editor.executeEdits('import', [{
+                        range: new monaco.Range(lineCount, lastLineLength + 1, lineCount, lastLineLength + 1),
+                        text: separator + fileContent
+                    }]);
+
+                    // Focus editor and ensure proper layout after import
+                    setTimeout(() => {
+                        editor.layout();
+                        editor.focus();
+
+                        // Ensure editor captures scroll events
+                        const editorDom = editor.getDomNode();
+                        if (editorDom) {
+                            editorDom.style.pointerEvents = 'auto';
+                        }
+                    }, 50);
+                }
+
+                // Save state and update UI
+                this.saveState();
+                this.updateToggleButtons();
+
+                context.LoadingOverlay.hide();
+                context.UI.showToast(`Content from ${fileName} appended to ${role.label}`, 'success', 5000);
+            } catch (error) {
+                context.LoadingOverlay.hide();
+                context.UI.showToast(`Failed to import: ${error.message}`, 'error');
+            }
+        },
+
+        /**
+         * Inject format buttons into all rendered editor panes
+         * Called when Prettier becomes available after editor is already mounted
+         */
+        injectFormatButtons() {
+            console.log('[CSS Editor] Injecting format buttons into rendered panes');
+
+            // Find all editor pane actions containers
+            const panes = document.querySelectorAll('.editor-pane');
+
+            panes.forEach(pane => {
+                const actions = pane.querySelector('.editor-pane-actions');
+                const exportBtn = pane.querySelector('.editor-pane-export');
+
+                if (!actions || !exportBtn) return;
+
+                // Check if format button already exists
+                if (pane.querySelector('.editor-pane-format')) return;
+
+                // Get roleId from export button
+                const roleId = exportBtn.getAttribute('data-export-role');
+                if (!roleId) return;
+
+                // Create and insert format button before export button
+                const formatBtn = context.DOM.create('button', {
+                    className: 'editor-pane-format',
+                    'data-format-role': roleId,
+                    title: 'Format CSS (Ctrl+Shift+F)'
+                }, ['Format']);
+                formatBtn.addEventListener('click', () => this.formatRole(roleId));
+
+                // Insert before export button
+                actions.insertBefore(formatBtn, exportBtn);
+
+            });
+        },
+
+        /**
+         * Format CSS for a specific role
+         * @param {string} roleId - Role identifier
+         * @param {boolean} silent - If true, suppress success toast
+         * @returns {Object|null} - { changed: boolean, label: string } or null on error/empty
+         */
+        async formatRole(roleId, silent = false) {
+            if (!context.Formatter.isReady()) {
+                context.UI.showToast('Code formatting is currently unavailable', 'warning');
+                return null;
+            }
+
+            const role = editorState[roleId];
+            const editor = monacoEditors[roleId];
+
+            if (!role || !editor) return null;
+
+            try {
+                console.log(`[CSS Editor] Formatting ${roleId}...`);
+
+                // Get current content
+                const content = editor.getValue();
+
+                if (!content || content.trim() === '') {
+                    context.UI.showToast('Nothing to format', 'warning');
+                    return null;
+                }
+
+                // Format using Prettier
+                const formatted = await context.Formatter.formatCSS(content);
+
+                // Check if content actually changed
+                const changed = content !== formatted;
+
+                // Update editor with formatted content
+                editor.setValue(formatted);
+
+                // Mark as dirty if content changed
+                role.content = formatted;
+                role.isDirty = role.content !== originalContent[roleId];
+                this.updateToggleButtons();
+
+                if (!silent) {
+                    const message = changed ? `${role.label} formatted` : `${role.label} already formatted`;
+                    context.UI.showToast(message, 'success');
+                }
+
+                return { changed, label: role.label };
+            } catch (error) {
+                console.error(`[CSS Editor] Format ${roleId} failed:`, error);
+                context.UI.showToast(`Formatting failed: ${error.message}`, 'error');
+                return null;
+            }
+        },
+
+        /**
+         * Format all active editors
+         */
+        async formatAllActive() {
+            if (!context.Formatter.isReady()) {
+                context.UI.showToast('Code formatting is currently unavailable', 'warning');
+                return;
+            }
+
+            const activeRoles = Object.keys(editorState).filter(role => editorState[role].active);
+
+            if (activeRoles.length === 0) {
+                context.UI.showToast('No editors open to format', 'warning');
+                return;
+            }
+
+            try {
+                console.log(`[CSS Editor] Formatting ${activeRoles.length} active editor(s)...`);
+
+                // Format each active editor (silent mode to avoid duplicate toasts)
+                const results = [];
+                for (const roleId of activeRoles) {
+                    const result = await this.formatRole(roleId, true);
+                    if (result) {
+                        results.push(result);
+                    }
+                }
+
+                // Build appropriate toast message based on what actually changed
+                const changedResults = results.filter(r => r.changed);
+                const changedCount = changedResults.length;
+
+                let message;
+                if (changedCount === 0) {
+                    message = results.length === 1 ? `${results[0].label} already formatted` : 'Already formatted';
+                } else if (changedCount === 1) {
+                    message = `${changedResults[0].label} formatted`;
+                } else {
+                    message = `${changedCount} editors formatted`;
+                }
+
+                context.UI.showToast(message, 'success');
+            } catch (error) {
+                console.error('[CSS Editor] Format all active failed:', error);
+                context.UI.showToast(`Formatting failed: ${error.message}`, 'error');
             }
         },
 
@@ -893,7 +1288,7 @@
             console.log('[CSS Editor] discardAll called');
 
             if (Object.keys(originalContent).length === 0) {
-                context.UI.showMessage('No original content to revert to', 'error');
+                context.UI.showToast('No original content to revert to', 'warning');
                 return;
             }
 
@@ -960,7 +1355,7 @@
             const dropdown = document.querySelector('.save-dropdown');
             if (dropdown) dropdown.classList.remove('open');
 
-            context.UI.showMessage('All changes discarded', 'success');
+            context.UI.showToast('All changes discarded', 'success');
         },
 
         /**
@@ -1026,7 +1421,7 @@
             const menu = document.querySelector(`[data-menu-role="${roleId}"]`);
             if (menu) menu.classList.remove('show');
 
-            context.UI.showMessage(`${role.label} reverted`, 'success');
+            context.UI.showToast(`${role.label} reverted`, 'success');
         },
 
         /**
@@ -1047,9 +1442,35 @@
         },
 
         /**
+         * Toggle actions dropdown menu
+         */
+        toggleActionsDropdown(roleId) {
+            const menu = document.querySelector(`[data-actions-menu-role="${roleId}"]`);
+            if (!menu) return;
+
+            // Close all other actions dropdowns
+            document.querySelectorAll('.editor-actions-menu.show').forEach(m => {
+                if (m !== menu) m.classList.remove('show');
+            });
+
+            menu.classList.toggle('show');
+        },
+
+        /**
          * Save a single CSS role
          */
         async saveRole(roleId) {
+            const saveBtn = document.querySelector(`[data-save-role="${roleId}"]`);
+            if (!saveBtn) return;
+
+            // Get all save buttons to disable them
+            const saveAllBtn = document.getElementById('save-btn');
+            const allSaveBtns = document.querySelectorAll('[data-save-role]');
+
+            // Store original button state
+            const originalText = saveBtn.textContent;
+            const wasDisabled = saveBtn.disabled;
+
             try {
                 console.log(`[CSS Editor] Saving ${roleId}...`);
 
@@ -1058,10 +1479,40 @@
                     throw new Error(`Role ${roleId} not found`);
                 }
 
+                // Disable ALL save buttons
+                if (saveAllBtn) saveAllBtn.disabled = true;
+                allSaveBtns.forEach(btn => btn.disabled = true);
+
+                // Show loading state on this button
+                saveBtn.classList.add('saving');
+                saveBtn.innerHTML = '<span class="spinner"></span> Saving...';
+
                 // Sync this editor's value to state
                 const editor = monacoEditors[roleId];
                 if (editor) {
                     role.content = editor.getValue();
+                }
+
+                // Format on save if enabled and formatter available
+                const settings = context.Storage.getFormatterSettings();
+                if (settings.formatOnSave && context.Formatter.isReady() && role.content && role.content.trim() !== '') {
+                    try {
+                        console.log(`[CSS Editor] Auto-formatting ${roleId} before save...`);
+                        const formatted = await context.Formatter.formatCSS(role.content);
+                        role.content = formatted;
+                        if (editor) {
+                            editor.setValue(formatted);
+                        }
+                    } catch (formatError) {
+                        console.warn(`[CSS Editor] Auto-format failed for ${roleId}:`, formatError);
+                        // Continue with save even if formatting fails
+                    }
+                }
+
+                // Check if this role has changes
+                if (!role.isDirty && role.content === originalContent[roleId]) {
+                    context.UI.showToast(`${role.label} has no changes to save`, 'warning');
+                    return;
                 }
 
                 // Build form data - send the edited field + original content for others
@@ -1093,7 +1544,7 @@
                 });
 
                 if (response.ok || response.redirected) {
-                    context.UI.showMessage(`${role.label} saved successfully!`, 'success');
+                    context.UI.showToast(`${role.label} saved successfully!`, 'success');
 
                     // Update original content for this role only
                     originalContent[roleId] = role.content;
@@ -1109,7 +1560,14 @@
 
             } catch (error) {
                 console.error(`[CSS Editor] Save ${roleId} failed:`, error);
-                context.UI.showMessage(`Failed to save: ${error.message}`, 'error');
+                context.UI.showToast(`Failed to save: ${error.message}`, 'error');
+            } finally {
+                // Restore all button states
+                saveBtn.disabled = wasDisabled;
+                saveBtn.classList.remove('saving');
+                saveBtn.textContent = originalText;
+                if (saveAllBtn) saveAllBtn.disabled = false;
+                allSaveBtns.forEach(btn => btn.disabled = false);
             }
         },
 
@@ -1117,8 +1575,26 @@
          * Save all CSS
          */
         async saveAll() {
+            const saveBtn = document.getElementById('save-btn');
+            if (!saveBtn) return;
+
+            // Get all save buttons to disable them
+            const allSaveBtns = document.querySelectorAll('[data-save-role]');
+
+            // Store original button state
+            const originalText = saveBtn.textContent;
+            const wasDisabled = saveBtn.disabled;
+
             try {
                 console.log('[CSS Editor] Saving all CSS...');
+
+                // Disable ALL save buttons
+                saveBtn.disabled = true;
+                allSaveBtns.forEach(btn => btn.disabled = true);
+
+                // Show loading state on Save All button
+                saveBtn.classList.add('saving');
+                saveBtn.innerHTML = '<span class="spinner"></span> Saving...';
 
                 // Sync editor values to state
                 Object.keys(monacoEditors).forEach(roleId => {
@@ -1127,6 +1603,38 @@
                         editorState[roleId].content = editor.getValue();
                     }
                 });
+
+                // Format on save if enabled and formatter available
+                const settings = context.Storage.getFormatterSettings();
+                if (settings.formatOnSave && context.Formatter.isReady()) {
+                    for (const roleId of Object.keys(editorState)) {
+                        const role = editorState[roleId];
+                        if (role.content && role.content.trim() !== '') {
+                            try {
+                                console.log(`[CSS Editor] Auto-formatting ${roleId} before save...`);
+                                const formatted = await context.Formatter.formatCSS(role.content);
+                                role.content = formatted;
+                                const editor = monacoEditors[roleId];
+                                if (editor) {
+                                    editor.setValue(formatted);
+                                }
+                            } catch (formatError) {
+                                console.warn(`[CSS Editor] Auto-format failed for ${roleId}:`, formatError);
+                                // Continue with save even if formatting fails
+                            }
+                        }
+                    }
+                }
+
+                // Check if any role has changes
+                const hasChanges = Object.keys(editorState).some(roleId => {
+                    return editorState[roleId].isDirty || editorState[roleId].content !== originalContent[roleId];
+                });
+
+                if (!hasChanges) {
+                    context.UI.showToast('No changes to save', 'warning');
+                    return;
+                }
 
                 // Build form data
                 const formData = {
@@ -1156,7 +1664,7 @@
                 });
 
                 if (response.ok || response.redirected) {
-                    context.UI.showMessage('CSS saved successfully!', 'success');
+                    context.UI.showToast('CSS saved successfully!', 'success');
 
                     // Update original content
                     Object.keys(editorState).forEach(roleId => {
@@ -1174,7 +1682,13 @@
 
             } catch (error) {
                 console.error('[CSS Editor] Save failed:', error);
-                context.UI.showMessage('Failed to save CSS: ' + error.message, 'error');
+                context.UI.showToast('Failed to save CSS: ' + error.message, 'error');
+            } finally {
+                // Restore all button states
+                saveBtn.disabled = wasDisabled;
+                saveBtn.classList.remove('saving');
+                saveBtn.textContent = originalText;
+                allSaveBtns.forEach(btn => btn.disabled = false);
             }
         },
 
@@ -1182,15 +1696,54 @@
          * Save only the currently open tabs
          */
         async saveOpenTabs() {
-            try {
-                const openRoles = Object.keys(editorState).filter(role => editorState[role].active);
+            const openRoles = Object.keys(editorState).filter(role => editorState[role].active);
 
-                if (openRoles.length === 0) {
-                    context.UI.showMessage('No tabs open to save', 'warning');
-                    return;
+            if (openRoles.length === 0) {
+                context.UI.showToast('No tabs open to save', 'warning');
+                return;
+            }
+
+            // Get all save buttons to disable them
+            const saveAllBtn = document.getElementById('save-btn');
+            const allSaveBtns = document.querySelectorAll('[data-save-role]');
+
+            // Store original button states
+            const buttonStates = new Map();
+
+            // Store Save All button state
+            if (saveAllBtn) {
+                buttonStates.set(saveAllBtn, {
+                    text: saveAllBtn.textContent,
+                    disabled: saveAllBtn.disabled
+                });
+            }
+
+            // Store individual editor save button states
+            openRoles.forEach(roleId => {
+                const btn = document.querySelector(`[data-save-role="${roleId}"]`);
+                if (btn) {
+                    buttonStates.set(btn, {
+                        text: btn.textContent,
+                        disabled: btn.disabled
+                    });
                 }
+            });
 
+            try {
                 console.log(`[CSS Editor] Saving ${openRoles.length} open tab(s):`, openRoles);
+
+                // Disable ALL save buttons
+                if (saveAllBtn) saveAllBtn.disabled = true;
+                allSaveBtns.forEach(btn => btn.disabled = true);
+
+                // Show loading state on open editor save buttons
+                openRoles.forEach(roleId => {
+                    const btn = document.querySelector(`[data-save-role="${roleId}"]`);
+                    if (btn) {
+                        btn.classList.add('saving');
+                        btn.innerHTML = '<span class="spinner"></span> Saving...';
+                    }
+                });
 
                 // Sync editor values to state for open tabs
                 openRoles.forEach(roleId => {
@@ -1199,6 +1752,39 @@
                         editorState[roleId].content = editor.getValue();
                     }
                 });
+
+                // Format on save if enabled and formatter available
+                const settings = context.Storage.getFormatterSettings();
+                if (settings.formatOnSave && context.Formatter.isReady()) {
+                    for (const roleId of openRoles) {
+                        const role = editorState[roleId];
+                        if (role.content && role.content.trim() !== '') {
+                            try {
+                                console.log(`[CSS Editor] Auto-formatting ${roleId} before save...`);
+                                const formatted = await context.Formatter.formatCSS(role.content);
+                                role.content = formatted;
+                                const editor = monacoEditors[roleId];
+                                if (editor) {
+                                    editor.setValue(formatted);
+                                }
+                            } catch (formatError) {
+                                console.warn(`[CSS Editor] Auto-format failed for ${roleId}:`, formatError);
+                                // Continue with save even if formatting fails
+                            }
+                        }
+                    }
+                }
+
+                // Check if any open tab has changes
+                const hasChanges = openRoles.some(roleId => {
+                    return editorState[roleId].isDirty || editorState[roleId].content !== originalContent[roleId];
+                });
+
+                if (!hasChanges) {
+                    const tabLabel = openRoles.length === 1 ? editorState[openRoles[0]].label : `${openRoles.length} tabs`;
+                    context.UI.showToast(`${tabLabel} have no changes to save`, 'warning');
+                    return;
+                }
 
                 // Build form data - send edited content for open tabs, original for closed tabs
                 const formData = {
@@ -1229,7 +1815,7 @@
 
                 if (response.ok || response.redirected) {
                     const tabLabel = openRoles.length === 1 ? editorState[openRoles[0]].label : `${openRoles.length} tabs`;
-                    context.UI.showMessage(`${tabLabel} saved successfully!`, 'success');
+                    context.UI.showToast(`${tabLabel} saved successfully!`, 'success');
 
                     // Update original content for saved tabs
                     openRoles.forEach(roleId => {
@@ -1245,7 +1831,14 @@
 
             } catch (error) {
                 console.error('[CSS Editor] Save open tabs failed:', error);
-                context.UI.showMessage('Failed to save: ' + error.message, 'error');
+                context.UI.showToast('Failed to save: ' + error.message, 'error');
+            } finally {
+                // Restore all button states
+                buttonStates.forEach((state, btn) => {
+                    btn.disabled = state.disabled;
+                    btn.classList.remove('saving');
+                    btn.textContent = state.text;
+                });
             }
         },
 
@@ -1264,10 +1857,18 @@
                     e.preventDefault();
                     this.saveAll();
                 }
+                // Ctrl+Shift+F or Cmd+Shift+F - Format active editors (only if available)
+                else if ((e.ctrlKey || e.metaKey) && e.key === 'F' && e.shiftKey) {
+                    e.preventDefault();
+                    if (context.Formatter.isReady()) {
+                        this.formatAllActive();
+                    }
+                    // Silent no-op if formatter not available
+                }
             };
 
             document.addEventListener('keydown', keyboardHandler);
-            console.log('[CSS Editor] Keyboard shortcuts registered: Ctrl+S (save open), Ctrl+Shift+S (save all)');
+            console.log('[CSS Editor] Keyboard shortcuts registered: Ctrl+S (save open), Ctrl+Shift+S (save all), Ctrl+Shift+F (format)');
         },
 
         /**

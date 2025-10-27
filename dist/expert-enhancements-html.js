@@ -78,7 +78,6 @@
             container.innerHTML = `
                 <div class="enhancements-app-container">
                     <div id="message-area"></div>
-                    <div id="loading" class="loading" style="display: block;">Loading HTML from system...</div>
                     <div id="html-editor-container" style="display: none;">
                         <div class="toggle-bar" id="toggle-bar"></div>
                         <div id="editors-grid" class="editors-grid"></div>
@@ -86,58 +85,92 @@
                 </div>
             `;
 
-            // Restore state if available
-            const savedState = context.Storage.getAppState(this.id);
-            let hasDirtyEdits = false;
-
-            if (savedState) {
-                console.log('[HTML Editor] Restoring state:', savedState);
-                this.setState(savedState);
-
-                // Check if any fields are dirty
-                hasDirtyEdits = savedState.isDirty && Object.values(savedState.isDirty).some(dirty => dirty);
-                console.log('[HTML Editor] Has dirty edits in saved state:', hasDirtyEdits);
-            }
-
-            // Load HTML data - skip full fetch if we have dirty edits (checkpoint protection)
-            await this.loadData(hasDirtyEdits);
-
-            // Check viewport width to set mobile/desktop view
-            this.checkViewportWidth();
-
-            // Setup save dropdown structure (one-time)
-            this.setupSaveDropdownStructure();
-
-            // Build toggle bar (buttons or dropdown based on viewport)
-            this.buildToggleBar();
-
-            // Initialize editors - skip default if we have saved state
-            const skipDefault = !!savedState;
-            console.log('[HTML Editor] Initializing editors, skip default:', skipDefault);
-            this.initializeEditors(skipDefault);
-
-            // Setup keyboard shortcuts
-            this.setupKeyboardShortcuts();
-
-            // Setup click listener to close dropdowns when clicking outside
-            document.addEventListener('click', (e) => {
-                // Close global dropdown
-                const dropdown = document.querySelector('.save-dropdown');
-                const dropdownMenu = document.getElementById('save-dropdown-menu');
-                if (dropdown && dropdownMenu && !dropdown.contains(e.target)) {
-                    dropdownMenu.classList.remove('show');
-                    dropdown.classList.remove('open');
-                }
-
-                // Close editor dropdowns
-                if (!e.target.closest('.editor-save-dropdown')) {
-                    document.querySelectorAll('.editor-save-dropdown-menu.show').forEach(menu => {
-                        menu.classList.remove('show');
-                    });
-                }
+            // Show loading overlay
+            context.LoadingOverlay.show('Loading HTML from system...', {
+                timeout: 30000,
+                showProgress: true
             });
 
-            console.log('[HTML Editor] Mounted');
+            try {
+                // Start loading Prettier in background (non-blocking)
+                context.Formatter.init()
+                    .then(() => {
+                        console.log('[HTML Editor] Code formatter loaded successfully');
+                        // Inject format buttons into all rendered panes
+                        this.injectFormatButtons();
+                    })
+                    .catch((error) => {
+                        console.warn('[HTML Editor] Code formatter unavailable:', error);
+                        // Silent failure - editor already loaded without formatting
+                    });
+
+                // Restore state if available
+                const savedState = context.Storage.getAppState(this.id);
+                let hasDirtyEdits = false;
+
+                if (savedState) {
+                    console.log('[HTML Editor] Restoring state:', savedState);
+                    context.LoadingOverlay.setMessage('Restoring saved state...');
+                    this.setState(savedState);
+
+                    // Check if any fields are dirty
+                    hasDirtyEdits = savedState.isDirty && Object.values(savedState.isDirty).some(dirty => dirty);
+                    console.log('[HTML Editor] Has dirty edits in saved state:', hasDirtyEdits);
+                }
+
+                // Load HTML data - skip full fetch if we have dirty edits (checkpoint protection)
+                if (hasDirtyEdits) {
+                    context.LoadingOverlay.setMessage('Loading saved edits...');
+                } else {
+                    context.LoadingOverlay.setMessage('Fetching HTML from server...');
+                }
+                await this.loadData(hasDirtyEdits);
+
+                // Setup save dropdown structure (one-time)
+                this.setupSaveDropdownStructure();
+
+                // Build toggle bar (buttons or dropdown based on viewport)
+                // Note: Don't check viewport width here - overlay dimensions aren't ready yet
+                // onResize() will be called after mount and will properly detect viewport
+                this.buildToggleBar();
+
+                // Initialize editors - skip default if we have saved state
+                context.LoadingOverlay.setMessage('Initializing Monaco editors...');
+                const skipDefault = !!savedState;
+                console.log('[HTML Editor] Initializing editors, skip default:', skipDefault);
+                this.initializeEditors(skipDefault);
+
+                // Setup keyboard shortcuts
+                this.setupKeyboardShortcuts();
+
+                // Setup click listener to close dropdowns when clicking outside
+                document.addEventListener('click', (e) => {
+                    // Close global dropdown
+                    const dropdown = document.querySelector('.save-dropdown');
+                    const dropdownMenu = document.getElementById('save-dropdown-menu');
+                    if (dropdown && dropdownMenu && !dropdown.contains(e.target)) {
+                        dropdownMenu.classList.remove('show');
+                        dropdown.classList.remove('open');
+                    }
+
+                    // Close editor dropdowns
+                    if (!e.target.closest('.editor-save-dropdown')) {
+                        document.querySelectorAll('.editor-save-dropdown-menu.show').forEach(menu => {
+                            menu.classList.remove('show');
+                        });
+                    }
+                });
+
+                // Hide loading overlay
+                context.LoadingOverlay.hide();
+
+                console.log('[HTML Editor] Mounted');
+
+            } catch (error) {
+                console.error('[HTML Editor] Mount failed:', error);
+                context.LoadingOverlay.showError('Failed to load HTML Editor: ' + error.message);
+                throw error;
+            }
         },
 
         /**
@@ -242,24 +275,22 @@
         checkViewportWidth() {
             const wasMobileView = isMobileView;
 
-            // Get container width to determine mobile/desktop view
-            const container = document.getElementById('html-editor-container');
-            if (container) {
-                const containerWidth = container.offsetWidth;
+            // Get overlay width to determine mobile/desktop view
+            // Use overlay instead of editor container to avoid issues when container is hidden
+            const overlay = document.getElementById('expert-enhancements-overlay');
+            if (overlay) {
+                const containerWidth = overlay.offsetWidth;
                 isMobileView = containerWidth < 920;
-                console.log(`[HTML Editor] checkViewportWidth: width=${containerWidth}px, mobile=${isMobileView}`);
             }
 
             // If view mode changed, rebuild the toggle bar
             if (wasMobileView !== isMobileView) {
-                console.log(`[HTML Editor] View mode changed to ${isMobileView ? 'mobile' : 'desktop'}`);
                 this.buildToggleBar();
 
                 // If switching to mobile and multiple editors are active, keep only the first
                 if (isMobileView) {
                     const activeFields = Object.keys(editorState).filter(field => editorState[field].active);
                     if (activeFields.length > 1) {
-                        console.log(`[HTML Editor] Multiple editors active in mobile view, keeping only: ${activeFields[0]}`);
                         // Deactivate all except the first
                         activeFields.slice(1).forEach(fieldId => {
                             editorState[fieldId].active = false;
@@ -319,15 +350,12 @@
 
                 // Always extract CSRF token
                 csrfToken = data.csrf_token;
-                console.log('[HTML Editor] CSRF token extracted');
 
                 if (skipContent) {
                     // Checkpoint protection: we have dirty edits, so don't fetch HTML content
                     // This prevents other people's changes from overwriting work-in-progress
-                    console.log('[HTML Editor] Skipping content fetch - using saved edits (checkpoint protection)');
                 } else {
                     // No dirty edits - safe to fetch fresh HTML from server
-                    console.log('[HTML Editor] Fetching fresh HTML content from server');
 
                     const textareas = {
                         'html_template_head': 'head',
@@ -344,15 +372,14 @@
                     });
                 }
 
-                // Hide loading, show editor
-                document.getElementById('loading').style.display = 'none';
+                // Show editor container
                 document.getElementById('html-editor-container').style.display = 'block';
 
                 console.log('[HTML Editor] Data loaded');
 
             } catch (error) {
                 console.error('[HTML Editor] Failed to load data:', error);
-                context.UI.showMessage('Failed to load HTML: ' + error.message, 'error');
+                context.UI.showToast('Failed to load HTML: ' + error.message, 'error');
             }
         },
 
@@ -363,7 +390,6 @@
             const toggleBar = document.getElementById('toggle-bar');
             if (!toggleBar) return;
 
-            console.log(`[HTML Editor] buildToggleBar for ${isMobileView ? 'mobile' : 'desktop'} view`);
 
             // Clear existing buttons/selectors (but keep save dropdown)
             const existingButtons = toggleBar.querySelectorAll('.toggle-btn, .mobile-selector-wrapper');
@@ -455,7 +481,6 @@
                 className: 'btn btn-primary',
                 id: 'save-btn'
             }, ['Save All']);
-            saveBtn.addEventListener('click', () => this.saveAll());
 
             const dropdownToggle = context.DOM.create('button', {
                 className: 'btn btn-dropdown-toggle',
@@ -496,7 +521,6 @@
 
             if (saveBtn) {
                 saveBtn.addEventListener('click', () => this.saveAll());
-                console.log('[HTML Editor] Save button listener attached');
             }
 
             if (discardBtn) {
@@ -504,7 +528,6 @@
                     e.stopPropagation();
                     this.discardAll();
                 });
-                console.log('[HTML Editor] Discard button listener attached');
             }
 
             if (dropdownToggle && dropdownMenu && dropdown) {
@@ -513,7 +536,6 @@
                     dropdownMenu.classList.toggle('show');
                     dropdown.classList.toggle('open');
                 });
-                console.log('[HTML Editor] Dropdown toggle listener attached');
             }
         },
 
@@ -535,7 +557,7 @@
                     field.active = false;
                 } else {
                     if (activeCount >= MAX_ACTIVE_EDITORS) {
-                        context.UI.showMessage(`Maximum ${MAX_ACTIVE_EDITORS} editors can be open at once`, 'error');
+                        context.UI.showToast(`Maximum ${MAX_ACTIVE_EDITORS} editors can be open at once`, 'warning');
                         return;
                     }
                     field.active = true;
@@ -567,7 +589,6 @@
         saveState() {
             const state = this.getState();
             context.Storage.setAppState(this.id, state);
-            console.log('[HTML Editor] State saved:', state);
         },
 
         /**
@@ -643,6 +664,12 @@
             const pane = context.DOM.create('div', { className: 'editor-pane' });
             const header = context.DOM.create('div', { className: 'editor-pane-header' });
 
+            // Left side: Title + Status only
+            const headerLeft = context.DOM.create('div', {
+                className: 'header-left',
+                style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }
+            });
+
             const titleGroup = context.DOM.create('div', {
                 style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }
             });
@@ -655,11 +682,12 @@
 
             titleGroup.appendChild(status);
             titleGroup.appendChild(title);
+            headerLeft.appendChild(titleGroup);
 
-            // Action buttons
-            const actions = context.DOM.create('div', {
-                className: 'editor-pane-actions',
-                style: { display: 'flex', gap: '0.5rem', alignItems: 'center' }
+            // Right side: Save dropdown + Actions dropdown
+            const headerRight = context.DOM.create('div', {
+                className: 'header-right',
+                style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }
             });
 
             // Save dropdown group
@@ -701,17 +729,89 @@
             saveDropdown.appendChild(dropdownToggle);
             saveDropdown.appendChild(dropdownMenu);
 
-            const exportBtn = context.DOM.create('button', {
-                className: 'editor-pane-export',
+            const actionsDropdown = context.DOM.create('div', {
+                className: 'editor-actions-dropdown',
+                style: { position: 'relative' }
+            });
+
+            const actionsBtn = context.DOM.create('button', {
+                className: 'editor-actions-btn',
+                'data-actions-field': fieldId
+            }, ['Actions ▼']);
+            actionsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleActionsDropdown(fieldId);
+            });
+
+            const actionsMenu = context.DOM.create('div', {
+                className: 'editor-actions-menu',
+                'data-actions-menu-field': fieldId
+            });
+
+            // Format option (if Prettier available)
+            if (context.Formatter.isReady()) {
+                const formatItem = context.DOM.create('button', {
+                    className: 'editor-actions-item',
+                    'data-format-field': fieldId
+                }, ['Format']);
+                formatItem.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.formatField(fieldId);
+                    actionsMenu.classList.remove('show');
+                });
+                actionsMenu.appendChild(formatItem);
+            }
+
+            // Import option with hidden file input
+            const fileInput = context.DOM.create('input', {
+                type: 'file',
+                accept: '.html',
+                style: 'display: none;',
+                id: `file-input-${fieldId}`
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files[0]) {
+                    this.importField(fieldId, e.target.files[0]);
+                    e.target.value = ''; // Reset input to allow re-importing same file
+                }
+            });
+
+            const importItem = context.DOM.create('button', {
+                className: 'editor-actions-item',
+                'data-import-field': fieldId
+            }, ['Import']);
+            importItem.addEventListener('click', (e) => {
+                e.stopPropagation();
+                fileInput.click();
+                actionsMenu.classList.remove('show');
+            });
+
+            // Export option
+            const exportItem = context.DOM.create('button', {
+                className: 'editor-actions-item',
                 'data-export-field': fieldId
             }, ['Export']);
-            exportBtn.addEventListener('click', () => this.exportField(fieldId));
+            exportItem.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.exportField(fieldId);
+                actionsMenu.classList.remove('show');
+            });
 
-            actions.appendChild(saveDropdown);
-            actions.appendChild(exportBtn);
+            actionsMenu.appendChild(importItem);
+            actionsMenu.appendChild(exportItem);
 
-            header.appendChild(titleGroup);
-            header.appendChild(actions);
+            actionsDropdown.appendChild(actionsBtn);
+            actionsDropdown.appendChild(actionsMenu);
+
+            // Add both dropdowns to right side
+            headerRight.appendChild(saveDropdown);
+            headerRight.appendChild(actionsDropdown);
+
+            pane.appendChild(fileInput);
+
+            header.appendChild(headerLeft);
+            header.appendChild(headerRight);
             pane.appendChild(header);
 
             const editorContainer = context.DOM.create('div', {
@@ -846,9 +946,307 @@
                 a.click();
                 URL.revokeObjectURL(url);
 
-                context.UI.showMessage(`Exported ${field.label}`, 'success');
+                context.UI.showToast(`Exported ${field.label}`, 'success');
             } catch (error) {
-                context.UI.showMessage(`Failed to export: ${error.message}`, 'error');
+                context.UI.showToast(`Failed to export: ${error.message}`, 'error');
+            }
+        },
+
+        /**
+         * Import HTML file into a field (appends content)
+         */
+        importField(fieldId, file) {
+            const field = editorState[fieldId];
+            if (!field) return;
+
+            // Validate file type
+            if (!file.name.endsWith('.html')) {
+                context.UI.showToast('Please select an HTML file (.html)', 'error');
+                return;
+            }
+
+            // Validate file size (max 5MB)
+            const maxSize = 5 * 1024 * 1024;
+            if (file.size > maxSize) {
+                context.UI.showToast(`File too large. Maximum size is 5MB (file is ${(file.size / 1024 / 1024).toFixed(2)}MB)`, 'error');
+                return;
+            }
+
+            // Check for empty files
+            if (file.size === 0) {
+                context.UI.showToast('Cannot import empty file', 'error');
+                return;
+            }
+
+            // Show loading state
+            context.LoadingOverlay.show(`Importing ${file.name}...`);
+
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                try {
+                    const importedContent = e.target.result;
+
+                    // Create separator comment
+                    const separator = `\n\n<!-- ========================================\n     Imported from: ${file.name}\n     Date: ${new Date().toLocaleString()}\n     ======================================== -->\n`;
+
+                    // Append content to existing
+                    const currentContent = field.content || '';
+                    const newContent = currentContent + separator + importedContent;
+
+                    // Update state
+                    field.content = newContent;
+                    field.isDirty = true;
+
+                    // Update Monaco editor using executeEdits for undo support
+                    if (monacoEditors[fieldId]) {
+                        const editor = monacoEditors[fieldId];
+                        const model = editor.getModel();
+                        const lineCount = model.getLineCount();
+                        const lastLineLength = model.getLineLength(lineCount);
+
+                        editor.executeEdits('import', [{
+                            range: new monaco.Range(lineCount, lastLineLength + 1, lineCount, lastLineLength + 1),
+                            text: separator + importedContent
+                        }]);
+                    }
+
+                    // Save state and update UI
+                    this.saveState();
+                    this.updateToggleButtons();
+
+                    context.LoadingOverlay.hide();
+                    context.UI.showToast(`Content from ${file.name} appended to ${field.label}`, 'success', 5000);
+                } catch (error) {
+                    context.LoadingOverlay.hide();
+                    context.UI.showToast(`Failed to import: ${error.message}`, 'error');
+                }
+            };
+
+            reader.onerror = () => {
+                context.LoadingOverlay.hide();
+                context.UI.showToast('Failed to read file', 'error');
+            };
+
+            reader.readAsText(file);
+        },
+
+        /**
+         * Import HTML file via drag & drop (with field selector)
+         */
+        async importFile(fileContent, fileName) {
+            try {
+                // Hide loading overlay before showing field selector (waiting for user input)
+                context.LoadingOverlay.hide();
+
+                // Prepare field list for selector
+                const roles = Object.keys(editorState).map(fieldId => ({
+                    id: fieldId,
+                    label: editorState[fieldId].label
+                }));
+
+                // Show field selector dialog
+                const selectedFieldId = await context.FileImport.showRoleSelector(roles, 'html');
+
+                if (!selectedFieldId) {
+                    context.LoadingOverlay.hide();
+                    context.UI.showToast('Import cancelled', 'info');
+                    return;
+                }
+
+                const field = editorState[selectedFieldId];
+                if (!field) {
+                    context.LoadingOverlay.hide();
+                    context.UI.showToast('Selected field not found', 'error');
+                    return;
+                }
+
+                // Create separator comment
+                const separator = `\n\n<!-- ========================================\n     Imported from: ${fileName}\n     Date: ${new Date().toLocaleString()}\n     ======================================== -->\n`;
+
+                // Append content to existing
+                const currentContent = field.content || '';
+                const newContent = currentContent + separator + fileContent;
+
+                // Update state
+                field.content = newContent;
+                field.isDirty = true;
+
+                // Update Monaco editor using executeEdits for undo support
+                if (monacoEditors[selectedFieldId]) {
+                    const editor = monacoEditors[selectedFieldId];
+                    const model = editor.getModel();
+                    const lineCount = model.getLineCount();
+                    const lastLineLength = model.getLineLength(lineCount);
+
+                    editor.executeEdits('import', [{
+                        range: new monaco.Range(lineCount, lastLineLength + 1, lineCount, lastLineLength + 1),
+                        text: separator + fileContent
+                    }]);
+
+                    // Focus editor and ensure proper layout after import
+                    setTimeout(() => {
+                        editor.layout();
+                        editor.focus();
+
+                        // Ensure editor captures scroll events
+                        const editorDom = editor.getDomNode();
+                        if (editorDom) {
+                            editorDom.style.pointerEvents = 'auto';
+                        }
+                    }, 50);
+                }
+
+                // Save state and update UI
+                this.saveState();
+                this.updateToggleButtons();
+
+                context.LoadingOverlay.hide();
+                context.UI.showToast(`Content from ${fileName} appended to ${field.label}`, 'success', 5000);
+            } catch (error) {
+                context.LoadingOverlay.hide();
+                context.UI.showToast(`Failed to import: ${error.message}`, 'error');
+            }
+        },
+
+        /**
+         * Inject format buttons into all rendered editor panes
+         * Called when Prettier becomes available after editor is already mounted
+         */
+        injectFormatButtons() {
+            console.log('[HTML Editor] Injecting format buttons into rendered panes');
+
+            // Find all editor pane actions containers
+            const panes = document.querySelectorAll('.editor-pane');
+
+            panes.forEach(pane => {
+                const actions = pane.querySelector('.editor-pane-actions');
+                const exportBtn = pane.querySelector('.editor-pane-export');
+
+                if (!actions || !exportBtn) return;
+
+                // Check if format button already exists
+                if (pane.querySelector('.editor-pane-format')) return;
+
+                // Get fieldId from export button
+                const fieldId = exportBtn.getAttribute('data-export-field');
+                if (!fieldId) return;
+
+                // Create and insert format button before export button
+                const formatBtn = context.DOM.create('button', {
+                    className: 'editor-pane-format',
+                    'data-format-field': fieldId,
+                    title: 'Format HTML (Ctrl+Shift+F)'
+                }, ['Format']);
+                formatBtn.addEventListener('click', () => this.formatField(fieldId));
+
+                // Insert before export button
+                actions.insertBefore(formatBtn, exportBtn);
+
+                console.log(`[HTML Editor] Format button injected for: ${fieldId}`);
+            });
+        },
+
+        /**
+         * Format HTML for a specific field
+         * @param {string} fieldId - Field identifier
+         * @param {boolean} silent - If true, suppress success toast
+         * @returns {Object|null} - { changed: boolean, label: string } or null on error/empty
+         */
+        async formatField(fieldId, silent = false) {
+            if (!context.Formatter.isReady()) {
+                context.UI.showToast('Code formatting is currently unavailable', 'warning');
+                return null;
+            }
+
+            const field = editorState[fieldId];
+            const editor = monacoEditors[fieldId];
+
+            if (!field || !editor) return null;
+
+            try {
+                console.log(`[HTML Editor] Formatting ${fieldId}...`);
+
+                // Get current content
+                const content = editor.getValue();
+
+                if (!content || content.trim() === '') {
+                    context.UI.showToast('Nothing to format', 'warning');
+                    return null;
+                }
+
+                // Format using Prettier
+                const formatted = await context.Formatter.formatHTML(content);
+
+                // Check if content actually changed
+                const changed = content !== formatted;
+
+                // Update editor with formatted content
+                editor.setValue(formatted);
+
+                // Mark as dirty if content changed
+                field.content = formatted;
+                field.isDirty = field.content !== originalContent[fieldId];
+                this.updateToggleButtons();
+
+                if (!silent) {
+                    const message = changed ? `${field.label} formatted` : `${field.label} already formatted`;
+                    context.UI.showToast(message, 'success');
+                }
+
+                return { changed, label: field.label };
+            } catch (error) {
+                console.error(`[HTML Editor] Format ${fieldId} failed:`, error);
+                context.UI.showToast(`Formatting failed: ${error.message}`, 'error');
+                return null;
+            }
+        },
+
+        /**
+         * Format all active editors
+         */
+        async formatAllActive() {
+            if (!context.Formatter.isReady()) {
+                context.UI.showToast('Code formatting is currently unavailable', 'warning');
+                return;
+            }
+
+            const activeFields = Object.keys(editorState).filter(field => editorState[field].active);
+
+            if (activeFields.length === 0) {
+                context.UI.showToast('No editors open to format', 'warning');
+                return;
+            }
+
+            try {
+                console.log(`[HTML Editor] Formatting ${activeFields.length} active editor(s)...`);
+
+                // Format each active editor (silent mode to avoid duplicate toasts)
+                const results = [];
+                for (const fieldId of activeFields) {
+                    const result = await this.formatField(fieldId, true);
+                    if (result) {
+                        results.push(result);
+                    }
+                }
+
+                // Build appropriate toast message based on what actually changed
+                const changedResults = results.filter(r => r.changed);
+                const changedCount = changedResults.length;
+
+                let message;
+                if (changedCount === 0) {
+                    message = results.length === 1 ? `${results[0].label} already formatted` : 'Already formatted';
+                } else if (changedCount === 1) {
+                    message = `${changedResults[0].label} formatted`;
+                } else {
+                    message = `${changedCount} editors formatted`;
+                }
+
+                context.UI.showToast(message, 'success');
+            } catch (error) {
+                console.error('[HTML Editor] Format all active failed:', error);
+                context.UI.showToast(`Formatting failed: ${error.message}`, 'error');
             }
         },
 
@@ -901,7 +1299,7 @@
                 this.saveState();
             }
 
-            context.UI.showMessage('All changes discarded', 'success');
+            context.UI.showToast('All changes discarded', 'success');
         },
 
         /**
@@ -962,7 +1360,7 @@
                 this.saveState();
             }
 
-            context.UI.showMessage(`${field.label} reverted`, 'success');
+            context.UI.showToast(`${field.label} reverted`, 'success');
         },
 
         /**
@@ -974,6 +1372,24 @@
 
             // Close all other editor dropdowns
             document.querySelectorAll('.editor-save-dropdown-menu.show').forEach(m => {
+                if (m !== menu) {
+                    m.classList.remove('show');
+                }
+            });
+
+            // Toggle this dropdown
+            menu.classList.toggle('show');
+        },
+
+        /**
+         * Toggle actions dropdown menu
+         */
+        toggleActionsDropdown(fieldId) {
+            const menu = document.querySelector(`[data-actions-menu-field="${fieldId}"]`);
+            if (!menu) return;
+
+            // Close all other actions dropdowns
+            document.querySelectorAll('.editor-actions-menu.show').forEach(m => {
                 if (m !== menu) {
                     m.classList.remove('show');
                 }
@@ -1001,6 +1417,28 @@
                     field.content = editor.getValue();
                 }
 
+                // Format on save if enabled and formatter available
+                const settings = context.Storage.getFormatterSettings();
+                if (settings.formatOnSave && context.Formatter.isReady() && field.content && field.content.trim() !== '') {
+                    try {
+                        console.log(`[HTML Editor] Auto-formatting ${fieldId} before save...`);
+                        const formatted = await context.Formatter.formatHTML(field.content);
+                        field.content = formatted;
+                        if (editor) {
+                            editor.setValue(formatted);
+                        }
+                    } catch (formatError) {
+                        console.warn(`[HTML Editor] Auto-format failed for ${fieldId}:`, formatError);
+                        // Continue with save even if formatting fails
+                    }
+                }
+
+                // Check if this field has changes
+                if (!field.isDirty && field.content === originalContent[fieldId]) {
+                    context.UI.showToast(`${field.label} has no changes to save`, 'warning');
+                    return;
+                }
+
                 // Build form data - send the edited field + original content for others
                 // This ensures only the specific field is saved, not all edited fields
                 const formData = {
@@ -1026,7 +1464,7 @@
                 });
 
                 if (response.ok || response.redirected) {
-                    context.UI.showMessage(`${field.label} saved successfully!`, 'success');
+                    context.UI.showToast(`${field.label} saved successfully!`, 'success');
 
                     // Update original content for this field only
                     originalContent[fieldId] = field.content;
@@ -1042,7 +1480,7 @@
 
             } catch (error) {
                 console.error(`[HTML Editor] Save ${fieldId} failed:`, error);
-                context.UI.showMessage(`Failed to save: ${error.message}`, 'error');
+                context.UI.showToast(`Failed to save: ${error.message}`, 'error');
             }
         },
 
@@ -1060,6 +1498,38 @@
                         editorState[fieldId].content = editor.getValue();
                     }
                 });
+
+                // Format on save if enabled and formatter available
+                const settings = context.Storage.getFormatterSettings();
+                if (settings.formatOnSave && context.Formatter.isReady()) {
+                    for (const fieldId of Object.keys(editorState)) {
+                        const field = editorState[fieldId];
+                        if (field.content && field.content.trim() !== '') {
+                            try {
+                                console.log(`[HTML Editor] Auto-formatting ${fieldId} before save...`);
+                                const formatted = await context.Formatter.formatHTML(field.content);
+                                field.content = formatted;
+                                const editor = monacoEditors[fieldId];
+                                if (editor) {
+                                    editor.setValue(formatted);
+                                }
+                            } catch (formatError) {
+                                console.warn(`[HTML Editor] Auto-format failed for ${fieldId}:`, formatError);
+                                // Continue with save even if formatting fails
+                            }
+                        }
+                    }
+                }
+
+                // Check if any field has changes
+                const hasChanges = Object.keys(editorState).some(fieldId => {
+                    return editorState[fieldId].isDirty || editorState[fieldId].content !== originalContent[fieldId];
+                });
+
+                if (!hasChanges) {
+                    context.UI.showToast('No changes to save', 'warning');
+                    return;
+                }
 
                 // Build form data
                 const formData = {
@@ -1085,7 +1555,7 @@
                 });
 
                 if (response.ok || response.redirected) {
-                    context.UI.showMessage('HTML saved successfully!', 'success');
+                    context.UI.showToast('HTML saved successfully!', 'success');
 
                     // Update original content
                     Object.keys(editorState).forEach(fieldId => {
@@ -1103,7 +1573,7 @@
 
             } catch (error) {
                 console.error('[HTML Editor] Save failed:', error);
-                context.UI.showMessage('Failed to save HTML: ' + error.message, 'error');
+                context.UI.showToast('Failed to save HTML: ' + error.message, 'error');
             }
         },
 
@@ -1115,7 +1585,7 @@
                 const openFields = Object.keys(editorState).filter(field => editorState[field].active);
 
                 if (openFields.length === 0) {
-                    context.UI.showMessage('No tabs open to save', 'warning');
+                    context.UI.showToast('No tabs open to save', 'warning');
                     return;
                 }
 
@@ -1128,6 +1598,39 @@
                         editorState[fieldId].content = editor.getValue();
                     }
                 });
+
+                // Format on save if enabled and formatter available
+                const settings = context.Storage.getFormatterSettings();
+                if (settings.formatOnSave && context.Formatter.isReady()) {
+                    for (const fieldId of openFields) {
+                        const field = editorState[fieldId];
+                        if (field.content && field.content.trim() !== '') {
+                            try {
+                                console.log(`[HTML Editor] Auto-formatting ${fieldId} before save...`);
+                                const formatted = await context.Formatter.formatHTML(field.content);
+                                field.content = formatted;
+                                const editor = monacoEditors[fieldId];
+                                if (editor) {
+                                    editor.setValue(formatted);
+                                }
+                            } catch (formatError) {
+                                console.warn(`[HTML Editor] Auto-format failed for ${fieldId}:`, formatError);
+                                // Continue with save even if formatting fails
+                            }
+                        }
+                    }
+                }
+
+                // Check if any open tab has changes
+                const hasChanges = openFields.some(fieldId => {
+                    return editorState[fieldId].isDirty || editorState[fieldId].content !== originalContent[fieldId];
+                });
+
+                if (!hasChanges) {
+                    const tabLabel = openFields.length === 1 ? editorState[openFields[0]].label : `${openFields.length} tabs`;
+                    context.UI.showToast(`${tabLabel} have no changes to save`, 'warning');
+                    return;
+                }
 
                 // Build form data - send edited content for open tabs, original for closed tabs
                 const formData = {
@@ -1154,7 +1657,7 @@
 
                 if (response.ok || response.redirected) {
                     const tabLabel = openFields.length === 1 ? editorState[openFields[0]].label : `${openFields.length} tabs`;
-                    context.UI.showMessage(`${tabLabel} saved successfully!`, 'success');
+                    context.UI.showToast(`${tabLabel} saved successfully!`, 'success');
 
                     // Update original content for saved tabs
                     openFields.forEach(fieldId => {
@@ -1170,7 +1673,7 @@
 
             } catch (error) {
                 console.error('[HTML Editor] Save open tabs failed:', error);
-                context.UI.showMessage('Failed to save: ' + error.message, 'error');
+                context.UI.showToast('Failed to save: ' + error.message, 'error');
             }
         },
 
@@ -1189,10 +1692,18 @@
                     e.preventDefault();
                     this.saveAll();
                 }
+                // Ctrl+Shift+F or Cmd+Shift+F - Format active editors (only if available)
+                else if ((e.ctrlKey || e.metaKey) && e.key === 'F' && e.shiftKey) {
+                    e.preventDefault();
+                    if (context.Formatter.isReady()) {
+                        this.formatAllActive();
+                    }
+                    // Silent no-op if formatter not available
+                }
             };
 
             document.addEventListener('keydown', keyboardHandler);
-            console.log('[HTML Editor] Keyboard shortcuts registered: Ctrl+S (save open), Ctrl+Shift+S (save all)');
+            console.log('[HTML Editor] Keyboard shortcuts registered: Ctrl+S (save open), Ctrl+Shift+S (save all), Ctrl+Shift+F (format)');
         }
     };
 

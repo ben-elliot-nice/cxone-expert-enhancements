@@ -4,9 +4,12 @@
  * Single embed script that loads all enhancements (CSS Editor, HTML Editor, etc.)
  *
  * Usage:
- * <script src="https://[cdn]/expert-enhancements/[version]/expert-enhancements-embed.js"></script>
+ * <script src="https://releases.benelliot-nice.com/cxone-expert-enhancements/latest/expert-enhancements-embed.js"></script>
  *
- * @version 1.0.0
+ * Documentation: https://github.com/ben-elliot-nice/cxone-expert-enhancements#readme
+ * Issues: https://github.com/ben-elliot-nice/cxone-expert-enhancements/issues
+ *
+ * @version 1.2.0
  */
 
 (function() {
@@ -38,7 +41,8 @@
         coreJs: `${CDN_BASE}/expert-enhancements-core.js`,
         cssEditorCss: `${CDN_BASE}/expert-enhancements-css.css`,
         cssEditorJs: `${CDN_BASE}/expert-enhancements-css.js`,
-        htmlEditorJs: `${CDN_BASE}/expert-enhancements-html.js`
+        htmlEditorJs: `${CDN_BASE}/expert-enhancements-html.js`,
+        settingsJs: `${CDN_BASE}/expert-enhancements-settings.js`
     };
 
     // ============================================================================
@@ -190,6 +194,8 @@
     // ============================================================================
 
     async function init() {
+        let loadingShown = false;
+
         try {
             console.log('[Expert Enhancements Embed] Initializing...');
 
@@ -248,6 +254,7 @@
             await loadCSS(RESOURCES.cssEditorCss);
             await loadJS(RESOURCES.cssEditorJs);
             await loadJS(RESOURCES.htmlEditorJs);
+            await loadJS(RESOURCES.settingsJs);
 
             // 5. Wait for apps to register
             await new Promise((resolve) => setTimeout(resolve, 200));
@@ -266,6 +273,17 @@
             const lastActiveApp = commonState.lastActiveApp || 'css-editor';
 
             console.log('[Expert Enhancements Embed] Loading last active app:', lastActiveApp);
+
+            // Show loading overlay when switching to app if overlay is open
+            if (commonState.overlayOpen) {
+                // Overlay will be opened, show loading indicator
+                window.ExpertEnhancements.LoadingOverlay.show('Initializing editor...', {
+                    timeout: 30000,
+                    showProgress: true
+                });
+                loadingShown = true;
+            }
+
             await window.ExpertEnhancements.AppManager.switchTo(lastActiveApp);
 
             // 9. Restore overlay state
@@ -273,6 +291,12 @@
                 console.log('[Expert Enhancements Embed] Restoring overlay open state');
                 setTimeout(() => {
                     window.ExpertEnhancements.Overlay.toggle();
+                    // Hide loading overlay after app is mounted
+                    if (loadingShown) {
+                        setTimeout(() => {
+                            window.ExpertEnhancements.LoadingOverlay.hide();
+                        }, 500);
+                    }
                 }, 300);
             }
 
@@ -280,6 +304,13 @@
 
         } catch (error) {
             console.error('[Expert Enhancements Embed] Initialization failed:', error);
+
+            // Show error in loading overlay if it's shown
+            if (loadingShown && window.ExpertEnhancements && window.ExpertEnhancements.LoadingOverlay) {
+                window.ExpertEnhancements.LoadingOverlay.showError(
+                    'Failed to initialize: ' + error.message
+                );
+            }
         }
     }
 

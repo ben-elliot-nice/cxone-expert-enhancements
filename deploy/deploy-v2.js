@@ -22,6 +22,7 @@ const CONFIG = {
     { local: 'dist/expert-enhancements-css.css', remote: 'expert-enhancements-css.css', contentType: 'text/css' },
     { local: 'dist/expert-enhancements-css.js', remote: 'expert-enhancements-css.js', contentType: 'application/javascript' },
     { local: 'dist/expert-enhancements-html.js', remote: 'expert-enhancements-html.js', contentType: 'application/javascript' },
+    { local: 'dist/expert-enhancements-settings.js', remote: 'expert-enhancements-settings.js', contentType: 'application/javascript' },
   ]
 };
 
