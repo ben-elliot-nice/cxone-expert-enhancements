@@ -236,6 +236,13 @@
 
 .split-left {
     border-right: 1px solid rgba(255, 255, 255, 0.3);
+    justify-content: flex-start;
+    padding-left: 3px;
+}
+
+.split-right {
+    justify-content: flex-end;
+    padding-right: 3px;
 }
 
 /* Visual rectangle indicators */
