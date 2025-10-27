@@ -1238,7 +1238,6 @@
                 const editor = monacoEditors[roleId];
                 if (editor) {
                     role.content = editor.getValue();
-                    console.log(`[CSS Editor] Content from editor ends with newline:`, role.content.endsWith('\n'));
                 }
 
                 // Format on save if enabled and formatter available
@@ -1247,7 +1246,6 @@
                     try {
                         console.log(`[CSS Editor] Auto-formatting ${roleId} before save...`);
                         const formatted = await context.Formatter.formatCSS(role.content);
-                        console.log(`[CSS Editor] Formatted content ends with newline:`, formatted.endsWith('\n'));
                         role.content = formatted;
                         if (editor) {
                             editor.setValue(formatted);
@@ -1257,9 +1255,6 @@
                         // Continue with save even if formatting fails
                     }
                 }
-
-                console.log(`[CSS Editor] Content before save ends with newline:`, role.content.endsWith('\n'));
-                console.log(`[CSS Editor] Content last 20 chars:`, JSON.stringify(role.content.slice(-20)));
 
                 // Check if this role has changes
                 if (!role.isDirty && role.content === originalContent[roleId]) {
@@ -1279,13 +1274,7 @@
                     css_template_grape: roleId === 'grape' ? editorState.grape.content : originalContent.grape
                 };
 
-                const fieldName = `css_template_${roleId}`;
-                console.log(`[CSS Editor] FormData[${fieldName}] ends with newline:`, formData[fieldName].endsWith('\n'));
-                console.log(`[CSS Editor] FormData[${fieldName}] last 20 chars:`, JSON.stringify(formData[fieldName].slice(-20)));
-
                 const { body, boundary } = context.API.buildMultipartBody(formData);
-
-                console.log(`[CSS Editor] Multipart body contains newline before final boundary:`, body.indexOf(`${formData[fieldName]}\r\n`) !== -1);
 
                 const url = '/deki/cp/custom_css.php?params=%2F';
                 const response = await context.API.fetch(url, {

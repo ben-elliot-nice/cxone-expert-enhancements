@@ -1634,7 +1634,9 @@
 
                 const formatted = await prettier.format(code, options);
                 console.log('[Formatter] CSS formatted successfully');
-                return formatted;
+
+                // Strip trailing newline (Prettier always adds one, but server strips it)
+                return formatted.endsWith('\n') ? formatted.slice(0, -1) : formatted;
             } catch (error) {
                 console.error('[Formatter] CSS formatting failed:', error);
                 throw new Error(`CSS formatting failed: ${error.message}`);
@@ -1673,7 +1675,9 @@
 
                 const formatted = await prettier.format(code, options);
                 console.log('[Formatter] HTML formatted successfully');
-                return formatted;
+
+                // Strip trailing newline (Prettier always adds one, but server strips it)
+                return formatted.endsWith('\n') ? formatted.slice(0, -1) : formatted;
             } catch (error) {
                 console.error('[Formatter] HTML formatting failed:', error);
                 throw new Error(`HTML formatting failed: ${error.message}`);
