@@ -132,10 +132,9 @@
                 }
                 await this.loadData(hasDirtyEdits);
 
-                // Check viewport width to set mobile/desktop view
-                this.checkViewportWidth();
-
                 // Build toggle bar (buttons or dropdown based on viewport)
+                // Note: Don't check viewport width here - overlay dimensions aren't ready yet
+                // onResize() will be called after mount and will properly detect viewport
                 this.buildToggleBar();
 
                 // Initialize editors - skip default if we have saved state
