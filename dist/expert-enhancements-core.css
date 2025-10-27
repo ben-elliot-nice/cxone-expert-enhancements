@@ -915,11 +915,10 @@
     bottom: 0;
     background: rgba(102, 126, 234, 0.95);
     backdrop-filter: blur(8px);
-    z-index: 999;
+    z-index: 100000;
     display: none;
     align-items: center;
     justify-content: center;
-    pointer-events: none;
 }
 
 #file-drop-zone .drop-zone-content {
