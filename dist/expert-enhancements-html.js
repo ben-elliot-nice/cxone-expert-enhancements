@@ -971,7 +971,7 @@
 
                     // Save state and update UI
                     this.saveState();
-                    this.updateUI();
+                    this.updateToggleButtons();
 
                     context.LoadingOverlay.hide();
                     context.UI.showToast(`Content from ${file.name} appended to ${field.label}`, 'success', 5000);
@@ -1034,7 +1034,7 @@
 
                 // Save state and update UI
                 this.saveState();
-                this.updateUI();
+                this.updateToggleButtons();
 
                 context.LoadingOverlay.hide();
                 context.UI.showToast(`Content from ${fileName} appended to ${field.label}`, 'success', 5000);

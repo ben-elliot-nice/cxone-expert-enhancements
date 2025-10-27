@@ -349,7 +349,8 @@
     border-color: #777;
 }
 
-.editor-pane-export {
+.editor-pane-export,
+.editor-pane-import {
     background: transparent;
     border: 1px solid #555;
     color: #ccc;
@@ -360,7 +361,8 @@
     transition: all 0.2s;
 }
 
-.editor-pane-export:hover {
+.editor-pane-export:hover,
+.editor-pane-import:hover {
     background: rgba(255, 255, 255, 0.05);
     border-color: #777;
 }
