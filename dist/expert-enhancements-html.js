@@ -281,19 +281,16 @@
             if (overlay) {
                 const containerWidth = overlay.offsetWidth;
                 isMobileView = containerWidth < 920;
-                console.log(`[HTML Editor] checkViewportWidth: width=${containerWidth}px, mobile=${isMobileView}`);
             }
 
             // If view mode changed, rebuild the toggle bar
             if (wasMobileView !== isMobileView) {
-                console.log(`[HTML Editor] View mode changed to ${isMobileView ? 'mobile' : 'desktop'}`);
                 this.buildToggleBar();
 
                 // If switching to mobile and multiple editors are active, keep only the first
                 if (isMobileView) {
                     const activeFields = Object.keys(editorState).filter(field => editorState[field].active);
                     if (activeFields.length > 1) {
-                        console.log(`[HTML Editor] Multiple editors active in mobile view, keeping only: ${activeFields[0]}`);
                         // Deactivate all except the first
                         activeFields.slice(1).forEach(fieldId => {
                             editorState[fieldId].active = false;
@@ -353,15 +350,12 @@
 
                 // Always extract CSRF token
                 csrfToken = data.csrf_token;
-                console.log('[HTML Editor] CSRF token extracted');
 
                 if (skipContent) {
                     // Checkpoint protection: we have dirty edits, so don't fetch HTML content
                     // This prevents other people's changes from overwriting work-in-progress
-                    console.log('[HTML Editor] Skipping content fetch - using saved edits (checkpoint protection)');
                 } else {
                     // No dirty edits - safe to fetch fresh HTML from server
-                    console.log('[HTML Editor] Fetching fresh HTML content from server');
 
                     const textareas = {
                         'html_template_head': 'head',
@@ -396,7 +390,6 @@
             const toggleBar = document.getElementById('toggle-bar');
             if (!toggleBar) return;
 
-            console.log(`[HTML Editor] buildToggleBar for ${isMobileView ? 'mobile' : 'desktop'} view`);
 
             // Clear existing buttons/selectors (but keep save dropdown)
             const existingButtons = toggleBar.querySelectorAll('.toggle-btn, .mobile-selector-wrapper');
@@ -528,7 +521,6 @@
 
             if (saveBtn) {
                 saveBtn.addEventListener('click', () => this.saveAll());
-                console.log('[HTML Editor] Save button listener attached');
             }
 
             if (discardBtn) {
@@ -536,7 +528,6 @@
                     e.stopPropagation();
                     this.discardAll();
                 });
-                console.log('[HTML Editor] Discard button listener attached');
             }
 
             if (dropdownToggle && dropdownMenu && dropdown) {
@@ -545,7 +536,6 @@
                     dropdownMenu.classList.toggle('show');
                     dropdown.classList.toggle('open');
                 });
-                console.log('[HTML Editor] Dropdown toggle listener attached');
             }
         },
 
@@ -599,7 +589,6 @@
         saveState() {
             const state = this.getState();
             context.Storage.setAppState(this.id, state);
-            console.log('[HTML Editor] State saved:', state);
         },
 
         /**
@@ -675,6 +664,12 @@
             const pane = context.DOM.create('div', { className: 'editor-pane' });
             const header = context.DOM.create('div', { className: 'editor-pane-header' });
 
+            // Left side: Title + Status only
+            const headerLeft = context.DOM.create('div', {
+                className: 'header-left',
+                style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }
+            });
+
             const titleGroup = context.DOM.create('div', {
                 style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }
             });
@@ -687,11 +682,12 @@
 
             titleGroup.appendChild(status);
             titleGroup.appendChild(title);
+            headerLeft.appendChild(titleGroup);
 
-            // Action buttons
-            const actions = context.DOM.create('div', {
-                className: 'editor-pane-actions',
-                style: { display: 'flex', gap: '0.5rem', alignItems: 'center' }
+            // Right side: Save dropdown + Actions dropdown
+            const headerRight = context.DOM.create('div', {
+                className: 'header-right',
+                style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }
             });
 
             // Save dropdown group
@@ -733,28 +729,89 @@
             saveDropdown.appendChild(dropdownToggle);
             saveDropdown.appendChild(dropdownMenu);
 
-            // Only add format button if Prettier is available
+            const actionsDropdown = context.DOM.create('div', {
+                className: 'editor-actions-dropdown',
+                style: { position: 'relative' }
+            });
+
+            const actionsBtn = context.DOM.create('button', {
+                className: 'editor-actions-btn',
+                'data-actions-field': fieldId
+            }, ['Actions ▼']);
+            actionsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleActionsDropdown(fieldId);
+            });
+
+            const actionsMenu = context.DOM.create('div', {
+                className: 'editor-actions-menu',
+                'data-actions-menu-field': fieldId
+            });
+
+            // Format option (if Prettier available)
             if (context.Formatter.isReady()) {
-                const formatBtn = context.DOM.create('button', {
-                    className: 'editor-pane-format',
-                    'data-format-field': fieldId,
-                    title: 'Format HTML (Ctrl+Shift+F)'
+                const formatItem = context.DOM.create('button', {
+                    className: 'editor-actions-item',
+                    'data-format-field': fieldId
                 }, ['Format']);
-                formatBtn.addEventListener('click', () => this.formatField(fieldId));
-                actions.appendChild(formatBtn);
+                formatItem.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.formatField(fieldId);
+                    actionsMenu.classList.remove('show');
+                });
+                actionsMenu.appendChild(formatItem);
             }
 
-            const exportBtn = context.DOM.create('button', {
-                className: 'editor-pane-export',
+            // Import option with hidden file input
+            const fileInput = context.DOM.create('input', {
+                type: 'file',
+                accept: '.html',
+                style: 'display: none;',
+                id: `file-input-${fieldId}`
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files[0]) {
+                    this.importField(fieldId, e.target.files[0]);
+                    e.target.value = ''; // Reset input to allow re-importing same file
+                }
+            });
+
+            const importItem = context.DOM.create('button', {
+                className: 'editor-actions-item',
+                'data-import-field': fieldId
+            }, ['Import']);
+            importItem.addEventListener('click', (e) => {
+                e.stopPropagation();
+                fileInput.click();
+                actionsMenu.classList.remove('show');
+            });
+
+            // Export option
+            const exportItem = context.DOM.create('button', {
+                className: 'editor-actions-item',
                 'data-export-field': fieldId
             }, ['Export']);
-            exportBtn.addEventListener('click', () => this.exportField(fieldId));
+            exportItem.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.exportField(fieldId);
+                actionsMenu.classList.remove('show');
+            });
 
-            actions.appendChild(saveDropdown);
-            actions.appendChild(exportBtn);
+            actionsMenu.appendChild(importItem);
+            actionsMenu.appendChild(exportItem);
 
-            header.appendChild(titleGroup);
-            header.appendChild(actions);
+            actionsDropdown.appendChild(actionsBtn);
+            actionsDropdown.appendChild(actionsMenu);
+
+            // Add both dropdowns to right side
+            headerRight.appendChild(saveDropdown);
+            headerRight.appendChild(actionsDropdown);
+
+            pane.appendChild(fileInput);
+
+            header.appendChild(headerLeft);
+            header.appendChild(headerRight);
             pane.appendChild(header);
 
             const editorContainer = context.DOM.create('div', {
@@ -892,6 +949,163 @@
                 context.UI.showToast(`Exported ${field.label}`, 'success');
             } catch (error) {
                 context.UI.showToast(`Failed to export: ${error.message}`, 'error');
+            }
+        },
+
+        /**
+         * Import HTML file into a field (appends content)
+         */
+        importField(fieldId, file) {
+            const field = editorState[fieldId];
+            if (!field) return;
+
+            // Validate file type
+            if (!file.name.endsWith('.html')) {
+                context.UI.showToast('Please select an HTML file (.html)', 'error');
+                return;
+            }
+
+            // Validate file size (max 5MB)
+            const maxSize = 5 * 1024 * 1024;
+            if (file.size > maxSize) {
+                context.UI.showToast(`File too large. Maximum size is 5MB (file is ${(file.size / 1024 / 1024).toFixed(2)}MB)`, 'error');
+                return;
+            }
+
+            // Check for empty files
+            if (file.size === 0) {
+                context.UI.showToast('Cannot import empty file', 'error');
+                return;
+            }
+
+            // Show loading state
+            context.LoadingOverlay.show(`Importing ${file.name}...`);
+
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                try {
+                    const importedContent = e.target.result;
+
+                    // Create separator comment
+                    const separator = `\n\n<!-- ========================================\n     Imported from: ${file.name}\n     Date: ${new Date().toLocaleString()}\n     ======================================== -->\n`;
+
+                    // Append content to existing
+                    const currentContent = field.content || '';
+                    const newContent = currentContent + separator + importedContent;
+
+                    // Update state
+                    field.content = newContent;
+                    field.isDirty = true;
+
+                    // Update Monaco editor using executeEdits for undo support
+                    if (monacoEditors[fieldId]) {
+                        const editor = monacoEditors[fieldId];
+                        const model = editor.getModel();
+                        const lineCount = model.getLineCount();
+                        const lastLineLength = model.getLineLength(lineCount);
+
+                        editor.executeEdits('import', [{
+                            range: new monaco.Range(lineCount, lastLineLength + 1, lineCount, lastLineLength + 1),
+                            text: separator + importedContent
+                        }]);
+                    }
+
+                    // Save state and update UI
+                    this.saveState();
+                    this.updateToggleButtons();
+
+                    context.LoadingOverlay.hide();
+                    context.UI.showToast(`Content from ${file.name} appended to ${field.label}`, 'success', 5000);
+                } catch (error) {
+                    context.LoadingOverlay.hide();
+                    context.UI.showToast(`Failed to import: ${error.message}`, 'error');
+                }
+            };
+
+            reader.onerror = () => {
+                context.LoadingOverlay.hide();
+                context.UI.showToast('Failed to read file', 'error');
+            };
+
+            reader.readAsText(file);
+        },
+
+        /**
+         * Import HTML file via drag & drop (with field selector)
+         */
+        async importFile(fileContent, fileName) {
+            try {
+                // Hide loading overlay before showing field selector (waiting for user input)
+                context.LoadingOverlay.hide();
+
+                // Prepare field list for selector
+                const roles = Object.keys(editorState).map(fieldId => ({
+                    id: fieldId,
+                    label: editorState[fieldId].label
+                }));
+
+                // Show field selector dialog
+                const selectedFieldId = await context.FileImport.showRoleSelector(roles, 'html');
+
+                if (!selectedFieldId) {
+                    context.LoadingOverlay.hide();
+                    context.UI.showToast('Import cancelled', 'info');
+                    return;
+                }
+
+                const field = editorState[selectedFieldId];
+                if (!field) {
+                    context.LoadingOverlay.hide();
+                    context.UI.showToast('Selected field not found', 'error');
+                    return;
+                }
+
+                // Create separator comment
+                const separator = `\n\n<!-- ========================================\n     Imported from: ${fileName}\n     Date: ${new Date().toLocaleString()}\n     ======================================== -->\n`;
+
+                // Append content to existing
+                const currentContent = field.content || '';
+                const newContent = currentContent + separator + fileContent;
+
+                // Update state
+                field.content = newContent;
+                field.isDirty = true;
+
+                // Update Monaco editor using executeEdits for undo support
+                if (monacoEditors[selectedFieldId]) {
+                    const editor = monacoEditors[selectedFieldId];
+                    const model = editor.getModel();
+                    const lineCount = model.getLineCount();
+                    const lastLineLength = model.getLineLength(lineCount);
+
+                    editor.executeEdits('import', [{
+                        range: new monaco.Range(lineCount, lastLineLength + 1, lineCount, lastLineLength + 1),
+                        text: separator + fileContent
+                    }]);
+
+                    // Focus editor and ensure proper layout after import
+                    setTimeout(() => {
+                        editor.layout();
+                        editor.focus();
+
+                        // Ensure editor captures scroll events
+                        const editorDom = editor.getDomNode();
+                        if (editorDom) {
+                            editorDom.style.pointerEvents = 'auto';
+                        }
+                    }, 50);
+                }
+
+                // Save state and update UI
+                this.saveState();
+                this.updateToggleButtons();
+
+                context.LoadingOverlay.hide();
+                context.UI.showToast(`Content from ${fileName} appended to ${field.label}`, 'success', 5000);
+            } catch (error) {
+                context.LoadingOverlay.hide();
+                context.UI.showToast(`Failed to import: ${error.message}`, 'error');
             }
         },
 
@@ -1158,6 +1372,24 @@
 
             // Close all other editor dropdowns
             document.querySelectorAll('.editor-save-dropdown-menu.show').forEach(m => {
+                if (m !== menu) {
+                    m.classList.remove('show');
+                }
+            });
+
+            // Toggle this dropdown
+            menu.classList.toggle('show');
+        },
+
+        /**
+         * Toggle actions dropdown menu
+         */
+        toggleActionsDropdown(fieldId) {
+            const menu = document.querySelector(`[data-actions-menu-field="${fieldId}"]`);
+            if (!menu) return;
+
+            // Close all other actions dropdowns
+            document.querySelectorAll('.editor-actions-menu.show').forEach(m => {
                 if (m !== menu) {
                     m.classList.remove('show');
                 }

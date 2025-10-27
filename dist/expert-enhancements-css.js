@@ -331,15 +331,12 @@
 
                 // Always extract CSRF token
                 csrfToken = data.csrf_token;
-                console.log('[CSS Editor] CSRF token extracted');
 
                 if (skipContent) {
                     // Checkpoint protection: we have dirty edits, so don't fetch CSS content
                     // This prevents other people's changes from overwriting work-in-progress
-                    console.log('[CSS Editor] Skipping content fetch - using saved edits (checkpoint protection)');
                 } else {
                     // No dirty edits - safe to fetch fresh CSS from server
-                    console.log('[CSS Editor] Fetching fresh CSS content from server');
 
                     const textareas = {
                         'css_template_all': 'all',
@@ -383,19 +380,16 @@
             if (overlay) {
                 const containerWidth = overlay.offsetWidth;
                 isMobileView = containerWidth < 920;
-                console.log(`[CSS Editor] checkViewportWidth: width=${containerWidth}px, mobile=${isMobileView}`);
             }
 
             // If view mode changed, rebuild the toggle bar
             if (wasMobileView !== isMobileView) {
-                console.log(`[CSS Editor] View mode changed to ${isMobileView ? 'mobile' : 'desktop'}`);
                 this.buildToggleBar();
 
                 // If switching to mobile and multiple editors are active, keep only the first
                 if (isMobileView) {
                     const activeRoles = Object.keys(editorState).filter(role => editorState[role].active);
                     if (activeRoles.length > 1) {
-                        console.log(`[CSS Editor] Multiple editors active in mobile view, keeping only: ${activeRoles[0]}`);
                         // Deactivate all except the first
                         activeRoles.slice(1).forEach(roleId => {
                             editorState[roleId].active = false;
@@ -418,7 +412,6 @@
             const toggleBar = document.getElementById('toggle-bar');
             if (!toggleBar) return;
 
-            console.log(`[CSS Editor] buildToggleBar for ${isMobileView ? 'mobile' : 'desktop'} view`);
 
             // Clear existing buttons/selectors (but keep save dropdown)
             const existingButtons = toggleBar.querySelectorAll('.toggle-btn, .mobile-selector-wrapper');
@@ -457,14 +450,11 @@
                     const firstRole = ROLE_CONFIG[0].id;
                     editorState[firstRole].active = true;
                     activeRole = firstRole;
-                    console.log(`[CSS Editor] No active editor found, activating first: ${activeRole}`);
                     // Need to render the editor
                     setTimeout(() => {
                         this.updateGrid();
                         this.saveState();
                     }, 0);
-                } else {
-                    console.log(`[CSS Editor] Using existing active editor: ${activeRole}`);
                 }
 
                 select.value = activeRole;
@@ -539,7 +529,6 @@
 
             if (saveBtn) {
                 saveBtn.addEventListener('click', () => this.saveAll());
-                console.log('[CSS Editor] Save button listener attached');
             }
 
             if (discardBtn) {
@@ -547,7 +536,6 @@
                     e.stopPropagation();
                     this.discardAll();
                 });
-                console.log('[CSS Editor] Discard button listener attached');
             }
 
             if (dropdownToggle && dropdownMenu && dropdown) {
@@ -556,7 +544,6 @@
                     dropdownMenu.classList.toggle('show');
                     dropdown.classList.toggle('open');
                 });
-                console.log('[CSS Editor] Dropdown toggle listener attached');
             }
 
             // Close dropdowns when clicking outside
@@ -626,7 +613,6 @@
         saveState() {
             const state = this.getState();
             context.Storage.setAppState(this.id, state);
-            console.log('[CSS Editor] State saved:', state);
         },
 
         /**
@@ -702,6 +688,12 @@
             const pane = context.DOM.create('div', { className: 'editor-pane' });
             const header = context.DOM.create('div', { className: 'editor-pane-header' });
 
+            // Left side: Title + Status only
+            const headerLeft = context.DOM.create('div', {
+                className: 'header-left',
+                style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }
+            });
+
             const titleGroup = context.DOM.create('div', {
                 style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }
             });
@@ -714,11 +706,12 @@
 
             titleGroup.appendChild(status);
             titleGroup.appendChild(title);
+            headerLeft.appendChild(titleGroup);
 
-            // Action buttons
-            const actions = context.DOM.create('div', {
-                className: 'editor-pane-actions',
-                style: { display: 'flex', gap: '0.5rem', alignItems: 'center' }
+            // Right side: Save dropdown + Actions dropdown
+            const headerRight = context.DOM.create('div', {
+                className: 'header-right',
+                style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }
             });
 
             // Save dropdown group
@@ -760,29 +753,90 @@
             saveDropdown.appendChild(dropdownToggle);
             saveDropdown.appendChild(dropdownMenu);
 
-            // Only add format button if Prettier is available
+            // Actions dropdown
+            const actionsDropdown = context.DOM.create('div', {
+                className: 'editor-actions-dropdown',
+                style: { position: 'relative' }
+            });
+
+            const actionsBtn = context.DOM.create('button', {
+                className: 'editor-actions-btn',
+                'data-actions-role': roleId
+            }, ['Actions ▼']);
+            actionsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleActionsDropdown(roleId);
+            });
+
+            const actionsMenu = context.DOM.create('div', {
+                className: 'editor-actions-menu',
+                'data-actions-menu-role': roleId
+            });
+
+            // Format option (only if Prettier available)
             if (context.Formatter.isReady()) {
-                const formatBtn = context.DOM.create('button', {
-                    className: 'editor-pane-format',
-                    'data-format-role': roleId,
-                    title: 'Format CSS (Ctrl+Shift+F)'
+                const formatOption = context.DOM.create('button', {
+                    className: 'editor-actions-item',
+                    'data-format-role': roleId
                 }, ['Format']);
-                formatBtn.addEventListener('click', () => this.formatRole(roleId));
-                actions.appendChild(formatBtn);
+                formatOption.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.formatRole(roleId);
+                    this.toggleActionsDropdown(roleId); // Close menu
+                });
+                actionsMenu.appendChild(formatOption);
             }
 
-            const exportBtn = context.DOM.create('button', {
-                className: 'editor-pane-export',
+            // Import option with hidden file input
+            const fileInput = context.DOM.create('input', {
+                type: 'file',
+                accept: '.css',
+                style: 'display: none;',
+                id: `file-input-${roleId}`
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files[0]) {
+                    this.importRole(roleId, e.target.files[0]);
+                    e.target.value = ''; // Reset input to allow re-importing same file
+                }
+            });
+
+            const importOption = context.DOM.create('button', {
+                className: 'editor-actions-item',
+                'data-import-role': roleId
+            }, ['Import']);
+            importOption.addEventListener('click', (e) => {
+                e.stopPropagation();
+                fileInput.click();
+                this.toggleActionsDropdown(roleId); // Close menu
+            });
+
+            // Export option
+            const exportOption = context.DOM.create('button', {
+                className: 'editor-actions-item',
                 'data-export-role': roleId
             }, ['Export']);
-            exportBtn.addEventListener('click', () => this.exportRole(roleId));
+            exportOption.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.exportRole(roleId);
+                this.toggleActionsDropdown(roleId); // Close menu
+            });
 
-            actions.appendChild(saveDropdown);
-            actions.appendChild(exportBtn);
+            actionsMenu.appendChild(importOption);
+            actionsMenu.appendChild(exportOption);
+            actionsDropdown.appendChild(actionsBtn);
+            actionsDropdown.appendChild(actionsMenu);
 
-            header.appendChild(titleGroup);
-            header.appendChild(actions);
+            // Add both dropdowns to right side
+            headerRight.appendChild(saveDropdown);
+            headerRight.appendChild(actionsDropdown);
+
+            // Assemble header
+            header.appendChild(headerLeft);
+            header.appendChild(headerRight);
             pane.appendChild(header);
+            pane.appendChild(fileInput);
 
             const editorContainer = context.DOM.create('div', {
                 className: 'editor-instance',
@@ -930,6 +984,163 @@
         },
 
         /**
+         * Import CSS file into a role (appends content)
+         */
+        importRole(roleId, file) {
+            const role = editorState[roleId];
+            if (!role) return;
+
+            // Validate file type
+            if (!file.name.endsWith('.css')) {
+                context.UI.showToast('Please select a CSS file (.css)', 'error');
+                return;
+            }
+
+            // Validate file size (max 5MB)
+            const maxSize = 5 * 1024 * 1024;
+            if (file.size > maxSize) {
+                context.UI.showToast(`File too large. Maximum size is 5MB (file is ${(file.size / 1024 / 1024).toFixed(2)}MB)`, 'error');
+                return;
+            }
+
+            // Check for empty files
+            if (file.size === 0) {
+                context.UI.showToast('Cannot import empty file', 'error');
+                return;
+            }
+
+            // Show loading state
+            context.LoadingOverlay.show(`Importing ${file.name}...`);
+
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                try {
+                    const importedContent = e.target.result;
+
+                    // Create separator comment
+                    const separator = `\n\n/* ========================================\n   Imported from: ${file.name}\n   Date: ${new Date().toLocaleString()}\n   ======================================== */\n`;
+
+                    // Append content to existing
+                    const currentContent = role.content || '';
+                    const newContent = currentContent + separator + importedContent;
+
+                    // Update state
+                    role.content = newContent;
+                    role.isDirty = true;
+
+                    // Update Monaco editor using executeEdits for undo support
+                    if (monacoEditors[roleId]) {
+                        const editor = monacoEditors[roleId];
+                        const model = editor.getModel();
+                        const lineCount = model.getLineCount();
+                        const lastLineLength = model.getLineLength(lineCount);
+
+                        editor.executeEdits('import', [{
+                            range: new monaco.Range(lineCount, lastLineLength + 1, lineCount, lastLineLength + 1),
+                            text: separator + importedContent
+                        }]);
+                    }
+
+                    // Save state and update UI
+                    this.saveState();
+                    this.updateToggleButtons();
+
+                    context.LoadingOverlay.hide();
+                    context.UI.showToast(`Content from ${file.name} appended to ${role.label}`, 'success', 5000);
+                } catch (error) {
+                    context.LoadingOverlay.hide();
+                    context.UI.showToast(`Failed to import: ${error.message}`, 'error');
+                }
+            };
+
+            reader.onerror = () => {
+                context.LoadingOverlay.hide();
+                context.UI.showToast('Failed to read file', 'error');
+            };
+
+            reader.readAsText(file);
+        },
+
+        /**
+         * Import CSS file via drag & drop (with role selector)
+         */
+        async importFile(fileContent, fileName) {
+            try {
+                // Hide loading overlay before showing role selector (waiting for user input)
+                context.LoadingOverlay.hide();
+
+                // Prepare role list for selector
+                const roles = Object.keys(editorState).map(roleId => ({
+                    id: roleId,
+                    label: editorState[roleId].label
+                }));
+
+                // Show role selector dialog
+                const selectedRoleId = await context.FileImport.showRoleSelector(roles, 'css');
+
+                if (!selectedRoleId) {
+                    context.LoadingOverlay.hide();
+                    context.UI.showToast('Import cancelled', 'info');
+                    return;
+                }
+
+                const role = editorState[selectedRoleId];
+                if (!role) {
+                    context.LoadingOverlay.hide();
+                    context.UI.showToast('Selected role not found', 'error');
+                    return;
+                }
+
+                // Create separator comment
+                const separator = `\n\n/* ========================================\n   Imported from: ${fileName}\n   Date: ${new Date().toLocaleString()}\n   ======================================== */\n`;
+
+                // Append content to existing
+                const currentContent = role.content || '';
+                const newContent = currentContent + separator + fileContent;
+
+                // Update state
+                role.content = newContent;
+                role.isDirty = true;
+
+                // Update Monaco editor using executeEdits for undo support
+                if (monacoEditors[selectedRoleId]) {
+                    const editor = monacoEditors[selectedRoleId];
+                    const model = editor.getModel();
+                    const lineCount = model.getLineCount();
+                    const lastLineLength = model.getLineLength(lineCount);
+
+                    editor.executeEdits('import', [{
+                        range: new monaco.Range(lineCount, lastLineLength + 1, lineCount, lastLineLength + 1),
+                        text: separator + fileContent
+                    }]);
+
+                    // Focus editor and ensure proper layout after import
+                    setTimeout(() => {
+                        editor.layout();
+                        editor.focus();
+
+                        // Ensure editor captures scroll events
+                        const editorDom = editor.getDomNode();
+                        if (editorDom) {
+                            editorDom.style.pointerEvents = 'auto';
+                        }
+                    }, 50);
+                }
+
+                // Save state and update UI
+                this.saveState();
+                this.updateToggleButtons();
+
+                context.LoadingOverlay.hide();
+                context.UI.showToast(`Content from ${fileName} appended to ${role.label}`, 'success', 5000);
+            } catch (error) {
+                context.LoadingOverlay.hide();
+                context.UI.showToast(`Failed to import: ${error.message}`, 'error');
+            }
+        },
+
+        /**
          * Inject format buttons into all rendered editor panes
          * Called when Prettier becomes available after editor is already mounted
          */
@@ -963,7 +1174,6 @@
                 // Insert before export button
                 actions.insertBefore(formatBtn, exportBtn);
 
-                console.log(`[CSS Editor] Format button injected for: ${roleId}`);
             });
         },
 
@@ -1227,6 +1437,21 @@
             });
             const globalDropdown = document.getElementById('save-dropdown-menu');
             if (globalDropdown) globalDropdown.classList.remove('show');
+
+            menu.classList.toggle('show');
+        },
+
+        /**
+         * Toggle actions dropdown menu
+         */
+        toggleActionsDropdown(roleId) {
+            const menu = document.querySelector(`[data-actions-menu-role="${roleId}"]`);
+            if (!menu) return;
+
+            // Close all other actions dropdowns
+            document.querySelectorAll('.editor-actions-menu.show').forEach(m => {
+                if (m !== menu) m.classList.remove('show');
+            });
 
             menu.classList.toggle('show');
         },

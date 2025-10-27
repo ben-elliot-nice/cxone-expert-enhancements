@@ -252,39 +252,42 @@
 }
 
 .editor-pane-save {
-    background: #0d6efd;
+    background: transparent;
     border: 1px solid #0d6efd;
     border-right: none;
-    color: white;
+    color: #0d6efd;
     padding: 0.25rem 0.75rem;
-    border-radius: 0;
+    border-radius: 3px 0 0 3px;
     cursor: pointer;
     font-size: 0.75rem;
-    font-weight: 600;
+    font-weight: 500;
     transition: all 0.2s;
 }
 
 .editor-pane-save:hover {
-    background: #0b5ed7;
-    border-color: #0a58ca;
+    background: rgba(13, 110, 253, 0.1);
+    color: white;
+    border-color: #0d6efd;
 }
 
 .editor-pane-save:disabled {
-    background: #6c757d;
+    background: transparent;
     border-color: #6c757d;
+    color: #6c757d;
     cursor: not-allowed;
     opacity: 0.65;
 }
 
 .editor-save-dropdown-toggle {
-    background: #0d6efd;
+    background: transparent;
     border: 1px solid #0d6efd;
-    border-left: 1px solid rgba(255, 255, 255, 0.25);
-    color: white;
+    border-left: 1px solid rgba(13, 110, 253, 0.3);
+    color: #0d6efd;
     padding: 0.25rem 0.4rem;
-    border-radius: 0;
+    border-radius: 0 3px 3px 0;
     cursor: pointer;
-    font-size: 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 500;
     transition: all 0.2s;
     display: flex;
     align-items: center;
@@ -292,8 +295,9 @@
 }
 
 .editor-save-dropdown-toggle:hover {
-    background: #0b5ed7;
-    border-color: #0a58ca;
+    background: rgba(13, 110, 253, 0.1);
+    color: white;
+    border-color: #0d6efd;
 }
 
 .editor-save-dropdown-menu {
@@ -333,6 +337,81 @@
     background: #3e3e42;
 }
 
+/* Editor Pane Header Layout */
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+}
+
+/* Editor Actions Dropdown (Format, Import, Export) */
+.editor-actions-dropdown {
+    position: relative;
+    display: inline-flex;
+}
+
+.editor-actions-btn {
+    background: transparent;
+    border: 1px solid #555;
+    color: #ccc;
+    padding: 0.25rem 0.75rem;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.editor-actions-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: #777;
+}
+
+.editor-actions-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 0.25rem;
+    background: #2d2d30;
+    border: 1px solid #444;
+    border-radius: 3px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    min-width: 120px;
+    overflow: hidden;
+}
+
+.editor-actions-menu.show {
+    display: block;
+}
+
+.editor-actions-item {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: none;
+    background: #2d2d30;
+    color: #ccc;
+    text-align: left;
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: background 0.2s;
+    border-radius: 0;
+}
+
+.editor-actions-item:hover {
+    background: #3e3e42;
+    color: white;
+}
+
+/* Legacy button styles (kept for compatibility) */
 .editor-pane-format {
     background: transparent;
     border: 1px solid #555;
@@ -349,7 +428,8 @@
     border-color: #777;
 }
 
-.editor-pane-export {
+.editor-pane-export,
+.editor-pane-import {
     background: transparent;
     border: 1px solid #555;
     color: #ccc;
@@ -360,7 +440,8 @@
     transition: all 0.2s;
 }
 
-.editor-pane-export:hover {
+.editor-pane-export:hover,
+.editor-pane-import:hover {
     background: rgba(255, 255, 255, 0.05);
     border-color: #777;
 }
@@ -470,8 +551,13 @@
     cursor: wait;
 }
 
-.btn-primary.saving:hover,
-.editor-pane-save.saving:hover {
+.btn-primary.saving:hover {
     background: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.editor-pane-save.saving:hover {
+    background: transparent;
+    color: #0d6efd;
     border-color: #0d6efd;
 }
