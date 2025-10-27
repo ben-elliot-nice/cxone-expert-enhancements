@@ -63,6 +63,7 @@
                         DOM,
                         Overlay,
                         LoadingOverlay,
+                        FileImport,
                         Formatter
                     };
                     await app.init(context);
