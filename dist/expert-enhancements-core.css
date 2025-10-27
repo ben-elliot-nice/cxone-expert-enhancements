@@ -212,11 +212,21 @@
     padding: 0 !important;
     display: flex !important;
     overflow: hidden;
+    position: relative;
 }
 
-.split-btn:hover::after,
-.split-btn:hover::before {
-    display: none;
+/* Divider between halves - always visible */
+.split-btn::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: rgba(255, 255, 255, 0.3);
+    pointer-events: none;
+    transform: translateX(-0.5px);
+    z-index: 1;
 }
 
 .split-half {
@@ -233,18 +243,6 @@
 
 .split-half:hover {
     background: rgba(255, 255, 255, 0.2);
-}
-
-/* Divider between halves using pseudo-element */
-.split-left::after {
-    content: '';
-    position: absolute;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    width: 1px;
-    background: rgba(255, 255, 255, 0.3);
-    pointer-events: none;
 }
 
 /* Visual rectangle indicators */
