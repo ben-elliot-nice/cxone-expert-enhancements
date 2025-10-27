@@ -1882,14 +1882,24 @@
                 });
             }
 
+            // Get constraints
+            const app = AppManager.getCurrentApp();
+            const defaults = { minWidth: 420, minHeight: 300 };
+            const constraints = app?.constraints ? { ...defaults, ...app.constraints } : defaults;
+
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+
             // Apply preset dimensions
             switch (preset) {
                 case 'small':
-                    // 50vw × 50vh centered
-                    overlay.style.width = '50vw';
-                    overlay.style.height = '50vh';
-                    overlay.style.left = '25vw';
-                    overlay.style.top = '25vh';
+                    // 50vw × 50vh centered, respecting constraints
+                    const smallWidth = Math.max(viewportWidth * 0.5, constraints.minWidth);
+                    const smallHeight = Math.max(viewportHeight * 0.5, constraints.minHeight);
+                    overlay.style.width = smallWidth + 'px';
+                    overlay.style.height = smallHeight + 'px';
+                    overlay.style.left = ((viewportWidth - smallWidth) / 2) + 'px';
+                    overlay.style.top = ((viewportHeight - smallHeight) / 2) + 'px';
                     overlay.style.transform = 'none';
                     break;
 
@@ -1904,20 +1914,24 @@
                     }
 
                 case 'split-left':
-                    // 30vw × 95vh positioned at left edge
-                    overlay.style.width = '30vw';
-                    overlay.style.height = '95vh';
-                    overlay.style.left = '2.5vw';
-                    overlay.style.top = '2.5vh';
+                    // 30vw × 95vh positioned at left edge, respecting constraints
+                    const splitLeftWidth = Math.max(viewportWidth * 0.3, constraints.minWidth);
+                    const splitLeftHeight = Math.max(viewportHeight * 0.95, constraints.minHeight);
+                    overlay.style.width = splitLeftWidth + 'px';
+                    overlay.style.height = splitLeftHeight + 'px';
+                    overlay.style.left = (viewportWidth * 0.025) + 'px';
+                    overlay.style.top = ((viewportHeight - splitLeftHeight) / 2) + 'px';
                     overlay.style.transform = 'none';
                     break;
 
                 case 'split-right':
-                    // 30vw × 95vh positioned at right edge
-                    overlay.style.width = '30vw';
-                    overlay.style.height = '95vh';
-                    overlay.style.left = '67.5vw'; // 100vw - 30vw - 2.5vw
-                    overlay.style.top = '2.5vh';
+                    // 30vw × 95vh positioned at right edge, respecting constraints
+                    const splitRightWidth = Math.max(viewportWidth * 0.3, constraints.minWidth);
+                    const splitRightHeight = Math.max(viewportHeight * 0.95, constraints.minHeight);
+                    overlay.style.width = splitRightWidth + 'px';
+                    overlay.style.height = splitRightHeight + 'px';
+                    overlay.style.left = (viewportWidth - splitRightWidth - viewportWidth * 0.025) + 'px';
+                    overlay.style.top = ((viewportHeight - splitRightHeight) / 2) + 'px';
                     overlay.style.transform = 'none';
                     break;
 
