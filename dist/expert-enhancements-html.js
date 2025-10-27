@@ -675,7 +675,7 @@
             const pane = context.DOM.create('div', { className: 'editor-pane' });
             const header = context.DOM.create('div', { className: 'editor-pane-header' });
 
-            // Left side: Title + Status + Save dropdown
+            // Left side: Title + Status only
             const headerLeft = context.DOM.create('div', {
                 className: 'header-left',
                 style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }
@@ -693,6 +693,13 @@
 
             titleGroup.appendChild(status);
             titleGroup.appendChild(title);
+            headerLeft.appendChild(titleGroup);
+
+            // Right side: Save dropdown + Actions dropdown
+            const headerRight = context.DOM.create('div', {
+                className: 'header-right',
+                style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }
+            });
 
             // Save dropdown group
             const saveDropdown = context.DOM.create('div', {
@@ -732,15 +739,6 @@
             saveDropdown.appendChild(saveBtn);
             saveDropdown.appendChild(dropdownToggle);
             saveDropdown.appendChild(dropdownMenu);
-
-            headerLeft.appendChild(titleGroup);
-            headerLeft.appendChild(saveDropdown);
-
-            // Right side: Actions dropdown (Format, Import, Export)
-            const headerRight = context.DOM.create('div', {
-                className: 'header-right',
-                style: { display: 'flex', alignItems: 'center' }
-            });
 
             const actionsDropdown = context.DOM.create('div', {
                 className: 'editor-actions-dropdown',
@@ -816,6 +814,9 @@
 
             actionsDropdown.appendChild(actionsBtn);
             actionsDropdown.appendChild(actionsMenu);
+
+            // Add both dropdowns to right side
+            headerRight.appendChild(saveDropdown);
             headerRight.appendChild(actionsDropdown);
 
             pane.appendChild(fileInput);
