@@ -1402,6 +1402,58 @@
             headerLeft.appendChild(appControls);
 
             const headerButtons = DOM.create('div', { className: 'header-buttons' });
+
+            // Preset size buttons
+            const presetContainer = DOM.create('div', { className: 'preset-buttons' });
+
+            const smallBtn = DOM.create('button', {
+                className: 'header-btn preset-btn',
+                title: 'Small (50%)'
+            });
+            smallBtn.textContent = '▢';
+            smallBtn.addEventListener('click', () => this.applyPresetSize('small'));
+
+            const fullscreenBtn = DOM.create('button', {
+                className: 'header-btn preset-btn',
+                title: 'Fullscreen (95%)'
+            });
+            fullscreenBtn.textContent = '⛶';
+            fullscreenBtn.addEventListener('click', () => this.applyPresetSize('fullscreen'));
+
+            // Combined split button (left half = split left, right half = split right)
+            const splitBtn = DOM.create('button', {
+                className: 'header-btn preset-btn split-btn'
+            });
+
+            const splitLeftHalf = DOM.create('span', {
+                className: 'split-half split-left',
+                title: 'Split Left (30%)'
+            });
+            const leftIndicator = DOM.create('span', { className: 'split-indicator' });
+            splitLeftHalf.appendChild(leftIndicator);
+            splitLeftHalf.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.applyPresetSize('split-left');
+            });
+
+            const splitRightHalf = DOM.create('span', {
+                className: 'split-half split-right',
+                title: 'Split Right (30%)'
+            });
+            const rightIndicator = DOM.create('span', { className: 'split-indicator' });
+            splitRightHalf.appendChild(rightIndicator);
+            splitRightHalf.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.applyPresetSize('split-right');
+            });
+
+            splitBtn.appendChild(splitLeftHalf);
+            splitBtn.appendChild(splitRightHalf);
+
+            presetContainer.appendChild(smallBtn);
+            presetContainer.appendChild(fullscreenBtn);
+            presetContainer.appendChild(splitBtn);
+
             const minimizeBtn = DOM.create('button', {
                 className: 'header-btn',
                 title: 'Minimize'
@@ -1409,6 +1461,7 @@
             minimizeBtn.textContent = '−';
             minimizeBtn.addEventListener('click', () => this.toggle());
 
+            headerButtons.appendChild(presetContainer);
             headerButtons.appendChild(minimizeBtn);
             overlayHeader.appendChild(headerLeft);
             overlayHeader.appendChild(headerButtons);
@@ -1443,6 +1496,13 @@
 
             // Restore dimensions
             this.restoreDimensions();
+
+            // Initial check for preset buttons visibility (after render)
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    this.checkPresetButtonsVisibility();
+                });
+            });
 
             console.log('[Overlay] Created');
         },
@@ -1595,6 +1655,9 @@
 
                 // Notify app of resize during drag (for immediate mobile view switching)
                 AppManager.notifyResize();
+
+                // Check preset buttons visibility in real-time during resize
+                this.checkPresetButtonsVisibility();
             });
 
             document.addEventListener('mouseup', () => {
@@ -1609,6 +1672,8 @@
                     this.saveDimensions();
                     // Notify app of resize
                     AppManager.notifyResize();
+                    // Check preset buttons visibility
+                    this.checkPresetButtonsVisibility();
                 }
             });
         },
@@ -1641,6 +1706,8 @@
             if (!isVisible) {
                 setTimeout(() => {
                     AppManager.notifyResize();
+                    // Check preset buttons visibility when showing overlay
+                    this.checkPresetButtonsVisibility();
                 }, 50);
             }
         },
@@ -1674,6 +1741,8 @@
                 isFullscreen = true;
                 preFullscreenDimensions = state.preFullscreenDimensions || null;
                 this.applyFullscreen();
+                // Check preset buttons visibility after a short delay to ensure DOM is ready
+                setTimeout(() => this.checkPresetButtonsVisibility(), 100);
                 return;
             }
 
@@ -1691,6 +1760,9 @@
                     overlay.style.transform = 'none';
                 }
             }
+
+            // Check preset buttons visibility after a short delay to ensure DOM is ready
+            setTimeout(() => this.checkPresetButtonsVisibility(), 100);
         },
 
         /**
@@ -1740,6 +1812,8 @@
             // Notify app of resize (for mobile view switching)
             setTimeout(() => {
                 AppManager.notifyResize();
+                // Check preset buttons visibility
+                this.checkPresetButtonsVisibility();
             }, 50);
         },
 
@@ -1771,6 +1845,8 @@
             // Notify app of resize
             setTimeout(() => {
                 AppManager.notifyResize();
+                // Check preset buttons visibility
+                this.checkPresetButtonsVisibility();
             }, 50);
         },
 
@@ -1785,6 +1861,129 @@
             overlay.style.left = '2.5vw';
             overlay.style.top = '2.5vh';
             overlay.style.transform = 'none';
+        },
+
+        /**
+         * Apply preset size
+         * @param {string} preset - Preset type: 'small', 'fullscreen', 'split-left', 'split-right'
+         */
+        applyPresetSize(preset) {
+            if (!overlay) return;
+
+            console.log(`[Overlay] Applying preset size: ${preset}`);
+
+            // Exit fullscreen mode if active (except for fullscreen preset)
+            if (isFullscreen && preset !== 'fullscreen') {
+                isFullscreen = false;
+                preFullscreenDimensions = null;
+                Storage.setCommonState({
+                    isFullscreen: false,
+                    preFullscreenDimensions: null
+                });
+            }
+
+            // Get constraints
+            const app = AppManager.getCurrentApp();
+            const defaults = { minWidth: 420, minHeight: 300 };
+            const constraints = app?.constraints ? { ...defaults, ...app.constraints } : defaults;
+
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+
+            // Apply preset dimensions
+            switch (preset) {
+                case 'small':
+                    // 50vw × 50vh centered, respecting constraints
+                    const smallWidth = Math.max(viewportWidth * 0.5, constraints.minWidth);
+                    const smallHeight = Math.max(viewportHeight * 0.5, constraints.minHeight);
+                    overlay.style.width = smallWidth + 'px';
+                    overlay.style.height = smallHeight + 'px';
+                    overlay.style.left = ((viewportWidth - smallWidth) / 2) + 'px';
+                    overlay.style.top = ((viewportHeight - smallHeight) / 2) + 'px';
+                    overlay.style.transform = 'none';
+                    break;
+
+                case 'fullscreen':
+                    // Use existing fullscreen logic
+                    if (isFullscreen) {
+                        this.exitFullscreen();
+                        return;
+                    } else {
+                        this.enterFullscreen();
+                        return;
+                    }
+
+                case 'split-left':
+                    // 30vw × 95vh positioned at left edge, respecting constraints
+                    const splitLeftWidth = Math.max(viewportWidth * 0.3, constraints.minWidth);
+                    const splitLeftHeight = Math.max(viewportHeight * 0.95, constraints.minHeight);
+                    overlay.style.width = splitLeftWidth + 'px';
+                    overlay.style.height = splitLeftHeight + 'px';
+                    overlay.style.left = (viewportWidth * 0.025) + 'px';
+                    overlay.style.top = ((viewportHeight - splitLeftHeight) / 2) + 'px';
+                    overlay.style.transform = 'none';
+                    break;
+
+                case 'split-right':
+                    // 30vw × 95vh positioned at right edge, respecting constraints
+                    const splitRightWidth = Math.max(viewportWidth * 0.3, constraints.minWidth);
+                    const splitRightHeight = Math.max(viewportHeight * 0.95, constraints.minHeight);
+                    overlay.style.width = splitRightWidth + 'px';
+                    overlay.style.height = splitRightHeight + 'px';
+                    overlay.style.left = (viewportWidth - splitRightWidth - viewportWidth * 0.025) + 'px';
+                    overlay.style.top = ((viewportHeight - splitRightHeight) / 2) + 'px';
+                    overlay.style.transform = 'none';
+                    break;
+
+                default:
+                    console.warn(`[Overlay] Unknown preset: ${preset}`);
+                    return;
+            }
+
+            // Save dimensions to localStorage
+            this.saveDimensions();
+
+            // Notify app of resize
+            setTimeout(() => {
+                AppManager.notifyResize();
+            }, 50);
+
+            // Check if preset buttons should be hidden
+            this.checkPresetButtonsVisibility();
+        },
+
+        /**
+         * Check overlay width and hide/show preset buttons accordingly
+         */
+        checkPresetButtonsVisibility() {
+            if (!overlay) {
+                console.log('[Overlay] checkPresetButtonsVisibility: overlay not found');
+                return;
+            }
+
+            const presetButtons = document.querySelector('.preset-buttons');
+            if (!presetButtons) {
+                console.log('[Overlay] checkPresetButtonsVisibility: preset buttons not found');
+                return;
+            }
+
+            const width = overlay.offsetWidth;
+            const currentDisplay = presetButtons.style.display;
+            console.log(`[Overlay] checkPresetButtonsVisibility: width=${width}px, currentDisplay="${currentDisplay}"`);
+
+            if (width < 620) {
+                // Hide preset buttons
+                if (presetButtons.style.display !== 'none') {
+                    presetButtons.style.display = 'none';
+                    console.log('[Overlay] Preset buttons hidden (width < 620px)');
+                }
+            } else {
+                // Show preset buttons
+                if (presetButtons.style.display !== 'flex') {
+                    presetButtons.style.display = 'flex';
+                    console.log('[Overlay] Preset buttons shown (width >= 620px)');
+                }
+            }
         },
 
         /**
