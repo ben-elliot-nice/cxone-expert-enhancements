@@ -110,9 +110,16 @@
             });
 
             try {
-                // Initialize Formatter (load Prettier)
-                context.LoadingOverlay.setMessage('Loading code formatter...');
-                await context.Formatter.init();
+                // Initialize Formatter (load Prettier) - optional, non-blocking
+                try {
+                    context.LoadingOverlay.setMessage('Loading code formatter...');
+                    await context.Formatter.init();
+                    console.log('[CSS Editor] Code formatter available');
+                } catch (formatterError) {
+                    console.warn('[CSS Editor] Code formatter unavailable:', formatterError);
+                    context.UI.showToast('Code formatting unavailable - editor will load without formatting features', 'warning');
+                    // Continue mounting - don't throw
+                }
 
                 // Restore state if available
                 const savedState = context.Storage.getAppState(this.id);
@@ -752,12 +759,16 @@
             saveDropdown.appendChild(dropdownToggle);
             saveDropdown.appendChild(dropdownMenu);
 
-            const formatBtn = context.DOM.create('button', {
-                className: 'editor-pane-format',
-                'data-format-role': roleId,
-                title: 'Format CSS (Ctrl+Shift+F)'
-            }, ['Format']);
-            formatBtn.addEventListener('click', () => this.formatRole(roleId));
+            // Only add format button if Prettier is available
+            if (context.Formatter.isReady()) {
+                const formatBtn = context.DOM.create('button', {
+                    className: 'editor-pane-format',
+                    'data-format-role': roleId,
+                    title: 'Format CSS (Ctrl+Shift+F)'
+                }, ['Format']);
+                formatBtn.addEventListener('click', () => this.formatRole(roleId));
+                actions.appendChild(formatBtn);
+            }
 
             const exportBtn = context.DOM.create('button', {
                 className: 'editor-pane-export',
@@ -766,7 +777,6 @@
             exportBtn.addEventListener('click', () => this.exportRole(roleId));
 
             actions.appendChild(saveDropdown);
-            actions.appendChild(formatBtn);
             actions.appendChild(exportBtn);
 
             header.appendChild(titleGroup);
@@ -922,6 +932,11 @@
          * Format CSS for a specific role
          */
         async formatRole(roleId) {
+            if (!context.Formatter.isReady()) {
+                context.UI.showToast('Code formatting is currently unavailable', 'warning');
+                return;
+            }
+
             const role = editorState[roleId];
             const editor = monacoEditors[roleId];
 
@@ -960,6 +975,11 @@
          * Format all active editors
          */
         async formatAllActive() {
+            if (!context.Formatter.isReady()) {
+                context.UI.showToast('Code formatting is currently unavailable', 'warning');
+                return;
+            }
+
             const activeRoles = Object.keys(editorState).filter(role => editorState[role].active);
 
             if (activeRoles.length === 0) {
@@ -1181,9 +1201,9 @@
                     role.content = editor.getValue();
                 }
 
-                // Format on save if enabled
+                // Format on save if enabled and formatter available
                 const settings = context.Storage.getFormatterSettings();
-                if (settings.formatOnSave && role.content && role.content.trim() !== '') {
+                if (settings.formatOnSave && context.Formatter.isReady() && role.content && role.content.trim() !== '') {
                     try {
                         console.log(`[CSS Editor] Auto-formatting ${roleId} before save...`);
                         const formatted = await context.Formatter.formatCSS(role.content);
@@ -1292,9 +1312,9 @@
                     }
                 });
 
-                // Format on save if enabled
+                // Format on save if enabled and formatter available
                 const settings = context.Storage.getFormatterSettings();
-                if (settings.formatOnSave) {
+                if (settings.formatOnSave && context.Formatter.isReady()) {
                     for (const roleId of Object.keys(editorState)) {
                         const role = editorState[roleId];
                         if (role.content && role.content.trim() !== '') {
@@ -1441,9 +1461,9 @@
                     }
                 });
 
-                // Format on save if enabled
+                // Format on save if enabled and formatter available
                 const settings = context.Storage.getFormatterSettings();
-                if (settings.formatOnSave) {
+                if (settings.formatOnSave && context.Formatter.isReady()) {
                     for (const roleId of openRoles) {
                         const role = editorState[roleId];
                         if (role.content && role.content.trim() !== '') {
@@ -1545,10 +1565,13 @@
                     e.preventDefault();
                     this.saveAll();
                 }
-                // Ctrl+Shift+F or Cmd+Shift+F - Format active editors
+                // Ctrl+Shift+F or Cmd+Shift+F - Format active editors (only if available)
                 else if ((e.ctrlKey || e.metaKey) && e.key === 'F' && e.shiftKey) {
                     e.preventDefault();
-                    this.formatAllActive();
+                    if (context.Formatter.isReady()) {
+                        this.formatAllActive();
+                    }
+                    // Silent no-op if formatter not available
                 }
             };
 

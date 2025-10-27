@@ -1424,7 +1424,7 @@
 
                 // Load Prettier standalone (using unpkg for better browser UMD support)
                 const prettierScript = document.createElement('script');
-                prettierScript.src = 'https://unpkg.com/prettier@3.2.5/standalone.js';
+                prettierScript.src = 'https://unpkg.com/prettier@3.3.3/standalone.js';
                 prettierScript.async = true;
 
                 prettierScript.onload = () => {
@@ -1446,7 +1446,7 @@
 
                         // Load CSS parser (postcss)
                         const cssParserScript = document.createElement('script');
-                        cssParserScript.src = 'https://unpkg.com/prettier@3.2.5/plugins/postcss.js';
+                        cssParserScript.src = 'https://unpkg.com/prettier@3.3.3/plugins/postcss.js';
                         cssParserScript.async = true;
 
                         cssParserScript.onload = () => {
@@ -1460,7 +1460,7 @@
 
                                 // Load HTML parser
                                 const htmlParserScript = document.createElement('script');
-                                htmlParserScript.src = 'https://unpkg.com/prettier@3.2.5/plugins/html.js';
+                                htmlParserScript.src = 'https://unpkg.com/prettier@3.3.3/plugins/html.js';
                                 htmlParserScript.async = true;
 
                                 htmlParserScript.onload = () => {
@@ -1483,7 +1483,7 @@
                                         prettierLoadCallbacks = [];
 
                                         resolve(true);
-                                    }, 10);
+                                    }, 100);
                                 };
 
                                 htmlParserScript.onerror = (error) => {
@@ -1493,7 +1493,7 @@
                                 };
 
                                 document.head.appendChild(htmlParserScript);
-                            }, 10);
+                            }, 100);
                         };
 
                         cssParserScript.onerror = (error) => {
@@ -1503,7 +1503,7 @@
                         };
 
                         document.head.appendChild(cssParserScript);
-                    }, 10);
+                    }, 100);
                 };
 
                 prettierScript.onerror = (error) => {
@@ -1548,8 +1548,8 @@
                 throw new Error('Prettier global not found');
             }
 
-            if (!window.prettierPlugins || !window.prettierPlugins.postcss) {
-                throw new Error('Prettier CSS plugin not found');
+            if (!window.prettierPlugins) {
+                throw new Error('Prettier plugins not found');
             }
 
             try {
@@ -1557,14 +1557,14 @@
 
                 const options = {
                     parser: 'css',
-                    plugins: [window.prettierPlugins.postcss],
+                    plugins: prettierPlugins,
                     useTabs: settings.indentStyle === 'tabs',
                     tabWidth: settings.indentSize,
                     singleQuote: settings.quoteStyle === 'single',
                     ...settings.cssSettings
                 };
 
-                const formatted = await window.prettier.format(code, options);
+                const formatted = await prettier.format(code, options);
                 console.log('[Formatter] CSS formatted successfully');
                 return formatted;
             } catch (error) {
@@ -1587,8 +1587,8 @@
                 throw new Error('Prettier global not found');
             }
 
-            if (!window.prettierPlugins || !window.prettierPlugins.html) {
-                throw new Error('Prettier HTML plugin not found');
+            if (!window.prettierPlugins) {
+                throw new Error('Prettier plugins not found');
             }
 
             try {
@@ -1596,14 +1596,14 @@
 
                 const options = {
                     parser: 'html',
-                    plugins: [window.prettierPlugins.html],
+                    plugins: prettierPlugins,
                     useTabs: settings.indentStyle === 'tabs',
                     tabWidth: settings.indentSize,
                     singleQuote: settings.quoteStyle === 'single',
                     ...settings.htmlSettings
                 };
 
-                const formatted = await window.prettier.format(code, options);
+                const formatted = await prettier.format(code, options);
                 console.log('[Formatter] HTML formatted successfully');
                 return formatted;
             } catch (error) {
@@ -1644,6 +1644,7 @@
     let currentResizeHandle = null;
     let isFullscreen = false;
     let preFullscreenDimensions = null;
+    let fullscreenBtn = null;
 
     const Overlay = {
         /**
@@ -1687,7 +1688,7 @@
             smallBtn.textContent = '▢';
             smallBtn.addEventListener('click', () => this.applyPresetSize('small'));
 
-            const fullscreenBtn = DOM.create('button', {
+            fullscreenBtn = DOM.create('button', {
                 className: 'header-btn preset-btn',
                 title: 'Fullscreen (95%)'
             });
@@ -2020,6 +2021,7 @@
                 isFullscreen = true;
                 preFullscreenDimensions = state.preFullscreenDimensions || null;
                 this.applyFullscreen();
+                this.updateFullscreenButtonState();
                 // Check preset buttons visibility after a short delay to ensure DOM is ready
                 setTimeout(() => this.checkPresetButtonsVisibility(), 100);
                 return;
@@ -2082,6 +2084,9 @@
             // Update state
             isFullscreen = true;
 
+            // Update button visual state
+            this.updateFullscreenButtonState();
+
             // Save to localStorage
             Storage.setCommonState({
                 isFullscreen: true,
@@ -2115,6 +2120,9 @@
             isFullscreen = false;
             preFullscreenDimensions = null;
 
+            // Update button visual state
+            this.updateFullscreenButtonState();
+
             // Save to localStorage
             Storage.setCommonState({
                 isFullscreen: false,
@@ -2143,6 +2151,19 @@
         },
 
         /**
+         * Update fullscreen button visual state
+         */
+        updateFullscreenButtonState() {
+            if (!fullscreenBtn) return;
+
+            if (isFullscreen) {
+                fullscreenBtn.classList.add('fullscreen-active');
+            } else {
+                fullscreenBtn.classList.remove('fullscreen-active');
+            }
+        },
+
+        /**
          * Apply preset size
          * @param {string} preset - Preset type: 'small', 'fullscreen', 'split-left', 'split-right'
          */
@@ -2155,6 +2176,7 @@
             if (isFullscreen && preset !== 'fullscreen') {
                 isFullscreen = false;
                 preFullscreenDimensions = null;
+                this.updateFullscreenButtonState();
                 Storage.setCommonState({
                     isFullscreen: false,
                     preFullscreenDimensions: null

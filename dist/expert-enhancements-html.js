@@ -92,9 +92,16 @@
             });
 
             try {
-                // Initialize Formatter (load Prettier)
-                context.LoadingOverlay.setMessage('Loading code formatter...');
-                await context.Formatter.init();
+                // Initialize Formatter (load Prettier) - optional, non-blocking
+                try {
+                    context.LoadingOverlay.setMessage('Loading code formatter...');
+                    await context.Formatter.init();
+                    console.log('[HTML Editor] Code formatter available');
+                } catch (formatterError) {
+                    console.warn('[HTML Editor] Code formatter unavailable:', formatterError);
+                    context.UI.showToast('Code formatting unavailable - editor will load without formatting features', 'warning');
+                    // Continue mounting - don't throw
+                }
 
                 // Restore state if available
                 const savedState = context.Storage.getAppState(this.id);
@@ -725,12 +732,16 @@
             saveDropdown.appendChild(dropdownToggle);
             saveDropdown.appendChild(dropdownMenu);
 
-            const formatBtn = context.DOM.create('button', {
-                className: 'editor-pane-format',
-                'data-format-field': fieldId,
-                title: 'Format HTML (Ctrl+Shift+F)'
-            }, ['Format']);
-            formatBtn.addEventListener('click', () => this.formatField(fieldId));
+            // Only add format button if Prettier is available
+            if (context.Formatter.isReady()) {
+                const formatBtn = context.DOM.create('button', {
+                    className: 'editor-pane-format',
+                    'data-format-field': fieldId,
+                    title: 'Format HTML (Ctrl+Shift+F)'
+                }, ['Format']);
+                formatBtn.addEventListener('click', () => this.formatField(fieldId));
+                actions.appendChild(formatBtn);
+            }
 
             const exportBtn = context.DOM.create('button', {
                 className: 'editor-pane-export',
@@ -739,7 +750,6 @@
             exportBtn.addEventListener('click', () => this.exportField(fieldId));
 
             actions.appendChild(saveDropdown);
-            actions.appendChild(formatBtn);
             actions.appendChild(exportBtn);
 
             header.appendChild(titleGroup);
@@ -888,6 +898,11 @@
          * Format HTML for a specific field
          */
         async formatField(fieldId) {
+            if (!context.Formatter.isReady()) {
+                context.UI.showToast('Code formatting is currently unavailable', 'warning');
+                return;
+            }
+
             const field = editorState[fieldId];
             const editor = monacoEditors[fieldId];
 
@@ -926,6 +941,11 @@
          * Format all active editors
          */
         async formatAllActive() {
+            if (!context.Formatter.isReady()) {
+                context.UI.showToast('Code formatting is currently unavailable', 'warning');
+                return;
+            }
+
             const activeFields = Object.keys(editorState).filter(field => editorState[field].active);
 
             if (activeFields.length === 0) {
@@ -1098,9 +1118,9 @@
                     field.content = editor.getValue();
                 }
 
-                // Format on save if enabled
+                // Format on save if enabled and formatter available
                 const settings = context.Storage.getFormatterSettings();
-                if (settings.formatOnSave && field.content && field.content.trim() !== '') {
+                if (settings.formatOnSave && context.Formatter.isReady() && field.content && field.content.trim() !== '') {
                     try {
                         console.log(`[HTML Editor] Auto-formatting ${fieldId} before save...`);
                         const formatted = await context.Formatter.formatHTML(field.content);
@@ -1180,9 +1200,9 @@
                     }
                 });
 
-                // Format on save if enabled
+                // Format on save if enabled and formatter available
                 const settings = context.Storage.getFormatterSettings();
-                if (settings.formatOnSave) {
+                if (settings.formatOnSave && context.Formatter.isReady()) {
                     for (const fieldId of Object.keys(editorState)) {
                         const field = editorState[fieldId];
                         if (field.content && field.content.trim() !== '') {
@@ -1280,9 +1300,9 @@
                     }
                 });
 
-                // Format on save if enabled
+                // Format on save if enabled and formatter available
                 const settings = context.Storage.getFormatterSettings();
-                if (settings.formatOnSave) {
+                if (settings.formatOnSave && context.Formatter.isReady()) {
                     for (const fieldId of openFields) {
                         const field = editorState[fieldId];
                         if (field.content && field.content.trim() !== '') {
@@ -1373,10 +1393,13 @@
                     e.preventDefault();
                     this.saveAll();
                 }
-                // Ctrl+Shift+F or Cmd+Shift+F - Format active editors
+                // Ctrl+Shift+F or Cmd+Shift+F - Format active editors (only if available)
                 else if ((e.ctrlKey || e.metaKey) && e.key === 'F' && e.shiftKey) {
                     e.preventDefault();
-                    this.formatAllActive();
+                    if (context.Formatter.isReady()) {
+                        this.formatAllActive();
+                    }
+                    // Silent no-op if formatter not available
                 }
             };
 
