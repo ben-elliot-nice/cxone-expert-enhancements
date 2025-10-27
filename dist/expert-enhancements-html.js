@@ -935,8 +935,10 @@
 
         /**
          * Format HTML for a specific field
+         * @param {string} fieldId - Field identifier
+         * @param {boolean} silent - If true, suppress success toast
          */
-        async formatField(fieldId) {
+        async formatField(fieldId, silent = false) {
             if (!context.Formatter.isReady()) {
                 context.UI.showToast('Code formatting is currently unavailable', 'warning');
                 return;
@@ -969,7 +971,9 @@
                 field.isDirty = field.content !== originalContent[fieldId];
                 this.updateToggleButtons();
 
-                context.UI.showToast(`${field.label} formatted`, 'success');
+                if (!silent) {
+                    context.UI.showToast(`${field.label} formatted`, 'success');
+                }
             } catch (error) {
                 console.error(`[HTML Editor] Format ${fieldId} failed:`, error);
                 context.UI.showToast(`Formatting failed: ${error.message}`, 'error');
@@ -995,9 +999,9 @@
             try {
                 console.log(`[HTML Editor] Formatting ${activeFields.length} active editor(s)...`);
 
-                // Format each active editor
+                // Format each active editor (silent mode to avoid duplicate toasts)
                 for (const fieldId of activeFields) {
-                    await this.formatField(fieldId);
+                    await this.formatField(fieldId, true);
                 }
 
                 const label = activeFields.length === 1 ? editorState[activeFields[0]].label : `${activeFields.length} editors`;

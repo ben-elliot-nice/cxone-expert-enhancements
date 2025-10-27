@@ -969,8 +969,10 @@
 
         /**
          * Format CSS for a specific role
+         * @param {string} roleId - Role identifier
+         * @param {boolean} silent - If true, suppress success toast
          */
-        async formatRole(roleId) {
+        async formatRole(roleId, silent = false) {
             if (!context.Formatter.isReady()) {
                 context.UI.showToast('Code formatting is currently unavailable', 'warning');
                 return;
@@ -1003,7 +1005,9 @@
                 role.isDirty = role.content !== originalContent[roleId];
                 this.updateToggleButtons();
 
-                context.UI.showToast(`${role.label} formatted`, 'success');
+                if (!silent) {
+                    context.UI.showToast(`${role.label} formatted`, 'success');
+                }
             } catch (error) {
                 console.error(`[CSS Editor] Format ${roleId} failed:`, error);
                 context.UI.showToast(`Formatting failed: ${error.message}`, 'error');
@@ -1029,9 +1033,9 @@
             try {
                 console.log(`[CSS Editor] Formatting ${activeRoles.length} active editor(s)...`);
 
-                // Format each active editor
+                // Format each active editor (silent mode to avoid duplicate toasts)
                 for (const roleId of activeRoles) {
-                    await this.formatRole(roleId);
+                    await this.formatRole(roleId, true);
                 }
 
                 const label = activeRoles.length === 1 ? editorState[activeRoles[0]].label : `${activeRoles.length} editors`;
