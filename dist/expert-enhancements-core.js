@@ -1369,6 +1369,8 @@
             // Remove overlay with fade out
             if (loadingOverlay) {
                 loadingOverlay.style.opacity = '0';
+                // CRITICAL: Disable pointer events immediately so it doesn't block interaction during fade
+                loadingOverlay.style.pointerEvents = 'none';
                 setTimeout(() => {
                     if (loadingOverlay && loadingOverlay.parentNode) {
                         loadingOverlay.remove();
@@ -1377,7 +1379,7 @@
                     loadingStartTime = null;
                 }, 300);
 
-                console.log('[LoadingOverlay] Hidden');
+                console.log('[LoadingOverlay] Hidden (pointer-events disabled)');
             }
         },
 
