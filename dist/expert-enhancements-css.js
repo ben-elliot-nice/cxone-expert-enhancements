@@ -114,7 +114,6 @@
                 context.Formatter.init()
                     .then(() => {
                         console.log('[CSS Editor] Code formatter loaded successfully');
-                        context.UI.showToast('Code formatting is now available', 'success');
                         // Inject format buttons into all rendered panes
                         this.injectFormatButtons();
                     })
