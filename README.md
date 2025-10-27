@@ -19,7 +19,7 @@ Add this single line to the `<head>` of your CXone Expert site:
 ### Pinned Version (Stable)
 
 ```html
-<script src="https://releases.benelliot-nice.com/cxone-expert-enhancements/releases/v1.2.0/expert-enhancements-embed.js"></script>
+<script src="https://releases.benelliot-nice.com/cxone-expert-enhancements/releases/v1.3.0/expert-enhancements-embed.js"></script>
 ```
 
 ✅ Stays on specific version forever
