@@ -1049,6 +1049,12 @@
                         range: new monaco.Range(lineCount, lastLineLength + 1, lineCount, lastLineLength + 1),
                         text: separator + fileContent
                     }]);
+
+                    // Focus editor and ensure proper layout after import
+                    setTimeout(() => {
+                        editor.layout();
+                        editor.focus();
+                    }, 50);
                 }
 
                 // Save state and update UI
