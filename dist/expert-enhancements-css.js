@@ -971,17 +971,18 @@
          * Format CSS for a specific role
          * @param {string} roleId - Role identifier
          * @param {boolean} silent - If true, suppress success toast
+         * @returns {Object|null} - { changed: boolean, label: string } or null on error/empty
          */
         async formatRole(roleId, silent = false) {
             if (!context.Formatter.isReady()) {
                 context.UI.showToast('Code formatting is currently unavailable', 'warning');
-                return;
+                return null;
             }
 
             const role = editorState[roleId];
             const editor = monacoEditors[roleId];
 
-            if (!role || !editor) return;
+            if (!role || !editor) return null;
 
             try {
                 console.log(`[CSS Editor] Formatting ${roleId}...`);
@@ -991,11 +992,14 @@
 
                 if (!content || content.trim() === '') {
                     context.UI.showToast('Nothing to format', 'warning');
-                    return;
+                    return null;
                 }
 
                 // Format using Prettier
                 const formatted = await context.Formatter.formatCSS(content);
+
+                // Check if content actually changed
+                const changed = content !== formatted;
 
                 // Update editor with formatted content
                 editor.setValue(formatted);
@@ -1006,11 +1010,15 @@
                 this.updateToggleButtons();
 
                 if (!silent) {
-                    context.UI.showToast(`${role.label} formatted`, 'success');
+                    const message = changed ? `${role.label} formatted` : `${role.label} already formatted`;
+                    context.UI.showToast(message, 'success');
                 }
+
+                return { changed, label: role.label };
             } catch (error) {
                 console.error(`[CSS Editor] Format ${roleId} failed:`, error);
                 context.UI.showToast(`Formatting failed: ${error.message}`, 'error');
+                return null;
             }
         },
 
@@ -1034,12 +1042,28 @@
                 console.log(`[CSS Editor] Formatting ${activeRoles.length} active editor(s)...`);
 
                 // Format each active editor (silent mode to avoid duplicate toasts)
+                const results = [];
                 for (const roleId of activeRoles) {
-                    await this.formatRole(roleId, true);
+                    const result = await this.formatRole(roleId, true);
+                    if (result) {
+                        results.push(result);
+                    }
                 }
 
-                const label = activeRoles.length === 1 ? editorState[activeRoles[0]].label : `${activeRoles.length} editors`;
-                context.UI.showToast(`${label} formatted`, 'success');
+                // Build appropriate toast message based on what actually changed
+                const changedResults = results.filter(r => r.changed);
+                const changedCount = changedResults.length;
+
+                let message;
+                if (changedCount === 0) {
+                    message = results.length === 1 ? `${results[0].label} already formatted` : 'Already formatted';
+                } else if (changedCount === 1) {
+                    message = `${changedResults[0].label} formatted`;
+                } else {
+                    message = `${changedCount} editors formatted`;
+                }
+
+                context.UI.showToast(message, 'success');
             } catch (error) {
                 console.error('[CSS Editor] Format all active failed:', error);
                 context.UI.showToast(`Formatting failed: ${error.message}`, 'error');
