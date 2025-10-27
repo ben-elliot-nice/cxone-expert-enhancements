@@ -2113,6 +2113,7 @@
                 dropZone.style.display = 'none';
                 dropZone.style.pointerEvents = 'none';
                 console.log('[Drop Zone] File dropped, hiding zone');
+                console.log('[Drop Zone] After hide - display:', dropZone.style.display, 'pointer-events:', dropZone.style.pointerEvents);
 
                 const files = e.dataTransfer.files;
                 if (files && files.length > 0) {
@@ -2564,6 +2565,21 @@
                 const app = AppManager.getCurrentApp();
                 if (app && typeof app.importFile === 'function') {
                     await app.importFile(content, file.name);
+
+                    // Verify drop zone is hidden after import
+                    const dropZoneElement = document.getElementById('file-drop-zone');
+                    if (dropZoneElement) {
+                        console.log('[FileImport] After import - drop zone display:', dropZoneElement.style.display, 'pointer-events:', dropZoneElement.style.pointerEvents);
+                        // Force cleanup
+                        dropZoneElement.style.display = 'none';
+                        dropZoneElement.style.pointerEvents = 'none';
+                    }
+
+                    // Verify overlay content is interactable
+                    const overlayContentElement = document.getElementById('expert-enhancements-overlay-content');
+                    if (overlayContentElement) {
+                        console.log('[FileImport] Overlay content pointer-events:', overlayContentElement.style.pointerEvents || 'default');
+                    }
                 } else {
                     LoadingOverlay.hide();
                     UI.showToast('Current app does not support file import', 'error');
