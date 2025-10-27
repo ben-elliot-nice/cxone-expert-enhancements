@@ -675,6 +675,12 @@
             const pane = context.DOM.create('div', { className: 'editor-pane' });
             const header = context.DOM.create('div', { className: 'editor-pane-header' });
 
+            // Left side: Title + Status + Save dropdown
+            const headerLeft = context.DOM.create('div', {
+                className: 'header-left',
+                style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }
+            });
+
             const titleGroup = context.DOM.create('div', {
                 style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }
             });
@@ -687,12 +693,6 @@
 
             titleGroup.appendChild(status);
             titleGroup.appendChild(title);
-
-            // Action buttons
-            const actions = context.DOM.create('div', {
-                className: 'editor-pane-actions',
-                style: { display: 'flex', gap: '0.5rem', alignItems: 'center' }
-            });
 
             // Save dropdown group
             const saveDropdown = context.DOM.create('div', {
@@ -733,29 +733,49 @@
             saveDropdown.appendChild(dropdownToggle);
             saveDropdown.appendChild(dropdownMenu);
 
-            // Only add format button if Prettier is available
+            headerLeft.appendChild(titleGroup);
+            headerLeft.appendChild(saveDropdown);
+
+            // Right side: Actions dropdown (Format, Import, Export)
+            const headerRight = context.DOM.create('div', {
+                className: 'header-right',
+                style: { display: 'flex', alignItems: 'center' }
+            });
+
+            const actionsDropdown = context.DOM.create('div', {
+                className: 'editor-actions-dropdown',
+                style: { position: 'relative' }
+            });
+
+            const actionsBtn = context.DOM.create('button', {
+                className: 'editor-actions-btn',
+                'data-actions-field': fieldId
+            }, ['Actions ▼']);
+            actionsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleActionsDropdown(fieldId);
+            });
+
+            const actionsMenu = context.DOM.create('div', {
+                className: 'editor-actions-menu',
+                'data-actions-menu-field': fieldId
+            });
+
+            // Format option (if Prettier available)
             if (context.Formatter.isReady()) {
-                const formatBtn = context.DOM.create('button', {
-                    className: 'editor-pane-format',
-                    'data-format-field': fieldId,
-                    title: 'Format HTML (Ctrl+Shift+F)'
+                const formatItem = context.DOM.create('button', {
+                    className: 'editor-actions-item',
+                    'data-format-field': fieldId
                 }, ['Format']);
-                formatBtn.addEventListener('click', () => this.formatField(fieldId));
-                actions.appendChild(formatBtn);
+                formatItem.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.formatField(fieldId);
+                    actionsMenu.classList.remove('show');
+                });
+                actionsMenu.appendChild(formatItem);
             }
 
-            const exportBtn = context.DOM.create('button', {
-                className: 'editor-pane-export',
-                'data-export-field': fieldId
-            }, ['Export']);
-            exportBtn.addEventListener('click', () => this.exportField(fieldId));
-
-            // Import button with hidden file input
-            const importBtn = context.DOM.create('button', {
-                className: 'editor-pane-import',
-                'data-import-field': fieldId
-            }, ['Import']);
-
+            // Import option with hidden file input
             const fileInput = context.DOM.create('input', {
                 type: 'file',
                 accept: '.html',
@@ -763,7 +783,6 @@
                 id: `file-input-${fieldId}`
             });
 
-            importBtn.addEventListener('click', () => fileInput.click());
             fileInput.addEventListener('change', (e) => {
                 if (e.target.files && e.target.files[0]) {
                     this.importField(fieldId, e.target.files[0]);
@@ -771,13 +790,38 @@
                 }
             });
 
-            actions.appendChild(saveDropdown);
-            actions.appendChild(exportBtn);
-            actions.appendChild(importBtn);
+            const importItem = context.DOM.create('button', {
+                className: 'editor-actions-item',
+                'data-import-field': fieldId
+            }, ['Import']);
+            importItem.addEventListener('click', (e) => {
+                e.stopPropagation();
+                fileInput.click();
+                actionsMenu.classList.remove('show');
+            });
+
+            // Export option
+            const exportItem = context.DOM.create('button', {
+                className: 'editor-actions-item',
+                'data-export-field': fieldId
+            }, ['Export']);
+            exportItem.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.exportField(fieldId);
+                actionsMenu.classList.remove('show');
+            });
+
+            actionsMenu.appendChild(importItem);
+            actionsMenu.appendChild(exportItem);
+
+            actionsDropdown.appendChild(actionsBtn);
+            actionsDropdown.appendChild(actionsMenu);
+            headerRight.appendChild(actionsDropdown);
+
             pane.appendChild(fileInput);
 
-            header.appendChild(titleGroup);
-            header.appendChild(actions);
+            header.appendChild(headerLeft);
+            header.appendChild(headerRight);
             pane.appendChild(header);
 
             const editorContainer = context.DOM.create('div', {
@@ -1338,6 +1382,24 @@
 
             // Close all other editor dropdowns
             document.querySelectorAll('.editor-save-dropdown-menu.show').forEach(m => {
+                if (m !== menu) {
+                    m.classList.remove('show');
+                }
+            });
+
+            // Toggle this dropdown
+            menu.classList.toggle('show');
+        },
+
+        /**
+         * Toggle actions dropdown menu
+         */
+        toggleActionsDropdown(fieldId) {
+            const menu = document.querySelector(`[data-actions-menu-field="${fieldId}"]`);
+            if (!menu) return;
+
+            // Close all other actions dropdowns
+            document.querySelectorAll('.editor-actions-menu.show').forEach(m => {
                 if (m !== menu) {
                     m.classList.remove('show');
                 }

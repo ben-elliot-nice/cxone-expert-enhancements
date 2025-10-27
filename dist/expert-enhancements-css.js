@@ -702,6 +702,12 @@
             const pane = context.DOM.create('div', { className: 'editor-pane' });
             const header = context.DOM.create('div', { className: 'editor-pane-header' });
 
+            // Left side: Title + Status + Save
+            const headerLeft = context.DOM.create('div', {
+                className: 'header-left',
+                style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }
+            });
+
             const titleGroup = context.DOM.create('div', {
                 style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }
             });
@@ -714,12 +720,6 @@
 
             titleGroup.appendChild(status);
             titleGroup.appendChild(title);
-
-            // Action buttons
-            const actions = context.DOM.create('div', {
-                className: 'editor-pane-actions',
-                style: { display: 'flex', gap: '0.5rem', alignItems: 'center' }
-            });
 
             // Save dropdown group
             const saveDropdown = context.DOM.create('div', {
@@ -760,29 +760,51 @@
             saveDropdown.appendChild(dropdownToggle);
             saveDropdown.appendChild(dropdownMenu);
 
-            // Only add format button if Prettier is available
+            // Add to header left
+            headerLeft.appendChild(titleGroup);
+            headerLeft.appendChild(saveDropdown);
+
+            // Right side: Actions dropdown
+            const headerRight = context.DOM.create('div', {
+                className: 'header-right',
+                style: { display: 'flex', alignItems: 'center' }
+            });
+
+            // Actions dropdown
+            const actionsDropdown = context.DOM.create('div', {
+                className: 'editor-actions-dropdown',
+                style: { position: 'relative' }
+            });
+
+            const actionsBtn = context.DOM.create('button', {
+                className: 'editor-actions-btn',
+                'data-actions-role': roleId
+            }, ['Actions ▼']);
+            actionsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleActionsDropdown(roleId);
+            });
+
+            const actionsMenu = context.DOM.create('div', {
+                className: 'editor-actions-menu',
+                'data-actions-menu-role': roleId
+            });
+
+            // Format option (only if Prettier available)
             if (context.Formatter.isReady()) {
-                const formatBtn = context.DOM.create('button', {
-                    className: 'editor-pane-format',
-                    'data-format-role': roleId,
-                    title: 'Format CSS (Ctrl+Shift+F)'
+                const formatOption = context.DOM.create('button', {
+                    className: 'editor-actions-item',
+                    'data-format-role': roleId
                 }, ['Format']);
-                formatBtn.addEventListener('click', () => this.formatRole(roleId));
-                actions.appendChild(formatBtn);
+                formatOption.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.formatRole(roleId);
+                    this.toggleActionsDropdown(roleId); // Close menu
+                });
+                actionsMenu.appendChild(formatOption);
             }
 
-            const exportBtn = context.DOM.create('button', {
-                className: 'editor-pane-export',
-                'data-export-role': roleId
-            }, ['Export']);
-            exportBtn.addEventListener('click', () => this.exportRole(roleId));
-
-            // Import button with hidden file input
-            const importBtn = context.DOM.create('button', {
-                className: 'editor-pane-import',
-                'data-import-role': roleId
-            }, ['Import']);
-
+            // Import option with hidden file input
             const fileInput = context.DOM.create('input', {
                 type: 'file',
                 accept: '.css',
@@ -790,7 +812,6 @@
                 id: `file-input-${roleId}`
             });
 
-            importBtn.addEventListener('click', () => fileInput.click());
             fileInput.addEventListener('change', (e) => {
                 if (e.target.files && e.target.files[0]) {
                     this.importRole(roleId, e.target.files[0]);
@@ -798,14 +819,38 @@
                 }
             });
 
-            actions.appendChild(saveDropdown);
-            actions.appendChild(exportBtn);
-            actions.appendChild(importBtn);
-            pane.appendChild(fileInput);
+            const importOption = context.DOM.create('button', {
+                className: 'editor-actions-item',
+                'data-import-role': roleId
+            }, ['Import']);
+            importOption.addEventListener('click', (e) => {
+                e.stopPropagation();
+                fileInput.click();
+                this.toggleActionsDropdown(roleId); // Close menu
+            });
 
-            header.appendChild(titleGroup);
-            header.appendChild(actions);
+            // Export option
+            const exportOption = context.DOM.create('button', {
+                className: 'editor-actions-item',
+                'data-export-role': roleId
+            }, ['Export']);
+            exportOption.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.exportRole(roleId);
+                this.toggleActionsDropdown(roleId); // Close menu
+            });
+
+            actionsMenu.appendChild(importOption);
+            actionsMenu.appendChild(exportOption);
+            actionsDropdown.appendChild(actionsBtn);
+            actionsDropdown.appendChild(actionsMenu);
+            headerRight.appendChild(actionsDropdown);
+
+            // Assemble header
+            header.appendChild(headerLeft);
+            header.appendChild(headerRight);
             pane.appendChild(header);
+            pane.appendChild(fileInput);
 
             const editorContainer = context.DOM.create('div', {
                 className: 'editor-instance',
@@ -1407,6 +1452,21 @@
             });
             const globalDropdown = document.getElementById('save-dropdown-menu');
             if (globalDropdown) globalDropdown.classList.remove('show');
+
+            menu.classList.toggle('show');
+        },
+
+        /**
+         * Toggle actions dropdown menu
+         */
+        toggleActionsDropdown(roleId) {
+            const menu = document.querySelector(`[data-actions-menu-role="${roleId}"]`);
+            if (!menu) return;
+
+            // Close all other actions dropdowns
+            document.querySelectorAll('.editor-actions-menu.show').forEach(m => {
+                if (m !== menu) m.classList.remove('show');
+            });
 
             menu.classList.toggle('show');
         },
