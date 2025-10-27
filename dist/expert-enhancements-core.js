@@ -2083,41 +2083,42 @@
             // Prevent default drag behavior
             overlayContent.addEventListener('dragenter', (e) => {
                 e.preventDefault();
-                e.stopPropagation();
                 dragCounter++;
+                console.log('[Drop Zone] dragenter, counter:', dragCounter);
                 if (dragCounter === 1) {
                     dropZone.style.display = 'flex';
                     dropZone.style.pointerEvents = 'auto';
+                    console.log('[Drop Zone] Showing drop zone');
                 }
-            });
+            }, true); // Use capture phase to catch events before children
 
             overlayContent.addEventListener('dragover', (e) => {
                 e.preventDefault();
-                e.stopPropagation();
-            });
+            }, true); // Use capture phase
 
             overlayContent.addEventListener('dragleave', (e) => {
                 e.preventDefault();
-                e.stopPropagation();
                 dragCounter--;
+                console.log('[Drop Zone] dragleave, counter:', dragCounter);
                 if (dragCounter === 0) {
                     dropZone.style.display = 'none';
                     dropZone.style.pointerEvents = 'none';
+                    console.log('[Drop Zone] Hiding drop zone');
                 }
-            });
+            }, true); // Use capture phase
 
             overlayContent.addEventListener('drop', (e) => {
                 e.preventDefault();
-                e.stopPropagation();
                 dragCounter = 0;
                 dropZone.style.display = 'none';
                 dropZone.style.pointerEvents = 'none';
+                console.log('[Drop Zone] File dropped, hiding zone');
 
                 const files = e.dataTransfer.files;
                 if (files && files.length > 0) {
                     FileImport.handleDrop(files);
                 }
-            });
+            }, true); // Use capture phase
 
             // ESC key to cancel drag operation
             document.addEventListener('keydown', (e) => {
