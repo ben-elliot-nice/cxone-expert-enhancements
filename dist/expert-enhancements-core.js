@@ -2112,8 +2112,8 @@
                 left: 0;
                 right: 0;
                 bottom: 0;
-                background: rgba(102, 126, 234, 0.95);
-                backdrop-filter: blur(8px);
+                background: rgba(255, 255, 255, 0.1);
+                backdrop-filter: blur(4px);
                 z-index: 100000;
                 display: none;
                 align-items: center;

@@ -913,8 +913,8 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(102, 126, 234, 0.95);
-    backdrop-filter: blur(8px);
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(4px);
     z-index: 100000;
     display: none;
     align-items: center;
@@ -927,10 +927,11 @@
     align-items: center;
     gap: 1rem;
     padding: 2rem;
-    border: 3px dashed rgba(255, 255, 255, 0.6);
+    border: 3px dashed rgba(102, 126, 234, 0.8);
     border-radius: 12px;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(102, 126, 234, 0.15);
     min-width: 300px;
+    backdrop-filter: blur(8px);
 }
 
 #file-drop-zone .drop-icon {
