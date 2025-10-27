@@ -241,8 +241,9 @@
 /* Visual rectangle indicators */
 .split-indicator {
     width: 3px;
-    height: 100%;
+    height: 12px;
     background: white;
+    border-radius: 1px;
     pointer-events: none;
 }
 
