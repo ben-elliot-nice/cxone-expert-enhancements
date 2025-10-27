@@ -1002,6 +1002,9 @@
          */
         async importFile(fileContent, fileName) {
             try {
+                // Hide loading overlay before showing field selector (waiting for user input)
+                context.LoadingOverlay.hide();
+
                 // Prepare field list for selector
                 const roles = Object.keys(editorState).map(fieldId => ({
                     id: fieldId,

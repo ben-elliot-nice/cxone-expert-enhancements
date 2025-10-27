@@ -1036,6 +1036,9 @@
          */
         async importFile(fileContent, fileName) {
             try {
+                // Hide loading overlay before showing role selector (waiting for user input)
+                context.LoadingOverlay.hide();
+
                 // Prepare role list for selector
                 const roles = Object.keys(editorState).map(roleId => ({
                     id: roleId,
