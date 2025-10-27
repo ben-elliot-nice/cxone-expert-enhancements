@@ -1819,9 +1819,10 @@
 
             // App container (child of overlayContent, for mounting apps)
             const appContentContainer = DOM.create('div', {
-                id: 'app-content-container',
-                style: 'width: 100%; height: 100%; position: relative;'
+                id: 'app-content-container'
             });
+            // Must match overlayContent's flex layout - fill all space
+            appContentContainer.style.cssText = 'position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%;';
             overlayContent.appendChild(appContentContainer);
 
             // Resize handles
