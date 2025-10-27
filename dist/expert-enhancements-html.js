@@ -281,19 +281,16 @@
             if (overlay) {
                 const containerWidth = overlay.offsetWidth;
                 isMobileView = containerWidth < 920;
-                console.log(`[HTML Editor] checkViewportWidth: width=${containerWidth}px, mobile=${isMobileView}`);
             }
 
             // If view mode changed, rebuild the toggle bar
             if (wasMobileView !== isMobileView) {
-                console.log(`[HTML Editor] View mode changed to ${isMobileView ? 'mobile' : 'desktop'}`);
                 this.buildToggleBar();
 
                 // If switching to mobile and multiple editors are active, keep only the first
                 if (isMobileView) {
                     const activeFields = Object.keys(editorState).filter(field => editorState[field].active);
                     if (activeFields.length > 1) {
-                        console.log(`[HTML Editor] Multiple editors active in mobile view, keeping only: ${activeFields[0]}`);
                         // Deactivate all except the first
                         activeFields.slice(1).forEach(fieldId => {
                             editorState[fieldId].active = false;
@@ -353,15 +350,12 @@
 
                 // Always extract CSRF token
                 csrfToken = data.csrf_token;
-                console.log('[HTML Editor] CSRF token extracted');
 
                 if (skipContent) {
                     // Checkpoint protection: we have dirty edits, so don't fetch HTML content
                     // This prevents other people's changes from overwriting work-in-progress
-                    console.log('[HTML Editor] Skipping content fetch - using saved edits (checkpoint protection)');
                 } else {
                     // No dirty edits - safe to fetch fresh HTML from server
-                    console.log('[HTML Editor] Fetching fresh HTML content from server');
 
                     const textareas = {
                         'html_template_head': 'head',
@@ -396,7 +390,6 @@
             const toggleBar = document.getElementById('toggle-bar');
             if (!toggleBar) return;
 
-            console.log(`[HTML Editor] buildToggleBar for ${isMobileView ? 'mobile' : 'desktop'} view`);
 
             // Clear existing buttons/selectors (but keep save dropdown)
             const existingButtons = toggleBar.querySelectorAll('.toggle-btn, .mobile-selector-wrapper');
@@ -528,7 +521,6 @@
 
             if (saveBtn) {
                 saveBtn.addEventListener('click', () => this.saveAll());
-                console.log('[HTML Editor] Save button listener attached');
             }
 
             if (discardBtn) {
@@ -536,7 +528,6 @@
                     e.stopPropagation();
                     this.discardAll();
                 });
-                console.log('[HTML Editor] Discard button listener attached');
             }
 
             if (dropdownToggle && dropdownMenu && dropdown) {
@@ -545,7 +536,6 @@
                     dropdownMenu.classList.toggle('show');
                     dropdown.classList.toggle('open');
                 });
-                console.log('[HTML Editor] Dropdown toggle listener attached');
             }
         },
 
@@ -599,7 +589,6 @@
         saveState() {
             const state = this.getState();
             context.Storage.setAppState(this.id, state);
-            console.log('[HTML Editor] State saved:', state);
         },
 
         /**

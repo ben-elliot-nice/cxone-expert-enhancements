@@ -94,7 +94,6 @@
                     if (dropZone && dropZoneParent) {
                         dropZoneParent.removeChild(dropZone);
                         dropZoneSaved = true;
-                        console.log('[App Manager] Drop zone temporarily removed for app switch');
                     }
 
                     // Clear container
@@ -113,30 +112,21 @@
                     dropZone.style.display = 'none';
                     dropZone.style.pointerEvents = 'none';
                     dropZone.style.visibility = 'hidden';
-                    console.log('[App Manager] Drop zone restored after app mount');
-                    console.log('[App Manager] Drop zone forced to hidden state - display:', dropZone.style.display, 'pointer-events:', dropZone.style.pointerEvents);
                 }
 
                 // Notify app to layout editors after mount
                 setTimeout(() => {
                     AppManager.notifyResize();
-                    console.log('[App Manager] Notified app to resize/layout after switch');
 
-                    // Debug: Check drop zone state after switch
+                    // Ensure drop zone remains hidden after switch
                     const dzCheck = document.getElementById('file-drop-zone');
                     if (dzCheck) {
                         const computed = window.getComputedStyle(dzCheck);
-                        console.log('[App Manager] DROP ZONE CHECK - display:', dzCheck.style.display, 'computed display:', computed.display);
-                        console.log('[App Manager] DROP ZONE CHECK - pointerEvents:', dzCheck.style.pointerEvents, 'computed pointerEvents:', computed.pointerEvents);
-                        console.log('[App Manager] DROP ZONE CHECK - visibility:', dzCheck.style.visibility, 'computed visibility:', computed.visibility);
-                        console.log('[App Manager] DROP ZONE CHECK - zIndex:', computed.zIndex);
-
                         // If it's somehow visible or interactive, force fix it
                         if (computed.display !== 'none' || computed.pointerEvents !== 'none') {
-                            console.error('[App Manager] DROP ZONE IS BLOCKING INTERACTION! Forcing hidden state...');
-                            dzCheck.style.display = 'none !important';
-                            dzCheck.style.pointerEvents = 'none !important';
-                            dzCheck.style.visibility = 'hidden !important';
+                            dzCheck.style.display = 'none';
+                            dzCheck.style.pointerEvents = 'none';
+                            dzCheck.style.visibility = 'hidden';
                         }
                     }
                 }, 150);
@@ -1332,8 +1322,6 @@
                 messageEl.textContent = message;
                 loadingOverlay.setAttribute('aria-label', message);
             }
-
-            console.log('[LoadingOverlay] Message updated:', message);
         },
 
         /**
@@ -1378,8 +1366,6 @@
                     loadingOverlay = null;
                     loadingStartTime = null;
                 }, 300);
-
-                console.log('[LoadingOverlay] Hidden (pointer-events disabled)');
             }
         },
 
@@ -1907,8 +1893,6 @@
                     this.checkPresetButtonsVisibility();
                 });
             });
-
-            console.log('[Overlay] Created');
         },
 
         /**
@@ -1975,7 +1959,6 @@
             const startResize = (e, handle) => {
                 // If in fullscreen mode, exit it before starting resize
                 if (isFullscreen) {
-                    console.log('[Overlay] Exiting fullscreen mode due to manual resize');
                     isFullscreen = false;
                     preFullscreenDimensions = null;
                     Storage.setCommonState({
@@ -2153,18 +2136,11 @@
             overlayContent.addEventListener('dragenter', (e) => {
                 e.preventDefault();
                 dragCounter++;
-                console.log('[Drop Zone] dragenter, counter:', dragCounter);
                 if (dragCounter === 1) {
                     dropZone.style.display = 'flex';
                     dropZone.style.pointerEvents = 'auto';
-                    // Force very visible styling for debugging
                     dropZone.style.opacity = '1';
                     dropZone.style.visibility = 'visible';
-                    console.log('[Drop Zone] Showing drop zone');
-
-                    // Log computed style to verify it's actually visible
-                    const computed = window.getComputedStyle(dropZone);
-                    console.log('[Drop Zone] Computed - display:', computed.display, 'z-index:', computed.zIndex, 'opacity:', computed.opacity, 'visibility:', computed.visibility);
                 }
             }, true); // Use capture phase to catch events before children
 
@@ -2175,11 +2151,9 @@
             overlayContent.addEventListener('dragleave', (e) => {
                 e.preventDefault();
                 dragCounter--;
-                console.log('[Drop Zone] dragleave, counter:', dragCounter);
                 if (dragCounter === 0) {
                     dropZone.style.display = 'none';
                     dropZone.style.pointerEvents = 'none';
-                    console.log('[Drop Zone] Hiding drop zone');
                 }
             }, true); // Use capture phase
 
@@ -2188,8 +2162,6 @@
                 dragCounter = 0;
                 dropZone.style.display = 'none';
                 dropZone.style.pointerEvents = 'none';
-                console.log('[Drop Zone] File dropped, hiding zone');
-                console.log('[Drop Zone] After hide - display:', dropZone.style.display, 'pointer-events:', dropZone.style.pointerEvents);
 
                 const files = e.dataTransfer.files;
                 if (files && files.length > 0) {
@@ -2205,8 +2177,6 @@
                     dropZone.style.pointerEvents = 'none';
                 }
             });
-
-            console.log('[Overlay] Drop zone initialized');
         },
 
         /**
@@ -2306,8 +2276,6 @@
         enterFullscreen() {
             if (!overlay) return;
 
-            console.log('[Overlay] Entering fullscreen mode');
-
             // Save current dimensions
             preFullscreenDimensions = {
                 width: overlay.style.width,
@@ -2345,8 +2313,6 @@
          */
         exitFullscreen() {
             if (!overlay || !preFullscreenDimensions) return;
-
-            console.log('[Overlay] Exiting fullscreen mode');
 
             // Restore previous dimensions
             overlay.style.width = preFullscreenDimensions.width;
@@ -2496,32 +2462,22 @@
          * Check overlay width and hide/show preset buttons accordingly
          */
         checkPresetButtonsVisibility() {
-            if (!overlay) {
-                console.log('[Overlay] checkPresetButtonsVisibility: overlay not found');
-                return;
-            }
+            if (!overlay) return;
 
             const presetButtons = document.querySelector('.preset-buttons');
-            if (!presetButtons) {
-                console.log('[Overlay] checkPresetButtonsVisibility: preset buttons not found');
-                return;
-            }
+            if (!presetButtons) return;
 
             const width = overlay.offsetWidth;
-            const currentDisplay = presetButtons.style.display;
-            console.log(`[Overlay] checkPresetButtonsVisibility: width=${width}px, currentDisplay="${currentDisplay}"`);
 
             if (width < 620) {
                 // Hide preset buttons
                 if (presetButtons.style.display !== 'none') {
                     presetButtons.style.display = 'none';
-                    console.log('[Overlay] Preset buttons hidden (width < 620px)');
                 }
             } else {
                 // Show preset buttons
                 if (presetButtons.style.display !== 'flex') {
                     presetButtons.style.display = 'flex';
-                    console.log('[Overlay] Preset buttons shown (width >= 620px)');
                 }
             }
         },
@@ -2559,8 +2515,6 @@
             if (Array.isArray(elements)) {
                 elements.forEach(el => container.appendChild(el));
             }
-
-            console.log('[Overlay] App controls set:', elements.length, 'elements');
         },
 
         /**
@@ -2570,7 +2524,6 @@
             const container = document.getElementById('app-controls-container');
             if (container) {
                 container.innerHTML = '';
-                console.log('[Overlay] App controls cleared');
             }
         }
     };
@@ -2642,45 +2595,19 @@
                 if (app && typeof app.importFile === 'function') {
                     await app.importFile(content, file.name);
 
-                    // Verify drop zone is hidden after import
+                    // Ensure drop zone is hidden after import
                     const dropZoneElement = document.getElementById('file-drop-zone');
-                    console.log('[FileImport] Looking for drop zone element:', dropZoneElement ? 'FOUND' : 'NOT FOUND');
                     if (dropZoneElement) {
-                        console.log('[FileImport] After import - drop zone display:', dropZoneElement.style.display, 'pointer-events:', dropZoneElement.style.pointerEvents);
-                        // Force cleanup
                         dropZoneElement.style.display = 'none';
                         dropZoneElement.style.pointerEvents = 'none';
-                    } else {
-                        console.error('[FileImport] Drop zone element missing after import! It may have been removed.');
                     }
 
-                    // Verify overlay content is interactable
-                    const overlayContentElement = document.getElementById('expert-enhancements-overlay-content');
-                    if (overlayContentElement) {
-                        console.log('[FileImport] Overlay content pointer-events:', overlayContentElement.style.pointerEvents || 'default');
-                    }
-
-                    // Check for any backdrop elements that might be blocking
+                    // Clean up any orphaned backdrop elements
                     const backdrops = document.querySelectorAll('.role-selector-backdrop');
-                    console.log('[FileImport] Found', backdrops.length, 'backdrop elements in DOM');
-                    backdrops.forEach((bd, idx) => {
-                        console.log(`[FileImport] Backdrop ${idx}:`, bd, 'parent:', bd.parentNode?.nodeName);
-                        console.warn('[FileImport] Removing orphaned backdrop!');
+                    backdrops.forEach((bd) => {
                         if (bd.parentNode) {
                             bd.parentNode.removeChild(bd);
                         }
-                    });
-
-                    // Check for any high z-index elements that might be covering the overlay
-                    const allElements = document.querySelectorAll('*');
-                    const highZIndexElements = Array.from(allElements).filter(el => {
-                        const zIndex = parseInt(window.getComputedStyle(el).zIndex);
-                        return zIndex > 999998;
-                    });
-                    console.log('[FileImport] Found', highZIndexElements.length, 'elements with z-index > 999998');
-                    highZIndexElements.forEach(el => {
-                        const computed = window.getComputedStyle(el);
-                        console.log('[FileImport] High z-index element:',  el.id || el.className, 'z-index:', computed.zIndex, 'display:', computed.display, 'pointer-events:', computed.pointerEvents);
                     });
                 } else {
                     LoadingOverlay.hide();
@@ -2773,7 +2700,6 @@
                     try {
                         if (backdrop.parentNode) {
                             backdrop.parentNode.removeChild(backdrop);
-                            console.log('[FileImport] Role selector dialog removed');
                         }
                     } catch (err) {
                         console.error('[FileImport] Error removing dialog:', err);
@@ -2782,7 +2708,6 @@
 
                 cancelBtn.addEventListener('click', () => {
                     cleanup();
-                    console.log('[FileImport] User cancelled role selection');
                     resolve(null);
                 });
 
@@ -2790,7 +2715,6 @@
                     e.preventDefault();
                     const selectedRole = form.querySelector('input[name="role"]:checked').value;
                     cleanup();
-                    console.log('[FileImport] User selected role:', selectedRole);
                     resolve(selectedRole);
                 });
 
