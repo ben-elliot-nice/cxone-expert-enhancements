@@ -83,31 +83,34 @@
                     }
                 }
 
-                // Clear container (but preserve drop zone if it exists)
-                if (appContainer) {
-                    // Save drop zone element reference
-                    const dropZone = document.getElementById('file-drop-zone');
-                    const dropZoneParent = dropZone?.parentElement;
+                // Save drop zone element reference before clearing
+                const dropZone = document.getElementById('file-drop-zone');
+                const dropZoneParent = dropZone?.parentElement;
+                let dropZoneSaved = false;
 
+                // Clear container (preserve drop zone)
+                if (appContainer) {
                     // Remove drop zone temporarily
                     if (dropZone && dropZoneParent) {
                         dropZoneParent.removeChild(dropZone);
+                        dropZoneSaved = true;
+                        console.log('[App Manager] Drop zone temporarily removed for app switch');
                     }
 
                     // Clear container
                     appContainer.innerHTML = '';
-
-                    // Re-add drop zone
-                    if (dropZone && dropZoneParent) {
-                        dropZoneParent.appendChild(dropZone);
-                        console.log('[App Manager] Drop zone preserved during app switch');
-                    }
                 }
 
-                // Mount new app
+                // Mount new app into clean container
                 console.log(`[App Manager] Mounting: ${app.name}`);
                 await app.mount(appContainer);
                 currentApp = app;
+
+                // Re-add drop zone AFTER app is mounted
+                if (dropZoneSaved && dropZone && appContainer) {
+                    appContainer.appendChild(dropZone);
+                    console.log('[App Manager] Drop zone restored after app mount');
+                }
 
                 // Save as last active app
                 Storage.setCommonState({ lastActiveApp: appId });
