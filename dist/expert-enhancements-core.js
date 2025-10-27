@@ -1428,8 +1428,8 @@
                 const originalRequire = window.require;
 
                 console.log('[Formatter] Temporarily hiding AMD to avoid Monaco conflict');
-                delete window.define;
-                delete window.require;
+                window.define = undefined;
+                window.require = undefined;
 
                 // Helper to wait for a global variable with exponential backoff
                 // Max timeout: 60 seconds
