@@ -180,13 +180,16 @@
             const style = document.createElement('style');
             style.id = 'settings-app-styles';
             style.textContent = `
+                .enhancements-app-container {
+                    overflow-y: auto;
+                    height: 100%;
+                }
+
                 .settings-container {
                     padding: 2rem;
                     max-width: 800px;
                     margin: 0 auto;
                     color: #e9ecef;
-                    overflow-y: auto;
-                    height: 100%;
                 }
 
                 .settings-heading {
