@@ -228,6 +228,7 @@
     position: relative;
     transition: background 0.2s;
     height: 100%;
+    box-sizing: border-box;
 }
 
 .split-half:hover {
@@ -236,13 +237,11 @@
 
 .split-left {
     border-right: 1px solid rgba(255, 255, 255, 0.3);
-    justify-content: flex-start;
-    padding-left: 3px;
 }
 
 .split-right {
-    justify-content: flex-end;
-    padding-right: 3px;
+    /* Match border width with transparent border for equal sizing */
+    border-right: 1px solid transparent;
 }
 
 /* Visual rectangle indicators */
