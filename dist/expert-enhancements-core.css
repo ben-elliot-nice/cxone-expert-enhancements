@@ -235,13 +235,16 @@
     background: rgba(255, 255, 255, 0.2);
 }
 
-.split-left {
-    border-right: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.split-right {
-    /* Match border width with transparent border for equal sizing */
-    border-right: 1px solid transparent;
+/* Divider between halves using pseudo-element */
+.split-left::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: rgba(255, 255, 255, 0.3);
+    pointer-events: none;
 }
 
 /* Visual rectangle indicators */
