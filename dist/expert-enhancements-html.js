@@ -92,16 +92,18 @@
             });
 
             try {
-                // Initialize Formatter (load Prettier) - optional, non-blocking
-                try {
-                    context.LoadingOverlay.setMessage('Loading code formatter...');
-                    await context.Formatter.init();
-                    console.log('[HTML Editor] Code formatter available');
-                } catch (formatterError) {
-                    console.warn('[HTML Editor] Code formatter unavailable:', formatterError);
-                    context.UI.showToast('Code formatting unavailable - editor will load without formatting features', 'warning');
-                    // Continue mounting - don't throw
-                }
+                // Start loading Prettier in background (non-blocking)
+                context.Formatter.init()
+                    .then(() => {
+                        console.log('[HTML Editor] Code formatter loaded successfully');
+                        context.UI.showToast('Code formatting is now available', 'success');
+                        // Inject format buttons into all rendered panes
+                        this.injectFormatButtons();
+                    })
+                    .catch((error) => {
+                        console.warn('[HTML Editor] Code formatter unavailable:', error);
+                        // Silent failure - editor already loaded without formatting
+                    });
 
                 // Restore state if available
                 const savedState = context.Storage.getAppState(this.id);
@@ -892,6 +894,44 @@
             } catch (error) {
                 context.UI.showToast(`Failed to export: ${error.message}`, 'error');
             }
+        },
+
+        /**
+         * Inject format buttons into all rendered editor panes
+         * Called when Prettier becomes available after editor is already mounted
+         */
+        injectFormatButtons() {
+            console.log('[HTML Editor] Injecting format buttons into rendered panes');
+
+            // Find all editor pane actions containers
+            const panes = document.querySelectorAll('.editor-pane');
+
+            panes.forEach(pane => {
+                const actions = pane.querySelector('.editor-pane-actions');
+                const exportBtn = pane.querySelector('.editor-pane-export');
+
+                if (!actions || !exportBtn) return;
+
+                // Check if format button already exists
+                if (pane.querySelector('.editor-pane-format')) return;
+
+                // Get fieldId from export button
+                const fieldId = exportBtn.getAttribute('data-export-field');
+                if (!fieldId) return;
+
+                // Create and insert format button before export button
+                const formatBtn = context.DOM.create('button', {
+                    className: 'editor-pane-format',
+                    'data-format-field': fieldId,
+                    title: 'Format HTML (Ctrl+Shift+F)'
+                }, ['Format']);
+                formatBtn.addEventListener('click', () => this.formatField(fieldId));
+
+                // Insert before export button
+                actions.insertBefore(formatBtn, exportBtn);
+
+                console.log(`[HTML Editor] Format button injected for: ${fieldId}`);
+            });
         },
 
         /**
