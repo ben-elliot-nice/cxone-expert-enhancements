@@ -771,3 +771,63 @@
         padding: 20px !important;
     }
 }
+
+/* ============================================================================
+   File Drop Zone
+   ============================================================================ */
+
+#file-drop-zone {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(102, 126, 234, 0.95);
+    backdrop-filter: blur(8px);
+    z-index: 999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+#file-drop-zone .drop-zone-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 2rem;
+    border: 3px dashed rgba(255, 255, 255, 0.6);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    min-width: 300px;
+    pointer-events: none;
+}
+
+#file-drop-zone .drop-icon {
+    font-size: 4rem;
+    line-height: 1;
+    animation: bounce 1s ease-in-out infinite;
+}
+
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+#file-drop-zone .drop-text {
+    color: white;
+    font-size: 1.5rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+#file-drop-zone .drop-subtext {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 1rem;
+    text-align: center;
+}

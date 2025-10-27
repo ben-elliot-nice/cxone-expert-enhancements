@@ -754,8 +754,31 @@
             }, ['Export']);
             exportBtn.addEventListener('click', () => this.exportRole(roleId));
 
+            // Import button with hidden file input
+            const importBtn = context.DOM.create('button', {
+                className: 'editor-pane-import',
+                'data-import-role': roleId
+            }, ['Import']);
+
+            const fileInput = context.DOM.create('input', {
+                type: 'file',
+                accept: '.css',
+                style: 'display: none;',
+                id: `file-input-${roleId}`
+            });
+
+            importBtn.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files[0]) {
+                    this.importRole(roleId, e.target.files[0]);
+                    e.target.value = ''; // Reset input to allow re-importing same file
+                }
+            });
+
             actions.appendChild(saveDropdown);
             actions.appendChild(exportBtn);
+            actions.appendChild(importBtn);
+            pane.appendChild(fileInput);
 
             header.appendChild(titleGroup);
             header.appendChild(actions);
@@ -903,6 +926,132 @@
                 context.UI.showToast(`Exported ${role.label}`, 'success');
             } catch (error) {
                 context.UI.showToast(`Failed to export: ${error.message}`, 'error');
+            }
+        },
+
+        /**
+         * Import CSS file into a role (appends content)
+         */
+        importRole(roleId, file) {
+            const role = editorState[roleId];
+            if (!role) return;
+
+            // Validate file type
+            if (!file.name.endsWith('.css')) {
+                context.UI.showToast('Please select a CSS file (.css)', 'error');
+                return;
+            }
+
+            // Validate file size (max 5MB)
+            const maxSize = 5 * 1024 * 1024;
+            if (file.size > maxSize) {
+                context.UI.showToast(`File too large. Maximum size is 5MB (file is ${(file.size / 1024 / 1024).toFixed(2)}MB)`, 'error');
+                return;
+            }
+
+            // Check for empty files
+            if (file.size === 0) {
+                context.UI.showToast('Cannot import empty file', 'error');
+                return;
+            }
+
+            // Show loading state
+            context.LoadingOverlay.show(`Importing ${file.name}...`);
+
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                try {
+                    const importedContent = e.target.result;
+
+                    // Create separator comment
+                    const separator = `\n\n/* ========================================\n   Imported from: ${file.name}\n   Date: ${new Date().toLocaleString()}\n   ======================================== */\n`;
+
+                    // Append content to existing
+                    const currentContent = role.content || '';
+                    const newContent = currentContent + separator + importedContent;
+
+                    // Update state
+                    role.content = newContent;
+                    role.isDirty = true;
+
+                    // Update Monaco editor
+                    if (monacoEditors[roleId]) {
+                        monacoEditors[roleId].setValue(newContent);
+                    }
+
+                    // Save state and update UI
+                    this.saveState();
+                    this.updateUI();
+
+                    context.LoadingOverlay.hide();
+                    context.UI.showToast(`Content from ${file.name} appended to ${role.label}`, 'success', 5000);
+                } catch (error) {
+                    context.LoadingOverlay.hide();
+                    context.UI.showToast(`Failed to import: ${error.message}`, 'error');
+                }
+            };
+
+            reader.onerror = () => {
+                context.LoadingOverlay.hide();
+                context.UI.showToast('Failed to read file', 'error');
+            };
+
+            reader.readAsText(file);
+        },
+
+        /**
+         * Import CSS file via drag & drop (with role selector)
+         */
+        async importFile(fileContent, fileName) {
+            try {
+                // Prepare role list for selector
+                const roles = Object.keys(editorState).map(roleId => ({
+                    id: roleId,
+                    label: editorState[roleId].label
+                }));
+
+                // Show role selector dialog
+                const selectedRoleId = await context.FileImport.showRoleSelector(roles, 'css');
+
+                if (!selectedRoleId) {
+                    context.LoadingOverlay.hide();
+                    context.UI.showToast('Import cancelled', 'info');
+                    return;
+                }
+
+                const role = editorState[selectedRoleId];
+                if (!role) {
+                    context.LoadingOverlay.hide();
+                    context.UI.showToast('Selected role not found', 'error');
+                    return;
+                }
+
+                // Create separator comment
+                const separator = `\n\n/* ========================================\n   Imported from: ${fileName}\n   Date: ${new Date().toLocaleString()}\n   ======================================== */\n`;
+
+                // Append content to existing
+                const currentContent = role.content || '';
+                const newContent = currentContent + separator + fileContent;
+
+                // Update state
+                role.content = newContent;
+                role.isDirty = true;
+
+                // Update Monaco editor
+                if (monacoEditors[selectedRoleId]) {
+                    monacoEditors[selectedRoleId].setValue(newContent);
+                }
+
+                // Save state and update UI
+                this.saveState();
+                this.updateUI();
+
+                context.LoadingOverlay.hide();
+                context.UI.showToast(`Content from ${fileName} appended to ${role.label}`, 'success', 5000);
+            } catch (error) {
+                context.LoadingOverlay.hide();
+                context.UI.showToast(`Failed to import: ${error.message}`, 'error');
             }
         },
 

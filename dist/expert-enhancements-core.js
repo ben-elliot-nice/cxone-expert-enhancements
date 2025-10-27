@@ -1440,6 +1440,7 @@
             this.attachDragListeners();
             this.attachResizeListeners(leftHandle, rightHandle, bottomHandle, cornerRightHandle, cornerLeftHandle);
             this.attachWindowResizeListener();
+            this.setupDropZone();
 
             // Restore dimensions
             this.restoreDimensions();
@@ -1623,6 +1624,89 @@
                     this.applyFullscreen();
                 }
             });
+        },
+
+        /**
+         * Setup drag and drop file import zone
+         */
+        setupDropZone() {
+            if (!overlayContent) return;
+
+            // Create drop zone overlay (initially hidden)
+            const dropZone = DOM.create('div', {
+                id: 'file-drop-zone',
+                style: 'display: none;'
+            });
+
+            const dropZoneContent = DOM.create('div', {
+                className: 'drop-zone-content'
+            });
+
+            const dropIcon = DOM.create('div', {
+                className: 'drop-icon'
+            }, ['📁']);
+
+            const dropText = DOM.create('div', {
+                className: 'drop-text'
+            }, ['Drop your file here']);
+
+            const dropSubtext = DOM.create('div', {
+                className: 'drop-subtext'
+            }, ['Supports .css and .html files']);
+
+            dropZoneContent.appendChild(dropIcon);
+            dropZoneContent.appendChild(dropText);
+            dropZoneContent.appendChild(dropSubtext);
+            dropZone.appendChild(dropZoneContent);
+            overlayContent.appendChild(dropZone);
+
+            let dragCounter = 0; // Track enter/leave to prevent flickering
+
+            // Prevent default drag behavior
+            overlayContent.addEventListener('dragenter', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dragCounter++;
+                if (dragCounter === 1) {
+                    dropZone.style.display = 'flex';
+                }
+            });
+
+            overlayContent.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+
+            overlayContent.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dragCounter--;
+                if (dragCounter === 0) {
+                    dropZone.style.display = 'none';
+                }
+            });
+
+            overlayContent.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dragCounter = 0;
+                dropZone.style.display = 'none';
+
+                const files = e.dataTransfer.files;
+                if (files && files.length > 0) {
+                    FileImport.handleDrop(files);
+                }
+            });
+
+            // ESC key to cancel drag operation
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && dropZone.style.display === 'flex') {
+                    dragCounter = 0;
+                    dropZone.style.display = 'none';
+                }
+            });
+
+            console.log('[Overlay] Drop zone initialized');
         },
 
         /**
@@ -1837,6 +1921,183 @@
     };
 
     // ============================================================================
+    // File Import Module
+    // ============================================================================
+
+    const FileImport = {
+        /**
+         * Handle dropped files
+         */
+        async handleDrop(files) {
+            // Validate: only one file at a time
+            if (files.length > 1) {
+                UI.showToast('Please drop only one file at a time', 'error');
+                return;
+            }
+
+            const file = files[0];
+
+            // Validate file type
+            const fileExt = file.name.toLowerCase().split('.').pop();
+            if (fileExt !== 'css' && fileExt !== 'html') {
+                UI.showToast('Please drop a .css or .html file', 'error');
+                return;
+            }
+
+            // Validate file size (max 5MB)
+            const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+            if (file.size > maxSize) {
+                UI.showToast(`File too large. Maximum size is 5MB (file is ${(file.size / 1024 / 1024).toFixed(2)}MB)`, 'error');
+                return;
+            }
+
+            // Check for empty files
+            if (file.size === 0) {
+                UI.showToast('Cannot import empty file', 'error');
+                return;
+            }
+
+            // Determine target app
+            const targetAppId = fileExt === 'css' ? 'css-editor' : 'html-editor';
+            const currentApp = AppManager.getCurrentApp();
+
+            // Switch to target app if needed
+            if (!currentApp || currentApp.id !== targetAppId) {
+                UI.showToast(`Switching to ${fileExt.toUpperCase()} Editor...`, 'info', 2000);
+                try {
+                    await AppManager.switchTo(targetAppId);
+                } catch (error) {
+                    UI.showToast(`Failed to switch to ${fileExt.toUpperCase()} Editor: ${error.message}`, 'error');
+                    return;
+                }
+            }
+
+            // Read file content
+            LoadingOverlay.show(`Reading ${file.name}...`);
+
+            try {
+                const content = await this.readFileAsText(file);
+
+                // Get target app and call its importFile method
+                const app = AppManager.getCurrentApp();
+                if (app && typeof app.importFile === 'function') {
+                    await app.importFile(content, file.name);
+                } else {
+                    LoadingOverlay.hide();
+                    UI.showToast('Current app does not support file import', 'error');
+                }
+            } catch (error) {
+                LoadingOverlay.hide();
+                UI.showToast(`Failed to read file: ${error.message}`, 'error');
+            }
+        },
+
+        /**
+         * Read file as text (returns Promise)
+         */
+        readFileAsText(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = () => reject(new Error('Failed to read file'));
+                reader.readAsText(file);
+            });
+        },
+
+        /**
+         * Show role/field selector dialog
+         */
+        showRoleSelector(roles, fileType) {
+            return new Promise((resolve) => {
+                // Create modal backdrop
+                const backdrop = DOM.create('div', {
+                    className: 'role-selector-backdrop',
+                    style: 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100000; display: flex; align-items: center; justify-content: center;'
+                });
+
+                // Create dialog
+                const dialog = DOM.create('div', {
+                    className: 'role-selector-dialog',
+                    style: 'background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); max-width: 400px; width: 90%;'
+                });
+
+                const title = DOM.create('h3', {
+                    style: 'margin: 0 0 16px 0; font-size: 18px; color: #333;'
+                }, [`Import ${fileType.toUpperCase()} File`]);
+
+                const description = DOM.create('p', {
+                    style: 'margin: 0 0 16px 0; font-size: 14px; color: #666;'
+                }, ['Select which editor to import into:']);
+
+                const form = DOM.create('form');
+
+                // Create radio buttons for each role
+                roles.forEach((role, index) => {
+                    const label = DOM.create('label', {
+                        style: 'display: flex; align-items: center; margin-bottom: 12px; cursor: pointer; font-size: 14px; color: #333;'
+                    });
+
+                    const radio = DOM.create('input', {
+                        type: 'radio',
+                        name: 'role',
+                        value: role.id,
+                        style: 'margin-right: 8px;'
+                    });
+
+                    if (index === 0) {
+                        radio.checked = true;
+                    }
+
+                    const labelText = document.createTextNode(role.label);
+
+                    label.appendChild(radio);
+                    label.appendChild(labelText);
+                    form.appendChild(label);
+                });
+
+                const buttonContainer = DOM.create('div', {
+                    style: 'display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;'
+                });
+
+                const cancelBtn = DOM.create('button', {
+                    type: 'button',
+                    style: 'padding: 8px 16px; border: 1px solid #ccc; background: white; color: #333; border-radius: 4px; cursor: pointer; font-size: 14px;'
+                }, ['Cancel']);
+
+                const importBtn = DOM.create('button', {
+                    type: 'submit',
+                    style: 'padding: 8px 16px; border: none; background: #2196F3; color: white; border-radius: 4px; cursor: pointer; font-size: 14px;'
+                }, ['Import']);
+
+                cancelBtn.addEventListener('click', () => {
+                    document.body.removeChild(backdrop);
+                    resolve(null);
+                });
+
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const selectedRole = form.querySelector('input[name="role"]:checked').value;
+                    document.body.removeChild(backdrop);
+                    resolve(selectedRole);
+                });
+
+                buttonContainer.appendChild(cancelBtn);
+                buttonContainer.appendChild(importBtn);
+                form.appendChild(buttonContainer);
+
+                dialog.appendChild(title);
+                dialog.appendChild(description);
+                dialog.appendChild(form);
+                backdrop.appendChild(dialog);
+                document.body.appendChild(backdrop);
+
+                // Focus first radio button
+                form.querySelector('input[type="radio"]').focus();
+            });
+        }
+    };
+
+    // ============================================================================
     // Export Global Context
     // ============================================================================
 
@@ -1849,6 +2110,7 @@
         DOM,
         Overlay,
         LoadingOverlay,
+        FileImport,
         version: '1.0.0'
     };
 
