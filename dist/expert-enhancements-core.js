@@ -2585,7 +2585,7 @@
                 // Create modal backdrop
                 const backdrop = DOM.create('div', {
                     className: 'role-selector-backdrop',
-                    style: 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100000; display: flex; align-items: center; justify-content: center;'
+                    style: 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999999; display: flex; align-items: center; justify-content: center;'
                 });
 
                 // Create dialog
