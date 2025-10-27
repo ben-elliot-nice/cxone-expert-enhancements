@@ -1945,11 +1945,13 @@
                 // Hide preset buttons
                 if (presetButtons.style.display !== 'none') {
                     presetButtons.style.display = 'none';
+                    console.log('[Overlay] Preset buttons hidden (width < 620px)');
                 }
             } else {
                 // Show preset buttons
-                if (presetButtons.style.display === 'none') {
+                if (presetButtons.style.display !== 'flex') {
                     presetButtons.style.display = 'flex';
+                    console.log('[Overlay] Preset buttons shown (width >= 620px)');
                 }
             }
         },
