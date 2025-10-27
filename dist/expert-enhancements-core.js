@@ -1430,6 +1430,15 @@
                 prettierScript.onload = () => {
                     console.log('[Formatter] Prettier standalone loaded');
 
+                    // Check if window.prettier is available
+                    if (!window.prettier) {
+                        const error = new Error('Prettier loaded but global not found');
+                        console.error('[Formatter]', error);
+                        prettierLoadError = error;
+                        reject(error);
+                        return;
+                    }
+
                     // Load CSS parser (postcss)
                     const cssParserScript = document.createElement('script');
                     cssParserScript.src = 'https://cdn.jsdelivr.net/npm/prettier@3.2.5/plugins/postcss.js';
@@ -1438,6 +1447,11 @@
                     cssParserScript.onload = () => {
                         console.log('[Formatter] Prettier CSS parser loaded');
 
+                        // Store CSS parser plugin - it exposes itself as prettierPlugins.postcss
+                        if (window.prettierPlugins && window.prettierPlugins.postcss) {
+                            console.log('[Formatter] PostCSS plugin found');
+                        }
+
                         // Load HTML parser
                         const htmlParserScript = document.createElement('script');
                         htmlParserScript.src = 'https://cdn.jsdelivr.net/npm/prettier@3.2.5/plugins/html.js';
@@ -1445,7 +1459,15 @@
 
                         htmlParserScript.onload = () => {
                             console.log('[Formatter] Prettier HTML parser loaded');
+
+                            // HTML plugin exposes itself as prettierPlugins.html
+                            if (window.prettierPlugins && window.prettierPlugins.html) {
+                                console.log('[Formatter] HTML plugin found');
+                            }
+
                             console.log('[Formatter] All Prettier components loaded successfully');
+                            console.log('[Formatter] Prettier global:', typeof window.prettier);
+                            console.log('[Formatter] Prettier plugins:', window.prettierPlugins);
 
                             prettierLoaded = true;
 
@@ -1516,12 +1538,16 @@
                 throw new Error('Prettier global not found');
             }
 
+            if (!window.prettierPlugins || !window.prettierPlugins.postcss) {
+                throw new Error('Prettier CSS plugin not found');
+            }
+
             try {
                 const settings = Storage.getFormatterSettings();
 
                 const options = {
                     parser: 'css',
-                    plugins: window.prettierPlugins,
+                    plugins: [window.prettierPlugins.postcss],
                     useTabs: settings.indentStyle === 'tabs',
                     tabWidth: settings.indentSize,
                     singleQuote: settings.quoteStyle === 'single',
@@ -1551,12 +1577,16 @@
                 throw new Error('Prettier global not found');
             }
 
+            if (!window.prettierPlugins || !window.prettierPlugins.html) {
+                throw new Error('Prettier HTML plugin not found');
+            }
+
             try {
                 const settings = Storage.getFormatterSettings();
 
                 const options = {
                     parser: 'html',
-                    plugins: window.prettierPlugins,
+                    plugins: [window.prettierPlugins.html],
                     useTabs: settings.indentStyle === 'tabs',
                     tabWidth: settings.indentSize,
                     singleQuote: settings.quoteStyle === 'single',
@@ -1719,6 +1749,11 @@
             overlay.appendChild(cornerLeftHandle);
 
             document.body.appendChild(overlay);
+
+            // Prevent scroll events from reaching the underlying page
+            overlay.addEventListener('wheel', (e) => {
+                e.stopPropagation();
+            }, { passive: true });
 
             // Set app container
             AppManager.setContainer(overlayContent);
