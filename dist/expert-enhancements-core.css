@@ -162,6 +162,50 @@
     background: rgba(255, 255, 255, 0.3);
 }
 
+/* Preset Size Buttons */
+.preset-buttons {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    border-right: 1px solid rgba(255, 255, 255, 0.2);
+    padding-right: 8px;
+    margin-right: 0;
+}
+
+.preset-btn {
+    font-size: 16px !important;
+    position: relative;
+}
+
+.preset-btn:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: -32px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 1000;
+    font-weight: normal;
+}
+
+.preset-btn:hover::before {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 4px solid transparent;
+    border-bottom-color: rgba(0, 0, 0, 0.9);
+    pointer-events: none;
+    z-index: 1001;
+}
+
 /* ============================================================================
    Overlay Content (App Container)
    ============================================================================ */

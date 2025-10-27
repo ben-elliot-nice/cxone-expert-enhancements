@@ -1402,6 +1402,43 @@
             headerLeft.appendChild(appControls);
 
             const headerButtons = DOM.create('div', { className: 'header-buttons' });
+
+            // Preset size buttons
+            const presetContainer = DOM.create('div', { className: 'preset-buttons' });
+
+            const smallBtn = DOM.create('button', {
+                className: 'header-btn preset-btn',
+                title: 'Small (50%)'
+            });
+            smallBtn.textContent = '▢';
+            smallBtn.addEventListener('click', () => this.applyPresetSize('small'));
+
+            const fullscreenBtn = DOM.create('button', {
+                className: 'header-btn preset-btn',
+                title: 'Fullscreen (95%)'
+            });
+            fullscreenBtn.textContent = '⛶';
+            fullscreenBtn.addEventListener('click', () => this.applyPresetSize('fullscreen'));
+
+            const splitLeftBtn = DOM.create('button', {
+                className: 'header-btn preset-btn',
+                title: 'Split Left (30%)'
+            });
+            splitLeftBtn.textContent = '▐';
+            splitLeftBtn.addEventListener('click', () => this.applyPresetSize('split-left'));
+
+            const splitRightBtn = DOM.create('button', {
+                className: 'header-btn preset-btn',
+                title: 'Split Right (30%)'
+            });
+            splitRightBtn.textContent = '▌';
+            splitRightBtn.addEventListener('click', () => this.applyPresetSize('split-right'));
+
+            presetContainer.appendChild(smallBtn);
+            presetContainer.appendChild(fullscreenBtn);
+            presetContainer.appendChild(splitLeftBtn);
+            presetContainer.appendChild(splitRightBtn);
+
             const minimizeBtn = DOM.create('button', {
                 className: 'header-btn',
                 title: 'Minimize'
@@ -1409,6 +1446,7 @@
             minimizeBtn.textContent = '−';
             minimizeBtn.addEventListener('click', () => this.toggle());
 
+            headerButtons.appendChild(presetContainer);
             headerButtons.appendChild(minimizeBtn);
             overlayHeader.appendChild(headerLeft);
             overlayHeader.appendChild(headerButtons);
@@ -1785,6 +1823,78 @@
             overlay.style.left = '2.5vw';
             overlay.style.top = '2.5vh';
             overlay.style.transform = 'none';
+        },
+
+        /**
+         * Apply preset size
+         * @param {string} preset - Preset type: 'small', 'fullscreen', 'split-left', 'split-right'
+         */
+        applyPresetSize(preset) {
+            if (!overlay) return;
+
+            console.log(`[Overlay] Applying preset size: ${preset}`);
+
+            // Exit fullscreen mode if active (except for fullscreen preset)
+            if (isFullscreen && preset !== 'fullscreen') {
+                isFullscreen = false;
+                preFullscreenDimensions = null;
+                Storage.setCommonState({
+                    isFullscreen: false,
+                    preFullscreenDimensions: null
+                });
+            }
+
+            // Apply preset dimensions
+            switch (preset) {
+                case 'small':
+                    // 50vw × 50vh centered
+                    overlay.style.width = '50vw';
+                    overlay.style.height = '50vh';
+                    overlay.style.left = '25vw';
+                    overlay.style.top = '25vh';
+                    overlay.style.transform = 'none';
+                    break;
+
+                case 'fullscreen':
+                    // Use existing fullscreen logic
+                    if (isFullscreen) {
+                        this.exitFullscreen();
+                        return;
+                    } else {
+                        this.enterFullscreen();
+                        return;
+                    }
+
+                case 'split-left':
+                    // 30vw × 95vh positioned at left edge
+                    overlay.style.width = '30vw';
+                    overlay.style.height = '95vh';
+                    overlay.style.left = '2.5vw';
+                    overlay.style.top = '2.5vh';
+                    overlay.style.transform = 'none';
+                    break;
+
+                case 'split-right':
+                    // 30vw × 95vh positioned at right edge
+                    overlay.style.width = '30vw';
+                    overlay.style.height = '95vh';
+                    overlay.style.left = '67.5vw'; // 100vw - 30vw - 2.5vw
+                    overlay.style.top = '2.5vh';
+                    overlay.style.transform = 'none';
+                    break;
+
+                default:
+                    console.warn(`[Overlay] Unknown preset: ${preset}`);
+                    return;
+            }
+
+            // Save dimensions to localStorage
+            this.saveDimensions();
+
+            // Notify app of resize
+            setTimeout(() => {
+                AppManager.notifyResize();
+            }, 50);
         },
 
         /**
