@@ -1509,6 +1509,17 @@
             };
 
             const startResize = (e, handle) => {
+                // If in fullscreen mode, exit it before starting resize
+                if (isFullscreen) {
+                    console.log('[Overlay] Exiting fullscreen mode due to manual resize');
+                    isFullscreen = false;
+                    preFullscreenDimensions = null;
+                    Storage.setCommonState({
+                        isFullscreen: false,
+                        preFullscreenDimensions: null
+                    });
+                }
+
                 isResizing = true;
                 currentResizeHandle = handle;
                 resizeStartX = e.clientX;
