@@ -83,9 +83,25 @@
                     }
                 }
 
-                // Clear container
+                // Clear container (but preserve drop zone if it exists)
                 if (appContainer) {
+                    // Save drop zone element reference
+                    const dropZone = document.getElementById('file-drop-zone');
+                    const dropZoneParent = dropZone?.parentElement;
+
+                    // Remove drop zone temporarily
+                    if (dropZone && dropZoneParent) {
+                        dropZoneParent.removeChild(dropZone);
+                    }
+
+                    // Clear container
                     appContainer.innerHTML = '';
+
+                    // Re-add drop zone
+                    if (dropZone && dropZoneParent) {
+                        dropZoneParent.appendChild(dropZone);
+                        console.log('[App Manager] Drop zone preserved during app switch');
+                    }
                 }
 
                 // Mount new app
@@ -1817,14 +1833,6 @@
             // Content area
             overlayContent = DOM.create('div', { id: 'expert-enhancements-overlay-content' });
 
-            // App container (child of overlayContent, for mounting apps)
-            const appContentContainer = DOM.create('div', {
-                id: 'app-content-container'
-            });
-            // Must match overlayContent's flex layout - fill all space
-            appContentContainer.style.cssText = 'position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%;';
-            overlayContent.appendChild(appContentContainer);
-
             // Resize handles
             const leftHandle = DOM.create('div', { className: 'enhancements-resize-handle left' });
             const rightHandle = DOM.create('div', { className: 'enhancements-resize-handle right' });
@@ -1847,8 +1855,8 @@
                 e.stopPropagation();
             }, { passive: true });
 
-            // Set app container (use the dedicated app content container, not overlayContent)
-            AppManager.setContainer(appContentContainer);
+            // Set app container
+            AppManager.setContainer(overlayContent);
 
             // Attach event listeners
             this.attachDragListeners();
