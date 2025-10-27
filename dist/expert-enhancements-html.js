@@ -264,10 +264,11 @@
         checkViewportWidth() {
             const wasMobileView = isMobileView;
 
-            // Get container width to determine mobile/desktop view
-            const container = document.getElementById('html-editor-container');
-            if (container) {
-                const containerWidth = container.offsetWidth;
+            // Get overlay width to determine mobile/desktop view
+            // Use overlay instead of editor container to avoid issues when container is hidden
+            const overlay = document.getElementById('expert-enhancements-overlay');
+            if (overlay) {
+                const containerWidth = overlay.offsetWidth;
                 isMobileView = containerWidth < 920;
                 console.log(`[HTML Editor] checkViewportWidth: width=${containerWidth}px, mobile=${isMobileView}`);
             }
