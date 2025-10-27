@@ -177,7 +177,7 @@
     position: relative;
 }
 
-.preset-btn:hover::after {
+.preset-btn:not(.split-btn):hover::after {
     content: attr(title);
     position: absolute;
     bottom: -32px;
@@ -194,7 +194,7 @@
     font-weight: normal;
 }
 
-.preset-btn:hover::before {
+.preset-btn:not(.split-btn):hover::before {
     content: '';
     position: absolute;
     bottom: -8px;
