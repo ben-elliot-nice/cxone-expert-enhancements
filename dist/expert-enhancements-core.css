@@ -226,8 +226,6 @@
     justify-content: center;
     cursor: pointer;
     position: relative;
-    font-size: 14px;
-    line-height: 1;
     transition: background 0.2s;
 }
 
@@ -237,6 +235,27 @@
 
 .split-left {
     border-right: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Visual rectangle indicators */
+.split-left::before {
+    content: '';
+    position: absolute;
+    width: 3px;
+    height: 12px;
+    background: white;
+    left: 3px;
+    border-radius: 1px;
+}
+
+.split-right::before {
+    content: '';
+    position: absolute;
+    width: 3px;
+    height: 12px;
+    background: white;
+    right: 3px;
+    border-radius: 1px;
 }
 
 .split-half:hover::after {

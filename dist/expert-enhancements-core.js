@@ -1429,7 +1429,6 @@
                 className: 'split-half split-left',
                 title: 'Split Left (30%)'
             });
-            splitLeftHalf.textContent = '│';
             splitLeftHalf.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.applyPresetSize('split-left');
@@ -1439,7 +1438,6 @@
                 className: 'split-half split-right',
                 title: 'Split Right (30%)'
             });
-            splitRightHalf.textContent = '│';
             splitRightHalf.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.applyPresetSize('split-right');
