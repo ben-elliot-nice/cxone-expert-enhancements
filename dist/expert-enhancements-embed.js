@@ -41,7 +41,8 @@
         coreJs: `${CDN_BASE}/expert-enhancements-core.js`,
         cssEditorCss: `${CDN_BASE}/expert-enhancements-css.css`,
         cssEditorJs: `${CDN_BASE}/expert-enhancements-css.js`,
-        htmlEditorJs: `${CDN_BASE}/expert-enhancements-html.js`
+        htmlEditorJs: `${CDN_BASE}/expert-enhancements-html.js`,
+        settingsJs: `${CDN_BASE}/expert-enhancements-settings.js`
     };
 
     // ============================================================================
@@ -253,6 +254,7 @@
             await loadCSS(RESOURCES.cssEditorCss);
             await loadJS(RESOURCES.cssEditorJs);
             await loadJS(RESOURCES.htmlEditorJs);
+            await loadJS(RESOURCES.settingsJs);
 
             // 5. Wait for apps to register
             await new Promise((resolve) => setTimeout(resolve, 200));
