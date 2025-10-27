@@ -238,24 +238,12 @@
 }
 
 /* Visual rectangle indicators */
-.split-left::before {
-    content: '';
-    position: absolute;
+.split-indicator {
     width: 3px;
     height: 12px;
     background: white;
-    left: 3px;
     border-radius: 1px;
-}
-
-.split-right::before {
-    content: '';
-    position: absolute;
-    width: 3px;
-    height: 12px;
-    background: white;
-    right: 3px;
-    border-radius: 1px;
+    pointer-events: none;
 }
 
 .split-half:hover::after {

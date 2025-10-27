@@ -1429,6 +1429,8 @@
                 className: 'split-half split-left',
                 title: 'Split Left (30%)'
             });
+            const leftIndicator = DOM.create('span', { className: 'split-indicator' });
+            splitLeftHalf.appendChild(leftIndicator);
             splitLeftHalf.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.applyPresetSize('split-left');
@@ -1438,6 +1440,8 @@
                 className: 'split-half split-right',
                 title: 'Split Right (30%)'
             });
+            const rightIndicator = DOM.create('span', { className: 'split-indicator' });
+            splitRightHalf.appendChild(rightIndicator);
             splitRightHalf.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.applyPresetSize('split-right');
