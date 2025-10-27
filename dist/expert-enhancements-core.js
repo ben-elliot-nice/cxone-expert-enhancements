@@ -1458,14 +1458,14 @@
                     console.log('[Formatter] Prettier standalone script loaded');
 
                     try {
-                        // Wait for window.prettier to be available
-                        await waitForGlobal(() => window.prettier, 'window.prettier');
+                        // Load all plugin scripts immediately (don't wait for prettier global first)
+                        console.log('[Formatter] Loading plugin scripts...');
 
                         // Load CSS parser (postcss)
                         const cssParserScript = document.createElement('script');
                         cssParserScript.src = 'https://unpkg.com/prettier@3.6.2/plugins/postcss.js';
 
-                        await new Promise((resolveCSS, rejectCSS) => {
+                        const cssLoaded = new Promise((resolveCSS, rejectCSS) => {
                             cssParserScript.onload = () => {
                                 console.log('[Formatter] PostCSS plugin script loaded');
                                 resolveCSS();
@@ -1473,20 +1473,14 @@
                             cssParserScript.onerror = () => {
                                 rejectCSS(new Error('Failed to load PostCSS plugin'));
                             };
-                            document.head.appendChild(cssParserScript);
                         });
-
-                        // Wait for prettierPlugins.postcss to be available
-                        await waitForGlobal(
-                            () => window.prettierPlugins && window.prettierPlugins.postcss,
-                            'prettierPlugins.postcss'
-                        );
+                        document.head.appendChild(cssParserScript);
 
                         // Load HTML parser
                         const htmlParserScript = document.createElement('script');
                         htmlParserScript.src = 'https://unpkg.com/prettier@3.6.2/plugins/html.js';
 
-                        await new Promise((resolveHTML, rejectHTML) => {
+                        const htmlLoaded = new Promise((resolveHTML, rejectHTML) => {
                             htmlParserScript.onload = () => {
                                 console.log('[Formatter] HTML plugin script loaded');
                                 resolveHTML();
@@ -1494,10 +1488,19 @@
                             htmlParserScript.onerror = () => {
                                 rejectHTML(new Error('Failed to load HTML plugin'));
                             };
-                            document.head.appendChild(htmlParserScript);
                         });
+                        document.head.appendChild(htmlParserScript);
 
-                        // Wait for prettierPlugins.html to be available
+                        // Wait for all scripts to finish loading
+                        await Promise.all([cssLoaded, htmlLoaded]);
+                        console.log('[Formatter] All plugin scripts loaded, waiting for globals...');
+
+                        // Now wait for all globals to be available
+                        await waitForGlobal(() => window.prettier, 'window.prettier');
+                        await waitForGlobal(
+                            () => window.prettierPlugins && window.prettierPlugins.postcss,
+                            'prettierPlugins.postcss'
+                        );
                         await waitForGlobal(
                             () => window.prettierPlugins && window.prettierPlugins.html,
                             'prettierPlugins.html'
