@@ -1422,6 +1422,15 @@
             return new Promise((resolve, reject) => {
                 console.log('[Formatter] Loading Prettier from CDN...');
 
+                // Save original AMD (Monaco's define/require) and hide it temporarily
+                // Prettier's UMD will detect AMD and try to use it, conflicting with Monaco
+                const originalDefine = window.define;
+                const originalRequire = window.require;
+
+                console.log('[Formatter] Temporarily hiding AMD to avoid Monaco conflict');
+                delete window.define;
+                delete window.require;
+
                 // Helper to wait for a global variable with exponential backoff
                 // Max timeout: 60 seconds
                 const waitForGlobal = (checkFn, name, maxTimeout = 60000) => {
@@ -1493,7 +1502,12 @@
 
                         // Wait for all scripts to finish loading
                         await Promise.all([cssLoaded, htmlLoaded]);
-                        console.log('[Formatter] All plugin scripts loaded, waiting for globals...');
+                        console.log('[Formatter] All plugin scripts loaded');
+
+                        // Restore AMD (Monaco's define/require)
+                        if (originalDefine) window.define = originalDefine;
+                        if (originalRequire) window.require = originalRequire;
+                        console.log('[Formatter] AMD restored, waiting for globals...');
 
                         // Now wait for all globals to be available
                         await waitForGlobal(() => window.prettier, 'window.prettier');
@@ -1520,6 +1534,11 @@
 
                     } catch (error) {
                         console.error('[Formatter] Error during initialization:', error);
+
+                        // Restore AMD even on error
+                        if (originalDefine) window.define = originalDefine;
+                        if (originalRequire) window.require = originalRequire;
+
                         prettierLoadError = error;
                         reject(error);
                     }
@@ -1528,6 +1547,11 @@
                 prettierScript.onerror = () => {
                     const error = new Error('Failed to load Prettier standalone script');
                     console.error('[Formatter]', error);
+
+                    // Restore AMD even on error
+                    if (originalDefine) window.define = originalDefine;
+                    if (originalRequire) window.require = originalRequire;
+
                     prettierLoadError = error;
                     reject(error);
                 };
