@@ -62,7 +62,9 @@
                         UI,
                         DOM,
                         Overlay,
-                        LoadingOverlay
+                        LoadingOverlay,
+                        FileImport,
+                        Formatter
                     };
                     await app.init(context);
                     initializedApps.add(appId);
@@ -81,15 +83,53 @@
                     }
                 }
 
-                // Clear container
+                // Save drop zone element reference before clearing
+                const dropZone = document.getElementById('file-drop-zone');
+                const dropZoneParent = dropZone?.parentElement;
+                let dropZoneSaved = false;
+
+                // Clear container (preserve drop zone)
                 if (appContainer) {
+                    // Remove drop zone temporarily
+                    if (dropZone && dropZoneParent) {
+                        dropZoneParent.removeChild(dropZone);
+                        dropZoneSaved = true;
+                    }
+
+                    // Clear container
                     appContainer.innerHTML = '';
                 }
 
-                // Mount new app
+                // Mount new app into clean container
                 console.log(`[App Manager] Mounting: ${app.name}`);
                 await app.mount(appContainer);
                 currentApp = app;
+
+                // Re-add drop zone AFTER app is mounted
+                if (dropZoneSaved && dropZone && appContainer) {
+                    appContainer.appendChild(dropZone);
+                    // Force drop zone to be hidden and non-interactive
+                    dropZone.style.display = 'none';
+                    dropZone.style.pointerEvents = 'none';
+                    dropZone.style.visibility = 'hidden';
+                }
+
+                // Notify app to layout editors after mount
+                setTimeout(() => {
+                    AppManager.notifyResize();
+
+                    // Ensure drop zone remains hidden after switch
+                    const dzCheck = document.getElementById('file-drop-zone');
+                    if (dzCheck) {
+                        const computed = window.getComputedStyle(dzCheck);
+                        // If it's somehow visible or interactive, force fix it
+                        if (computed.display !== 'none' || computed.pointerEvents !== 'none') {
+                            dzCheck.style.display = 'none';
+                            dzCheck.style.pointerEvents = 'none';
+                            dzCheck.style.visibility = 'hidden';
+                        }
+                    }
+                }, 150);
 
                 // Save as last active app
                 Storage.setCommonState({ lastActiveApp: appId });
@@ -324,6 +364,49 @@
                 localStorage.removeItem(`${STORAGE_PREFIX}:app:${appId}`);
             } catch (error) {
                 console.warn(`[Storage] Failed to clear state for ${appId}:`, error);
+            }
+        },
+
+        /**
+         * Get formatter settings
+         */
+        getFormatterSettings() {
+            try {
+                const saved = localStorage.getItem(`${STORAGE_PREFIX}:formatter`);
+                const defaults = {
+                    formatOnSave: true,
+                    indentStyle: 'spaces',
+                    indentSize: 2,
+                    quoteStyle: 'single',
+                    cssSettings: {
+                        parser: 'css'
+                    },
+                    htmlSettings: {
+                        parser: 'html'
+                    }
+                };
+                return saved ? { ...defaults, ...JSON.parse(saved) } : defaults;
+            } catch (error) {
+                console.warn('[Storage] Failed to get formatter settings:', error);
+                return {
+                    formatOnSave: true,
+                    indentStyle: 'spaces',
+                    indentSize: 2,
+                    quoteStyle: 'single',
+                    cssSettings: { parser: 'css' },
+                    htmlSettings: { parser: 'html' }
+                };
+            }
+        },
+
+        /**
+         * Set formatter settings
+         */
+        setFormatterSettings(settings) {
+            try {
+                localStorage.setItem(`${STORAGE_PREFIX}:formatter`, JSON.stringify(settings));
+            } catch (error) {
+                console.warn('[Storage] Failed to set formatter settings:', error);
             }
         }
     };
@@ -1239,8 +1322,6 @@
                 messageEl.textContent = message;
                 loadingOverlay.setAttribute('aria-label', message);
             }
-
-            console.log('[LoadingOverlay] Message updated:', message);
         },
 
         /**
@@ -1276,6 +1357,8 @@
             // Remove overlay with fade out
             if (loadingOverlay) {
                 loadingOverlay.style.opacity = '0';
+                // CRITICAL: Disable pointer events immediately so it doesn't block interaction during fade
+                loadingOverlay.style.pointerEvents = 'none';
                 setTimeout(() => {
                     if (loadingOverlay && loadingOverlay.parentNode) {
                         loadingOverlay.remove();
@@ -1283,8 +1366,6 @@
                     loadingOverlay = null;
                     loadingStartTime = null;
                 }, 300);
-
-                console.log('[LoadingOverlay] Hidden');
             }
         },
 
@@ -1355,6 +1436,308 @@
     };
 
     // ============================================================================
+    // Code Formatter Utilities (Prettier)
+    // ============================================================================
+
+    let prettierLoaded = false;
+    let prettierLoadCallbacks = [];
+    let prettierLoadError = null;
+
+    const Formatter = {
+        /**
+         * Initialize Prettier (load from CDN)
+         */
+        async init() {
+            if (prettierLoaded) {
+                return true;
+            }
+
+            if (prettierLoadError) {
+                throw prettierLoadError;
+            }
+
+            return new Promise((resolve, reject) => {
+                console.log('[Formatter] Loading Prettier from CDN...');
+
+                // Save original AMD (Monaco's define/require) and hide it temporarily
+                // Prettier's UMD will detect AMD and try to use it, conflicting with Monaco
+                const originalDefine = window.define;
+                const originalRequire = window.require;
+
+                console.log('[Formatter] Temporarily hiding AMD to avoid Monaco conflict');
+                window.define = undefined;
+                window.require = undefined;
+
+                // Helper to wait for a global variable with exponential backoff
+                // Max timeout: 60 seconds
+                const waitForGlobal = (checkFn, name, maxTimeout = 60000) => {
+                    return new Promise((resolve, reject) => {
+                        const startTime = Date.now();
+                        let currentInterval = 50; // Start with 50ms
+                        const maxInterval = 2000; // Cap at 2 seconds
+                        let attempts = 0;
+
+                        const check = () => {
+                            attempts++;
+                            const elapsed = Date.now() - startTime;
+
+                            if (checkFn()) {
+                                console.log(`[Formatter] ${name} is ready (${attempts} attempts, ${elapsed}ms elapsed)`);
+                                resolve();
+                            } else if (elapsed >= maxTimeout) {
+                                reject(new Error(`${name} not found after ${elapsed}ms (${attempts} attempts)`));
+                            } else {
+                                // Exponential backoff with cap
+                                setTimeout(check, currentInterval);
+                                currentInterval = Math.min(currentInterval * 2, maxInterval);
+                            }
+                        };
+                        check();
+                    });
+                };
+
+                // Load Prettier standalone first
+                const prettierScript = document.createElement('script');
+                prettierScript.src = 'https://unpkg.com/prettier@3.6.2/standalone.js';
+
+                prettierScript.onload = async () => {
+                    console.log('[Formatter] Prettier standalone script loaded');
+
+                    // Restore AMD immediately after standalone loads
+                    if (originalDefine) window.define = originalDefine;
+                    if (originalRequire) window.require = originalRequire;
+                    console.log('[Formatter] AMD restored after standalone load');
+
+                    try {
+                        // Load all plugin scripts
+                        console.log('[Formatter] Loading plugin scripts...');
+
+                        // Hide AMD before loading CSS plugin
+                        window.define = undefined;
+                        window.require = undefined;
+
+                        // Load CSS parser (postcss)
+                        const cssParserScript = document.createElement('script');
+                        cssParserScript.src = 'https://unpkg.com/prettier@3.6.2/plugins/postcss.js';
+
+                        const cssLoaded = new Promise((resolveCSS, rejectCSS) => {
+                            cssParserScript.onload = () => {
+                                console.log('[Formatter] PostCSS plugin script loaded');
+                                // Restore AMD immediately after CSS plugin loads
+                                if (originalDefine) window.define = originalDefine;
+                                if (originalRequire) window.require = originalRequire;
+                                resolveCSS();
+                            };
+                            cssParserScript.onerror = () => {
+                                // Restore AMD even on error
+                                if (originalDefine) window.define = originalDefine;
+                                if (originalRequire) window.require = originalRequire;
+                                rejectCSS(new Error('Failed to load PostCSS plugin'));
+                            };
+                        });
+                        document.head.appendChild(cssParserScript);
+
+                        // Wait for CSS plugin to finish
+                        await cssLoaded;
+
+                        // Hide AMD before loading HTML plugin
+                        window.define = undefined;
+                        window.require = undefined;
+
+                        // Load HTML parser
+                        const htmlParserScript = document.createElement('script');
+                        htmlParserScript.src = 'https://unpkg.com/prettier@3.6.2/plugins/html.js';
+
+                        const htmlLoaded = new Promise((resolveHTML, rejectHTML) => {
+                            htmlParserScript.onload = () => {
+                                console.log('[Formatter] HTML plugin script loaded');
+                                // Restore AMD immediately after HTML plugin loads
+                                if (originalDefine) window.define = originalDefine;
+                                if (originalRequire) window.require = originalRequire;
+                                resolveHTML();
+                            };
+                            htmlParserScript.onerror = () => {
+                                // Restore AMD even on error
+                                if (originalDefine) window.define = originalDefine;
+                                if (originalRequire) window.require = originalRequire;
+                                rejectHTML(new Error('Failed to load HTML plugin'));
+                            };
+                        });
+                        document.head.appendChild(htmlParserScript);
+
+                        // Wait for HTML plugin to finish
+                        await htmlLoaded;
+
+                        console.log('[Formatter] All plugin scripts loaded, waiting for globals...');
+
+                        // Now wait for all globals to be available (AMD already restored)
+                        await waitForGlobal(() => window.prettier, 'window.prettier');
+                        await waitForGlobal(
+                            () => window.prettierPlugins && window.prettierPlugins.postcss,
+                            'prettierPlugins.postcss'
+                        );
+                        await waitForGlobal(
+                            () => window.prettierPlugins && window.prettierPlugins.html,
+                            'prettierPlugins.html'
+                        );
+
+                        console.log('[Formatter] All Prettier components loaded successfully');
+                        console.log('[Formatter] Prettier version:', window.prettier.version);
+                        console.log('[Formatter] Available plugins:', Object.keys(window.prettierPlugins || {}));
+
+                        prettierLoaded = true;
+
+                        // Call any waiting callbacks
+                        prettierLoadCallbacks.forEach(cb => cb());
+                        prettierLoadCallbacks = [];
+
+                        resolve(true);
+
+                    } catch (error) {
+                        console.error('[Formatter] Error during initialization:', error);
+
+                        // Restore AMD even on error
+                        if (originalDefine) window.define = originalDefine;
+                        if (originalRequire) window.require = originalRequire;
+
+                        prettierLoadError = error;
+                        reject(error);
+                    }
+                };
+
+                prettierScript.onerror = () => {
+                    const error = new Error('Failed to load Prettier standalone script');
+                    console.error('[Formatter]', error);
+
+                    // Restore AMD even on error
+                    if (originalDefine) window.define = originalDefine;
+                    if (originalRequire) window.require = originalRequire;
+
+                    prettierLoadError = error;
+                    reject(error);
+                };
+
+                document.head.appendChild(prettierScript);
+            });
+        },
+
+        /**
+         * Check if Prettier is loaded
+         */
+        isReady() {
+            return prettierLoaded;
+        },
+
+        /**
+         * Execute callback when Prettier is ready
+         */
+        onReady(callback) {
+            if (prettierLoaded) {
+                callback();
+            } else {
+                prettierLoadCallbacks.push(callback);
+            }
+        },
+
+        /**
+         * Format CSS code
+         * @param {string} code - CSS code to format
+         * @returns {Promise<string>} - Formatted CSS code
+         */
+        async formatCSS(code) {
+            if (!prettierLoaded) {
+                throw new Error('Prettier not loaded. Call Formatter.init() first.');
+            }
+
+            if (!window.prettier) {
+                throw new Error('Prettier global not found');
+            }
+
+            if (!window.prettierPlugins) {
+                throw new Error('Prettier plugins not found');
+            }
+
+            try {
+                const settings = Storage.getFormatterSettings();
+
+                const options = {
+                    parser: 'css',
+                    plugins: prettierPlugins,
+                    useTabs: settings.indentStyle === 'tabs',
+                    tabWidth: settings.indentSize,
+                    singleQuote: settings.quoteStyle === 'single',
+                    ...settings.cssSettings
+                };
+
+                const formatted = await prettier.format(code, options);
+                console.log('[Formatter] CSS formatted successfully');
+
+                // Strip trailing newline (Prettier always adds one, but server strips it)
+                return formatted.endsWith('\n') ? formatted.slice(0, -1) : formatted;
+            } catch (error) {
+                console.error('[Formatter] CSS formatting failed:', error);
+                throw new Error(`CSS formatting failed: ${error.message}`);
+            }
+        },
+
+        /**
+         * Format HTML code
+         * @param {string} code - HTML code to format
+         * @returns {Promise<string>} - Formatted HTML code
+         */
+        async formatHTML(code) {
+            if (!prettierLoaded) {
+                throw new Error('Prettier not loaded. Call Formatter.init() first.');
+            }
+
+            if (!window.prettier) {
+                throw new Error('Prettier global not found');
+            }
+
+            if (!window.prettierPlugins) {
+                throw new Error('Prettier plugins not found');
+            }
+
+            try {
+                const settings = Storage.getFormatterSettings();
+
+                const options = {
+                    parser: 'html',
+                    plugins: prettierPlugins,
+                    useTabs: settings.indentStyle === 'tabs',
+                    tabWidth: settings.indentSize,
+                    singleQuote: settings.quoteStyle === 'single',
+                    ...settings.htmlSettings
+                };
+
+                const formatted = await prettier.format(code, options);
+                console.log('[Formatter] HTML formatted successfully');
+
+                // Strip trailing newline (Prettier always adds one, but server strips it)
+                return formatted.endsWith('\n') ? formatted.slice(0, -1) : formatted;
+            } catch (error) {
+                console.error('[Formatter] HTML formatting failed:', error);
+                throw new Error(`HTML formatting failed: ${error.message}`);
+            }
+        },
+
+        /**
+         * Get current formatter settings
+         */
+        getSettings() {
+            return Storage.getFormatterSettings();
+        },
+
+        /**
+         * Update formatter settings
+         */
+        setSettings(settings) {
+            Storage.setFormatterSettings(settings);
+            console.log('[Formatter] Settings updated:', settings);
+        }
+    };
+
+    // ============================================================================
     // Overlay Management
     // ============================================================================
 
@@ -1370,6 +1753,7 @@
     let currentResizeHandle = null;
     let isFullscreen = false;
     let preFullscreenDimensions = null;
+    let fullscreenBtn = null;
 
     const Overlay = {
         /**
@@ -1402,6 +1786,58 @@
             headerLeft.appendChild(appControls);
 
             const headerButtons = DOM.create('div', { className: 'header-buttons' });
+
+            // Preset size buttons
+            const presetContainer = DOM.create('div', { className: 'preset-buttons' });
+
+            const smallBtn = DOM.create('button', {
+                className: 'header-btn preset-btn',
+                title: 'Small (50%)'
+            });
+            smallBtn.textContent = '▢';
+            smallBtn.addEventListener('click', () => this.applyPresetSize('small'));
+
+            fullscreenBtn = DOM.create('button', {
+                className: 'header-btn preset-btn',
+                title: 'Fullscreen (95%)'
+            });
+            fullscreenBtn.textContent = '⛶';
+            fullscreenBtn.addEventListener('click', () => this.applyPresetSize('fullscreen'));
+
+            // Combined split button (left half = split left, right half = split right)
+            const splitBtn = DOM.create('button', {
+                className: 'header-btn preset-btn split-btn'
+            });
+
+            const splitLeftHalf = DOM.create('span', {
+                className: 'split-half split-left',
+                title: 'Split Left (30%)'
+            });
+            const leftIndicator = DOM.create('span', { className: 'split-indicator' });
+            splitLeftHalf.appendChild(leftIndicator);
+            splitLeftHalf.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.applyPresetSize('split-left');
+            });
+
+            const splitRightHalf = DOM.create('span', {
+                className: 'split-half split-right',
+                title: 'Split Right (30%)'
+            });
+            const rightIndicator = DOM.create('span', { className: 'split-indicator' });
+            splitRightHalf.appendChild(rightIndicator);
+            splitRightHalf.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.applyPresetSize('split-right');
+            });
+
+            splitBtn.appendChild(splitLeftHalf);
+            splitBtn.appendChild(splitRightHalf);
+
+            presetContainer.appendChild(smallBtn);
+            presetContainer.appendChild(fullscreenBtn);
+            presetContainer.appendChild(splitBtn);
+
             const minimizeBtn = DOM.create('button', {
                 className: 'header-btn',
                 title: 'Minimize'
@@ -1409,6 +1845,7 @@
             minimizeBtn.textContent = '−';
             minimizeBtn.addEventListener('click', () => this.toggle());
 
+            headerButtons.appendChild(presetContainer);
             headerButtons.appendChild(minimizeBtn);
             overlayHeader.appendChild(headerLeft);
             overlayHeader.appendChild(headerButtons);
@@ -1433,6 +1870,11 @@
 
             document.body.appendChild(overlay);
 
+            // Prevent scroll events from reaching the underlying page
+            overlay.addEventListener('wheel', (e) => {
+                e.stopPropagation();
+            }, { passive: true });
+
             // Set app container
             AppManager.setContainer(overlayContent);
 
@@ -1440,11 +1882,17 @@
             this.attachDragListeners();
             this.attachResizeListeners(leftHandle, rightHandle, bottomHandle, cornerRightHandle, cornerLeftHandle);
             this.attachWindowResizeListener();
+            this.setupDropZone();
 
             // Restore dimensions
             this.restoreDimensions();
 
-            console.log('[Overlay] Created');
+            // Initial check for preset buttons visibility (after render)
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    this.checkPresetButtonsVisibility();
+                });
+            });
         },
 
         /**
@@ -1511,7 +1959,6 @@
             const startResize = (e, handle) => {
                 // If in fullscreen mode, exit it before starting resize
                 if (isFullscreen) {
-                    console.log('[Overlay] Exiting fullscreen mode due to manual resize');
                     isFullscreen = false;
                     preFullscreenDimensions = null;
                     Storage.setCommonState({
@@ -1595,6 +2042,9 @@
 
                 // Notify app of resize during drag (for immediate mobile view switching)
                 AppManager.notifyResize();
+
+                // Check preset buttons visibility in real-time during resize
+                this.checkPresetButtonsVisibility();
             });
 
             document.addEventListener('mouseup', () => {
@@ -1609,6 +2059,8 @@
                     this.saveDimensions();
                     // Notify app of resize
                     AppManager.notifyResize();
+                    // Check preset buttons visibility
+                    this.checkPresetButtonsVisibility();
                 }
             });
         },
@@ -1621,6 +2073,108 @@
                 if (isFullscreen) {
                     // Re-calculate 95vw x 95vh when window is resized
                     this.applyFullscreen();
+                }
+            });
+        },
+
+        /**
+         * Setup drag and drop file import zone
+         */
+        setupDropZone() {
+            if (!overlayContent) return;
+
+            // Create drop zone overlay (initially hidden)
+            const dropZone = DOM.create('div', {
+                id: 'file-drop-zone'
+            });
+
+            // Set comprehensive inline styles to ensure visibility when shown
+            dropZone.style.cssText = `
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(255, 255, 255, 0.1);
+                backdrop-filter: blur(4px);
+                z-index: 100000;
+                display: none;
+                align-items: center;
+                justify-content: center;
+                pointer-events: none;
+            `;
+
+            const dropZoneContent = DOM.create('div', {
+                className: 'drop-zone-content'
+            });
+
+            const dropIcon = DOM.create('div', {
+                className: 'drop-icon'
+            }, ['📁']);
+
+            const dropText = DOM.create('div', {
+                className: 'drop-text'
+            }, ['Drop your file here']);
+
+            const dropSubtext = DOM.create('div', {
+                className: 'drop-subtext'
+            }, ['Supports .css and .html files']);
+
+            dropZoneContent.appendChild(dropIcon);
+            dropZoneContent.appendChild(dropText);
+            dropZoneContent.appendChild(dropSubtext);
+            dropZone.appendChild(dropZoneContent);
+            overlayContent.appendChild(dropZone);
+
+            console.log('[Drop Zone] Created and appended, initial display:', dropZone.style.display);
+            console.log('[Drop Zone] Parent:', dropZone.parentElement?.id);
+            console.log('[Drop Zone] Has children:', dropZone.children.length);
+
+            let dragCounter = 0; // Track enter/leave to prevent flickering
+
+            // Prevent default drag behavior
+            overlayContent.addEventListener('dragenter', (e) => {
+                e.preventDefault();
+                dragCounter++;
+                if (dragCounter === 1) {
+                    dropZone.style.display = 'flex';
+                    dropZone.style.pointerEvents = 'auto';
+                    dropZone.style.opacity = '1';
+                    dropZone.style.visibility = 'visible';
+                }
+            }, true); // Use capture phase to catch events before children
+
+            overlayContent.addEventListener('dragover', (e) => {
+                e.preventDefault();
+            }, true); // Use capture phase
+
+            overlayContent.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                dragCounter--;
+                if (dragCounter === 0) {
+                    dropZone.style.display = 'none';
+                    dropZone.style.pointerEvents = 'none';
+                }
+            }, true); // Use capture phase
+
+            overlayContent.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dragCounter = 0;
+                dropZone.style.display = 'none';
+                dropZone.style.pointerEvents = 'none';
+
+                const files = e.dataTransfer.files;
+                if (files && files.length > 0) {
+                    FileImport.handleDrop(files);
+                }
+            }, true); // Use capture phase
+
+            // ESC key to cancel drag operation
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && dropZone.style.display === 'flex') {
+                    dragCounter = 0;
+                    dropZone.style.display = 'none';
+                    dropZone.style.pointerEvents = 'none';
                 }
             });
         },
@@ -1641,6 +2195,8 @@
             if (!isVisible) {
                 setTimeout(() => {
                     AppManager.notifyResize();
+                    // Check preset buttons visibility when showing overlay
+                    this.checkPresetButtonsVisibility();
                 }, 50);
             }
         },
@@ -1674,6 +2230,9 @@
                 isFullscreen = true;
                 preFullscreenDimensions = state.preFullscreenDimensions || null;
                 this.applyFullscreen();
+                this.updateFullscreenButtonState();
+                // Check preset buttons visibility after a short delay to ensure DOM is ready
+                setTimeout(() => this.checkPresetButtonsVisibility(), 100);
                 return;
             }
 
@@ -1691,6 +2250,9 @@
                     overlay.style.transform = 'none';
                 }
             }
+
+            // Check preset buttons visibility after a short delay to ensure DOM is ready
+            setTimeout(() => this.checkPresetButtonsVisibility(), 100);
         },
 
         /**
@@ -1714,8 +2276,6 @@
         enterFullscreen() {
             if (!overlay) return;
 
-            console.log('[Overlay] Entering fullscreen mode');
-
             // Save current dimensions
             preFullscreenDimensions = {
                 width: overlay.style.width,
@@ -1731,6 +2291,9 @@
             // Update state
             isFullscreen = true;
 
+            // Update button visual state
+            this.updateFullscreenButtonState();
+
             // Save to localStorage
             Storage.setCommonState({
                 isFullscreen: true,
@@ -1740,6 +2303,8 @@
             // Notify app of resize (for mobile view switching)
             setTimeout(() => {
                 AppManager.notifyResize();
+                // Check preset buttons visibility
+                this.checkPresetButtonsVisibility();
             }, 50);
         },
 
@@ -1748,8 +2313,6 @@
          */
         exitFullscreen() {
             if (!overlay || !preFullscreenDimensions) return;
-
-            console.log('[Overlay] Exiting fullscreen mode');
 
             // Restore previous dimensions
             overlay.style.width = preFullscreenDimensions.width;
@@ -1762,6 +2325,9 @@
             isFullscreen = false;
             preFullscreenDimensions = null;
 
+            // Update button visual state
+            this.updateFullscreenButtonState();
+
             // Save to localStorage
             Storage.setCommonState({
                 isFullscreen: false,
@@ -1771,6 +2337,8 @@
             // Notify app of resize
             setTimeout(() => {
                 AppManager.notifyResize();
+                // Check preset buttons visibility
+                this.checkPresetButtonsVisibility();
             }, 50);
         },
 
@@ -1785,6 +2353,133 @@
             overlay.style.left = '2.5vw';
             overlay.style.top = '2.5vh';
             overlay.style.transform = 'none';
+        },
+
+        /**
+         * Update fullscreen button visual state
+         */
+        updateFullscreenButtonState() {
+            if (!fullscreenBtn) return;
+
+            if (isFullscreen) {
+                fullscreenBtn.classList.add('fullscreen-active');
+            } else {
+                fullscreenBtn.classList.remove('fullscreen-active');
+            }
+        },
+
+        /**
+         * Apply preset size
+         * @param {string} preset - Preset type: 'small', 'fullscreen', 'split-left', 'split-right'
+         */
+        applyPresetSize(preset) {
+            if (!overlay) return;
+
+            console.log(`[Overlay] Applying preset size: ${preset}`);
+
+            // Exit fullscreen mode if active (except for fullscreen preset)
+            if (isFullscreen && preset !== 'fullscreen') {
+                isFullscreen = false;
+                preFullscreenDimensions = null;
+                this.updateFullscreenButtonState();
+                Storage.setCommonState({
+                    isFullscreen: false,
+                    preFullscreenDimensions: null
+                });
+            }
+
+            // Get constraints
+            const app = AppManager.getCurrentApp();
+            const defaults = { minWidth: 420, minHeight: 300 };
+            const constraints = app?.constraints ? { ...defaults, ...app.constraints } : defaults;
+
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+
+            // Apply preset dimensions
+            switch (preset) {
+                case 'small':
+                    // 50vw × 50vh centered, respecting constraints
+                    const smallWidth = Math.max(viewportWidth * 0.5, constraints.minWidth);
+                    const smallHeight = Math.max(viewportHeight * 0.5, constraints.minHeight);
+                    overlay.style.width = smallWidth + 'px';
+                    overlay.style.height = smallHeight + 'px';
+                    overlay.style.left = ((viewportWidth - smallWidth) / 2) + 'px';
+                    overlay.style.top = ((viewportHeight - smallHeight) / 2) + 'px';
+                    overlay.style.transform = 'none';
+                    break;
+
+                case 'fullscreen':
+                    // Use existing fullscreen logic
+                    if (isFullscreen) {
+                        this.exitFullscreen();
+                        return;
+                    } else {
+                        this.enterFullscreen();
+                        return;
+                    }
+
+                case 'split-left':
+                    // 30vw × 95vh positioned at left edge, respecting constraints
+                    const splitLeftWidth = Math.max(viewportWidth * 0.3, constraints.minWidth);
+                    const splitLeftHeight = Math.max(viewportHeight * 0.95, constraints.minHeight);
+                    overlay.style.width = splitLeftWidth + 'px';
+                    overlay.style.height = splitLeftHeight + 'px';
+                    overlay.style.left = (viewportWidth * 0.025) + 'px';
+                    overlay.style.top = ((viewportHeight - splitLeftHeight) / 2) + 'px';
+                    overlay.style.transform = 'none';
+                    break;
+
+                case 'split-right':
+                    // 30vw × 95vh positioned at right edge, respecting constraints
+                    const splitRightWidth = Math.max(viewportWidth * 0.3, constraints.minWidth);
+                    const splitRightHeight = Math.max(viewportHeight * 0.95, constraints.minHeight);
+                    overlay.style.width = splitRightWidth + 'px';
+                    overlay.style.height = splitRightHeight + 'px';
+                    overlay.style.left = (viewportWidth - splitRightWidth - viewportWidth * 0.025) + 'px';
+                    overlay.style.top = ((viewportHeight - splitRightHeight) / 2) + 'px';
+                    overlay.style.transform = 'none';
+                    break;
+
+                default:
+                    console.warn(`[Overlay] Unknown preset: ${preset}`);
+                    return;
+            }
+
+            // Save dimensions to localStorage
+            this.saveDimensions();
+
+            // Notify app of resize
+            setTimeout(() => {
+                AppManager.notifyResize();
+            }, 50);
+
+            // Check if preset buttons should be hidden
+            this.checkPresetButtonsVisibility();
+        },
+
+        /**
+         * Check overlay width and hide/show preset buttons accordingly
+         */
+        checkPresetButtonsVisibility() {
+            if (!overlay) return;
+
+            const presetButtons = document.querySelector('.preset-buttons');
+            if (!presetButtons) return;
+
+            const width = overlay.offsetWidth;
+
+            if (width < 620) {
+                // Hide preset buttons
+                if (presetButtons.style.display !== 'none') {
+                    presetButtons.style.display = 'none';
+                }
+            } else {
+                // Show preset buttons
+                if (presetButtons.style.display !== 'flex') {
+                    presetButtons.style.display = 'flex';
+                }
+            }
         },
 
         /**
@@ -1820,8 +2515,6 @@
             if (Array.isArray(elements)) {
                 elements.forEach(el => container.appendChild(el));
             }
-
-            console.log('[Overlay] App controls set:', elements.length, 'elements');
         },
 
         /**
@@ -1831,8 +2524,213 @@
             const container = document.getElementById('app-controls-container');
             if (container) {
                 container.innerHTML = '';
-                console.log('[Overlay] App controls cleared');
             }
+        }
+    };
+
+    // ============================================================================
+    // File Import Module
+    // ============================================================================
+
+    const FileImport = {
+        /**
+         * Handle dropped files
+         */
+        async handleDrop(files) {
+            // Validate: only one file at a time
+            if (files.length > 1) {
+                UI.showToast('Please drop only one file at a time', 'error');
+                return;
+            }
+
+            const file = files[0];
+
+            // Validate file type
+            const fileExt = file.name.toLowerCase().split('.').pop();
+            if (fileExt !== 'css' && fileExt !== 'html') {
+                UI.showToast('Please drop a .css or .html file', 'error');
+                return;
+            }
+
+            // Validate file size (max 5MB)
+            const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+            if (file.size > maxSize) {
+                UI.showToast(`File too large. Maximum size is 5MB (file is ${(file.size / 1024 / 1024).toFixed(2)}MB)`, 'error');
+                return;
+            }
+
+            // Check for empty files
+            if (file.size === 0) {
+                UI.showToast('Cannot import empty file', 'error');
+                return;
+            }
+
+            // Determine target app
+            const targetAppId = fileExt === 'css' ? 'css-editor' : 'html-editor';
+            const currentApp = AppManager.getCurrentApp();
+
+            // Switch to target app if needed
+            if (!currentApp || currentApp.id !== targetAppId) {
+                UI.showToast(`Switching to ${fileExt.toUpperCase()} Editor...`, 'info', 2000);
+                try {
+                    await AppManager.switchTo(targetAppId);
+                    // Give the app time to fully mount and layout editors
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    // Notify app to re-layout editors
+                    AppManager.notifyResize();
+                } catch (error) {
+                    UI.showToast(`Failed to switch to ${fileExt.toUpperCase()} Editor: ${error.message}`, 'error');
+                    return;
+                }
+            }
+
+            // Read file content
+            LoadingOverlay.show(`Reading ${file.name}...`);
+
+            try {
+                const content = await this.readFileAsText(file);
+
+                // Get target app and call its importFile method
+                const app = AppManager.getCurrentApp();
+                if (app && typeof app.importFile === 'function') {
+                    await app.importFile(content, file.name);
+
+                    // Ensure drop zone is hidden after import
+                    const dropZoneElement = document.getElementById('file-drop-zone');
+                    if (dropZoneElement) {
+                        dropZoneElement.style.display = 'none';
+                        dropZoneElement.style.pointerEvents = 'none';
+                    }
+
+                    // Clean up any orphaned backdrop elements
+                    const backdrops = document.querySelectorAll('.role-selector-backdrop');
+                    backdrops.forEach((bd) => {
+                        if (bd.parentNode) {
+                            bd.parentNode.removeChild(bd);
+                        }
+                    });
+                } else {
+                    LoadingOverlay.hide();
+                    UI.showToast('Current app does not support file import', 'error');
+                }
+            } catch (error) {
+                LoadingOverlay.hide();
+                UI.showToast(`Failed to read file: ${error.message}`, 'error');
+            }
+        },
+
+        /**
+         * Read file as text (returns Promise)
+         */
+        readFileAsText(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = () => reject(new Error('Failed to read file'));
+                reader.readAsText(file);
+            });
+        },
+
+        /**
+         * Show role/field selector dialog
+         */
+        showRoleSelector(roles, fileType) {
+            return new Promise((resolve) => {
+                // Create modal backdrop
+                const backdrop = DOM.create('div', {
+                    className: 'role-selector-backdrop',
+                    style: 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999999; display: flex; align-items: center; justify-content: center;'
+                });
+
+                // Create dialog
+                const dialog = DOM.create('div', {
+                    className: 'role-selector-dialog',
+                    style: 'background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); max-width: 400px; width: 90%;'
+                });
+
+                const title = DOM.create('h3', {
+                    style: 'margin: 0 0 16px 0; font-size: 18px; color: #333;'
+                }, [`Import ${fileType.toUpperCase()} File`]);
+
+                const description = DOM.create('p', {
+                    style: 'margin: 0 0 16px 0; font-size: 14px; color: #666;'
+                }, ['Select which editor to import into:']);
+
+                const form = DOM.create('form');
+
+                // Create radio buttons for each role
+                roles.forEach((role, index) => {
+                    const label = DOM.create('label', {
+                        style: 'display: flex; align-items: center; margin-bottom: 12px; cursor: pointer; font-size: 14px; color: #333;'
+                    });
+
+                    const radio = DOM.create('input', {
+                        type: 'radio',
+                        name: 'role',
+                        value: role.id,
+                        style: 'margin-right: 8px;'
+                    });
+
+                    if (index === 0) {
+                        radio.checked = true;
+                    }
+
+                    const labelText = document.createTextNode(role.label);
+
+                    label.appendChild(radio);
+                    label.appendChild(labelText);
+                    form.appendChild(label);
+                });
+
+                const buttonContainer = DOM.create('div', {
+                    style: 'display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;'
+                });
+
+                const cancelBtn = DOM.create('button', {
+                    type: 'button',
+                    style: 'padding: 8px 16px; border: 1px solid #ccc; background: white; color: #333; border-radius: 4px; cursor: pointer; font-size: 14px;'
+                }, ['Cancel']);
+
+                const importBtn = DOM.create('button', {
+                    type: 'submit',
+                    style: 'padding: 8px 16px; border: none; background: #2196F3; color: white; border-radius: 4px; cursor: pointer; font-size: 14px;'
+                }, ['Import']);
+
+                const cleanup = () => {
+                    try {
+                        if (backdrop.parentNode) {
+                            backdrop.parentNode.removeChild(backdrop);
+                        }
+                    } catch (err) {
+                        console.error('[FileImport] Error removing dialog:', err);
+                    }
+                };
+
+                cancelBtn.addEventListener('click', () => {
+                    cleanup();
+                    resolve(null);
+                });
+
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const selectedRole = form.querySelector('input[name="role"]:checked').value;
+                    cleanup();
+                    resolve(selectedRole);
+                });
+
+                buttonContainer.appendChild(cancelBtn);
+                buttonContainer.appendChild(importBtn);
+                form.appendChild(buttonContainer);
+
+                dialog.appendChild(title);
+                dialog.appendChild(description);
+                dialog.appendChild(form);
+                backdrop.appendChild(dialog);
+                document.body.appendChild(backdrop);
+
+                // Focus first radio button
+                form.querySelector('input[type="radio"]').focus();
+            });
         }
     };
 
@@ -1849,6 +2747,8 @@
         DOM,
         Overlay,
         LoadingOverlay,
+        FileImport,
+        Formatter,
         version: '1.0.0'
     };
 
