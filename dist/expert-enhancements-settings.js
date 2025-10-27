@@ -94,11 +94,13 @@
                                     Indent Size
                                 </label>
                                 <select id="indent-size" class="settings-select">
-                                    <option value="2" ${currentSettings.indentSize === 2 ? 'selected' : ''}>2 spaces</option>
-                                    <option value="4" ${currentSettings.indentSize === 4 ? 'selected' : ''}>4 spaces</option>
-                                    <option value="8" ${currentSettings.indentSize === 8 ? 'selected' : ''}>8 spaces</option>
+                                    <option value="2" ${currentSettings.indentSize === 2 ? 'selected' : ''}>2</option>
+                                    <option value="4" ${currentSettings.indentSize === 4 ? 'selected' : ''}>4</option>
+                                    <option value="8" ${currentSettings.indentSize === 8 ? 'selected' : ''}>8</option>
                                 </select>
-                                <p class="settings-description">Number of spaces per indentation level</p>
+                                <p class="settings-description" id="indent-size-description">
+                                    ${currentSettings.indentStyle === 'tabs' ? 'Tab width (visual display)' : 'Number of spaces per indentation level'}
+                                </p>
                             </div>
                         </div>
 
@@ -360,9 +362,18 @@
 
             // Indent style radio buttons
             const indentStyleRadios = document.querySelectorAll('input[name="indent-style"]');
+            const indentSizeDescription = document.getElementById('indent-size-description');
             indentStyleRadios.forEach(radio => {
                 radio.addEventListener('change', (e) => {
                     currentSettings.indentStyle = e.target.value;
+
+                    // Update description based on indent style
+                    if (indentSizeDescription) {
+                        indentSizeDescription.textContent = e.target.value === 'tabs'
+                            ? 'Tab width (visual display)'
+                            : 'Number of spaces per indentation level';
+                    }
+
                     this.updateSettings();
                 });
             });
