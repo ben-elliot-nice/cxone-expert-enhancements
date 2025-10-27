@@ -2053,7 +2053,7 @@
             // Create drop zone overlay (initially hidden)
             const dropZone = DOM.create('div', {
                 id: 'file-drop-zone',
-                style: 'display: none;'
+                style: 'display: none; pointer-events: none;'
             });
 
             const dropZoneContent = DOM.create('div', {
@@ -2087,6 +2087,7 @@
                 dragCounter++;
                 if (dragCounter === 1) {
                     dropZone.style.display = 'flex';
+                    dropZone.style.pointerEvents = 'auto';
                 }
             });
 
@@ -2101,6 +2102,7 @@
                 dragCounter--;
                 if (dragCounter === 0) {
                     dropZone.style.display = 'none';
+                    dropZone.style.pointerEvents = 'none';
                 }
             });
 
@@ -2109,6 +2111,7 @@
                 e.stopPropagation();
                 dragCounter = 0;
                 dropZone.style.display = 'none';
+                dropZone.style.pointerEvents = 'none';
 
                 const files = e.dataTransfer.files;
                 if (files && files.length > 0) {
@@ -2121,6 +2124,7 @@
                 if (e.key === 'Escape' && dropZone.style.display === 'flex') {
                     dragCounter = 0;
                     dropZone.style.display = 'none';
+                    dropZone.style.pointerEvents = 'none';
                 }
             });
 
@@ -2539,6 +2543,10 @@
                 UI.showToast(`Switching to ${fileExt.toUpperCase()} Editor...`, 'info', 2000);
                 try {
                     await AppManager.switchTo(targetAppId);
+                    // Give the app time to fully mount and layout editors
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    // Notify app to re-layout editors
+                    AppManager.notifyResize();
                 } catch (error) {
                     UI.showToast(`Failed to switch to ${fileExt.toUpperCase()} Editor: ${error.message}`, 'error');
                     return;
