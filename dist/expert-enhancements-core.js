@@ -2657,6 +2657,29 @@
                     if (overlayContentElement) {
                         console.log('[FileImport] Overlay content pointer-events:', overlayContentElement.style.pointerEvents || 'default');
                     }
+
+                    // Check for any backdrop elements that might be blocking
+                    const backdrops = document.querySelectorAll('.role-selector-backdrop');
+                    console.log('[FileImport] Found', backdrops.length, 'backdrop elements in DOM');
+                    backdrops.forEach((bd, idx) => {
+                        console.log(`[FileImport] Backdrop ${idx}:`, bd, 'parent:', bd.parentNode?.nodeName);
+                        console.warn('[FileImport] Removing orphaned backdrop!');
+                        if (bd.parentNode) {
+                            bd.parentNode.removeChild(bd);
+                        }
+                    });
+
+                    // Check for any high z-index elements that might be covering the overlay
+                    const allElements = document.querySelectorAll('*');
+                    const highZIndexElements = Array.from(allElements).filter(el => {
+                        const zIndex = parseInt(window.getComputedStyle(el).zIndex);
+                        return zIndex > 999998;
+                    });
+                    console.log('[FileImport] Found', highZIndexElements.length, 'elements with z-index > 999998');
+                    highZIndexElements.forEach(el => {
+                        const computed = window.getComputedStyle(el);
+                        console.log('[FileImport] High z-index element:',  el.id || el.className, 'z-index:', computed.zIndex, 'display:', computed.display, 'pointer-events:', computed.pointerEvents);
+                    });
                 } else {
                     LoadingOverlay.hide();
                     UI.showToast('Current app does not support file import', 'error');
