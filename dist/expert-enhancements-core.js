@@ -1660,6 +1660,8 @@
                     this.saveDimensions();
                     // Notify app of resize
                     AppManager.notifyResize();
+                    // Check preset buttons visibility
+                    this.checkPresetButtonsVisibility();
                 }
             });
         },
@@ -1725,6 +1727,8 @@
                 isFullscreen = true;
                 preFullscreenDimensions = state.preFullscreenDimensions || null;
                 this.applyFullscreen();
+                // Check preset buttons visibility after a short delay to ensure DOM is ready
+                setTimeout(() => this.checkPresetButtonsVisibility(), 100);
                 return;
             }
 
@@ -1742,6 +1746,9 @@
                     overlay.style.transform = 'none';
                 }
             }
+
+            // Check preset buttons visibility after a short delay to ensure DOM is ready
+            setTimeout(() => this.checkPresetButtonsVisibility(), 100);
         },
 
         /**
@@ -1791,6 +1798,8 @@
             // Notify app of resize (for mobile view switching)
             setTimeout(() => {
                 AppManager.notifyResize();
+                // Check preset buttons visibility
+                this.checkPresetButtonsVisibility();
             }, 50);
         },
 
@@ -1822,6 +1831,8 @@
             // Notify app of resize
             setTimeout(() => {
                 AppManager.notifyResize();
+                // Check preset buttons visibility
+                this.checkPresetButtonsVisibility();
             }, 50);
         },
 
@@ -1908,6 +1919,33 @@
             setTimeout(() => {
                 AppManager.notifyResize();
             }, 50);
+
+            // Check if preset buttons should be hidden
+            this.checkPresetButtonsVisibility();
+        },
+
+        /**
+         * Check overlay width and hide/show preset buttons accordingly
+         */
+        checkPresetButtonsVisibility() {
+            if (!overlay) return;
+
+            const presetButtons = document.querySelector('.preset-buttons');
+            if (!presetButtons) return;
+
+            const width = overlay.offsetWidth;
+
+            if (width < 620) {
+                // Hide preset buttons
+                if (presetButtons.style.display !== 'none') {
+                    presetButtons.style.display = 'none';
+                }
+            } else {
+                // Show preset buttons
+                if (presetButtons.style.display === 'none') {
+                    presetButtons.style.display = 'flex';
+                }
+            }
         },
 
         /**
