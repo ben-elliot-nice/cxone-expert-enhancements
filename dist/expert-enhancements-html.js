@@ -476,7 +476,6 @@
                 className: 'btn btn-primary',
                 id: 'save-btn'
             }, ['Save All']);
-            saveBtn.addEventListener('click', () => this.saveAll());
 
             const dropdownToggle = context.DOM.create('button', {
                 className: 'btn btn-dropdown-toggle',
