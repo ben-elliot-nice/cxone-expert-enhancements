@@ -23,6 +23,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build with Vite
+        run: npm run build
+
       - name: Deploy to Digital Ocean Spaces
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -53,13 +56,9 @@ jobs:
           echo "<script src=\"${BASE_URL}/${SANITIZED_BRANCH}/expert-enhancements-embed.js\"></script>" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Direct file links:**" >> $GITHUB_STEP_SUMMARY
-          echo "- [expert-enhancements-embed.js](${BASE_URL}/${SANITIZED_BRANCH}/expert-enhancements-embed.js)" >> $GITHUB_STEP_SUMMARY
-          echo "- [expert-enhancements-core.js](${BASE_URL}/${SANITIZED_BRANCH}/expert-enhancements-core.js)" >> $GITHUB_STEP_SUMMARY
-          echo "- [expert-enhancements-core.css](${BASE_URL}/${SANITIZED_BRANCH}/expert-enhancements-core.css)" >> $GITHUB_STEP_SUMMARY
-          echo "- [expert-enhancements-css.js](${BASE_URL}/${SANITIZED_BRANCH}/expert-enhancements-css.js)" >> $GITHUB_STEP_SUMMARY
-          echo "- [expert-enhancements-css.css](${BASE_URL}/${SANITIZED_BRANCH}/expert-enhancements-css.css)" >> $GITHUB_STEP_SUMMARY
-          echo "- [expert-enhancements-html.js](${BASE_URL}/${SANITIZED_BRANCH}/expert-enhancements-html.js)" >> $GITHUB_STEP_SUMMARY
+          echo "**Direct file links (bundled with Vite):**" >> $GITHUB_STEP_SUMMARY
+          echo "- [expert-enhancements-embed.js](${BASE_URL}/${SANITIZED_BRANCH}/expert-enhancements-embed.js) (bundled JS)" >> $GITHUB_STEP_SUMMARY
+          echo "- [expert-enhancements-core.css](${BASE_URL}/${SANITIZED_BRANCH}/expert-enhancements-core.css) (bundled CSS)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📝 Testing Instructions" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -91,14 +90,10 @@ jobs:
             <script src="${embedUrl}"></script>
             \`\`\`
 
-            ### All Files
+            ### All Files (Bundled with Vite)
 
-            - [expert-enhancements-embed.js](${baseUrl}/${sanitizedBranch}/expert-enhancements-embed.js)
-            - [expert-enhancements-core.js](${baseUrl}/${sanitizedBranch}/expert-enhancements-core.js)
-            - [expert-enhancements-core.css](${baseUrl}/${sanitizedBranch}/expert-enhancements-core.css)
-            - [expert-enhancements-css.js](${baseUrl}/${sanitizedBranch}/expert-enhancements-css.js)
-            - [expert-enhancements-css.css](${baseUrl}/${sanitizedBranch}/expert-enhancements-css.css)
-            - [expert-enhancements-html.js](${baseUrl}/${sanitizedBranch}/expert-enhancements-html.js)
+            - [expert-enhancements-embed.js](${baseUrl}/${sanitizedBranch}/expert-enhancements-embed.js) (bundled JS)
+            - [expert-enhancements-core.css](${baseUrl}/${sanitizedBranch}/expert-enhancements-core.css) (bundled CSS)
             `;
 
             github.rest.issues.createComment({
