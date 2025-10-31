@@ -8,7 +8,7 @@ yarn-error.log*
 
 # Vite
 .vite/
-dist/*.map
+dist/
 
 # Optional: uncomment if you want to protect your configured server.js
 # server.js
