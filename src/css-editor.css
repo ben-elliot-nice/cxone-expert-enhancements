@@ -104,7 +104,7 @@
 .save-dropdown .btn-primary {
     padding: 0 10px;
     font-size: 0.8rem;
-    border-radius: 6px 0 0 0;
+    border-radius: 4px 0 0 0;
     border-right: none;
 }
 
@@ -116,7 +116,7 @@
     padding: 0.4rem 0.5rem;
     cursor: pointer;
     font-size: 0.65rem;
-    border-radius: 0 6px 0 0;
+    border-radius: 0 4px 0 0;
     transition: all 0.15s;
     display: flex;
     align-items: center;
@@ -257,7 +257,7 @@
     border-right: none;
     color: #0d6efd;
     padding: 0.25rem 0.75rem;
-    border-radius: 3px 0 0 3px;
+    border-radius: 4px 0 0 4px;
     cursor: pointer;
     font-size: 0.75rem;
     font-weight: 500;
@@ -284,7 +284,7 @@
     border-left: 1px solid rgba(13, 110, 253, 0.3);
     color: #0d6efd;
     padding: 0.25rem 0.4rem;
-    border-radius: 0 3px 3px 0;
+    border-radius: 0 4px 4px 0;
     cursor: pointer;
     font-size: 0.75rem;
     font-weight: 500;
@@ -360,7 +360,7 @@
     border: 1px solid #555;
     color: #ccc;
     padding: 0.25rem 0.75rem;
-    border-radius: 3px;
+    border-radius: 4px;
     cursor: pointer;
     font-size: 0.75rem;
     font-weight: 500;
@@ -417,7 +417,7 @@
     border: 1px solid #555;
     color: #ccc;
     padding: 0.25rem 0.5rem;
-    border-radius: 3px;
+    border-radius: 4px;
     cursor: pointer;
     font-size: 0.75rem;
     transition: all 0.2s;
@@ -434,7 +434,7 @@
     border: 1px solid #555;
     color: #ccc;
     padding: 0.25rem 0.5rem;
-    border-radius: 3px;
+    border-radius: 4px;
     cursor: pointer;
     font-size: 0.75rem;
     transition: all 0.2s;
