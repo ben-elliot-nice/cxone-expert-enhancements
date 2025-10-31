@@ -1448,6 +1448,9 @@ console.log('[HTML Editor App] Loading...');
                     return;
                 }
 
+                // Capture content being saved (to detect edits during save)
+                const contentBeingSaved = field.content;
+
                 // Build form data - send the edited field + original content for others
                 // This ensures only the specific field is saved, not all edited fields
                 const formData = {
@@ -1475,9 +1478,17 @@ console.log('[HTML Editor App] Loading...');
                 if (response.ok || response.redirected) {
                     context.UI.showToast(`${field.label} saved successfully!`, 'success');
 
-                    // Update original content for this field only
-                    originalContent[fieldId] = field.content;
-                    field.isDirty = false;
+                    // Update original content to what was actually saved
+                    originalContent[fieldId] = contentBeingSaved;
+
+                    // Only mark clean if content hasn't changed during save
+                    const currentContent = editor ? editor.getValue() : field.content;
+                    if (currentContent === contentBeingSaved) {
+                        field.isDirty = false;
+                    } else {
+                        field.isDirty = true;
+                        console.log(`[HTML Editor] ${fieldId} content changed during save, keeping dirty state`);
+                    }
 
                     this.updateToggleButtons();
 
@@ -1540,6 +1551,12 @@ console.log('[HTML Editor App] Loading...');
                     return;
                 }
 
+                // Capture content being saved for all fields (to detect edits during save)
+                const contentBeingSaved = {};
+                Object.keys(editorState).forEach(fieldId => {
+                    contentBeingSaved[fieldId] = editorState[fieldId].content;
+                });
+
                 // Build form data
                 const formData = {
                     csrf_token: csrfToken,
@@ -1566,10 +1583,20 @@ console.log('[HTML Editor App] Loading...');
                 if (response.ok || response.redirected) {
                     context.UI.showToast('HTML saved successfully!', 'success');
 
-                    // Update original content
+                    // Update original content and dirty flags
                     Object.keys(editorState).forEach(fieldId => {
-                        originalContent[fieldId] = editorState[fieldId].content;
-                        editorState[fieldId].isDirty = false;
+                        // Update original content to what was actually saved
+                        originalContent[fieldId] = contentBeingSaved[fieldId];
+
+                        // Only mark clean if content hasn't changed during save
+                        const editor = monacoEditors[fieldId];
+                        const currentContent = editor ? editor.getValue() : editorState[fieldId].content;
+                        if (currentContent === contentBeingSaved[fieldId]) {
+                            editorState[fieldId].isDirty = false;
+                        } else {
+                            editorState[fieldId].isDirty = true;
+                            console.log(`[HTML Editor] ${fieldId} content changed during save, keeping dirty state`);
+                        }
                     });
 
                     this.updateToggleButtons();
@@ -1641,6 +1668,12 @@ console.log('[HTML Editor App] Loading...');
                     return;
                 }
 
+                // Capture content being saved for open tabs (to detect edits during save)
+                const contentBeingSaved = {};
+                openFields.forEach(fieldId => {
+                    contentBeingSaved[fieldId] = editorState[fieldId].content;
+                });
+
                 // Build form data - send edited content for open tabs, original for closed tabs
                 const formData = {
                     csrf_token: csrfToken,
@@ -1668,10 +1701,20 @@ console.log('[HTML Editor App] Loading...');
                     const tabLabel = openFields.length === 1 ? editorState[openFields[0]].label : `${openFields.length} tabs`;
                     context.UI.showToast(`${tabLabel} saved successfully!`, 'success');
 
-                    // Update original content for saved tabs
+                    // Update original content and dirty flags for saved tabs
                     openFields.forEach(fieldId => {
-                        originalContent[fieldId] = editorState[fieldId].content;
-                        editorState[fieldId].isDirty = false;
+                        // Update original content to what was actually saved
+                        originalContent[fieldId] = contentBeingSaved[fieldId];
+
+                        // Only mark clean if content hasn't changed during save
+                        const editor = monacoEditors[fieldId];
+                        const currentContent = editor ? editor.getValue() : editorState[fieldId].content;
+                        if (currentContent === contentBeingSaved[fieldId]) {
+                            editorState[fieldId].isDirty = false;
+                        } else {
+                            editorState[fieldId].isDirty = true;
+                            console.log(`[HTML Editor] ${fieldId} content changed during save, keeping dirty state`);
+                        }
                     });
 
                     this.updateToggleButtons();
