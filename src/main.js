@@ -228,8 +228,9 @@ async function initializeUI() {
             console.log('[Expert Enhancements] Restoring overlay open state');
             setTimeout(() => {
                 Overlay.toggle();
-                // Hide loading overlay after app is mounted
-                if (loadingShown) {
+                // Hide loading overlay after app is mounted (only if app loaded successfully)
+                // If no app loaded, keep error message visible
+                if (loadingShown && appLoaded) {
                     setTimeout(() => {
                         LoadingOverlay.hide();
                     }, 500);
