@@ -39,11 +39,12 @@ console.log(`[Expert Enhancements] Core loaded (v${version})`);
 // Import Apps (these auto-register with AppManager on load)
 // Note: Static imports are bundled by Vite. Error handling is in each app's
 // registration code and in AppManager.register() for graceful degradation.
+// IMPORTANT: Import apps in dependency order - base apps first!
 // ============================================================================
 
-import './css-editor.js';
-import './html-editor.js';
-import './settings.js';
+import './settings.js';     // Base app (no dependencies) - must load first
+import './css-editor.js';   // Depends on: settings
+import './html-editor.js';  // Depends on: settings
 
 // ============================================================================
 // Initialization Complete - Now Initialize UI
