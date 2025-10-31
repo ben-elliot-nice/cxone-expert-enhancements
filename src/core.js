@@ -7,10 +7,10 @@
  * @version 1.0.0
  */
 
-(function() {
-    'use strict';
+// ES Module - no IIFE wrapper needed
+// Modules are automatically in strict mode
 
-    console.log('[Enhancements Core] Initializing...');
+console.log('[Enhancements Core] Initializing...');
 
     // ============================================================================
     // App Registry & Manager
@@ -2734,23 +2734,39 @@
         }
     };
 
-    // ============================================================================
-    // Export Global Context
-    // ============================================================================
+// ============================================================================
+// Export ES Modules
+// ============================================================================
 
-    window.ExpertEnhancements = {
-        AppManager,
-        Monaco,
-        API,
-        Storage,
-        UI,
-        DOM,
-        Overlay,
-        LoadingOverlay,
-        FileImport,
-        Formatter,
-        version: '1.0.0'
-    };
+export {
+    AppManager,
+    Monaco,
+    API,
+    Storage,
+    UI,
+    DOM,
+    Overlay,
+    LoadingOverlay,
+    FileImport,
+    Formatter
+};
 
-    console.log('[Enhancements Core] Initialized successfully');
-})();
+export const version = '1.0.0';
+
+console.log('[Enhancements Core] Initialized successfully');
+
+// Also export on window for backwards compatibility during transition
+// This can be removed once all code uses ES imports
+window.ExpertEnhancements = {
+    AppManager,
+    Monaco,
+    API,
+    Storage,
+    UI,
+    DOM,
+    Overlay,
+    LoadingOverlay,
+    FileImport,
+    Formatter,
+    version
+};

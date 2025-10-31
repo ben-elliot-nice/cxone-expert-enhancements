@@ -6,10 +6,10 @@
  * @version 1.0.0
  */
 
-(function() {
-    'use strict';
+// ES Module - import dependencies from core
+import { AppManager } from './core.js';
 
-    console.log('[HTML Editor App] Loading...');
+console.log('[HTML Editor App] Loading...');
 
     // ============================================================================
     // State & Configuration
@@ -1708,16 +1708,12 @@
     };
 
     // ============================================================================
-    // Register App
-    // ============================================================================
+// Register App & Export
+// ============================================================================
 
-    // Wait for core to be ready
-    const waitForCore = setInterval(() => {
-        if (window.ExpertEnhancements && window.ExpertEnhancements.AppManager) {
-            clearInterval(waitForCore);
-            window.ExpertEnhancements.AppManager.register(HTMLEditorApp);
-            console.log('[HTML Editor App] Registered');
-        }
-    }, 100);
+// Register with AppManager (ES modules load synchronously, core is already initialized)
+AppManager.register(HTMLEditorApp);
+console.log('[HTML Editor App] Registered');
 
-})();
+// Export for potential external use
+export { HTMLEditorApp };

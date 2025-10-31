@@ -38,7 +38,7 @@ git pull
 git checkout -b feature/my-feature-name
 
 # 3. Make your changes
-# Edit files in dist/, etc.
+# Edit files in src/, then build with: npm run build
 
 # 4. Test locally (optional)
 npm run deploy  # Deploys to feature/my-feature-name/
@@ -170,11 +170,11 @@ Each branch deploys to a unique path on Digital Ocean Spaces:
 | `main` | `main/`, `latest/`, `releases/v{version}/` | `releases/v*` cached forever, others no-cache |
 
 **Example URLs:**
-- Feature: `https://releases.benelliot-nice.com/cxone-expert-enhancements/feature/auto-load-css/expert-enhancements-embed.js`
-- Hotfix: `https://releases.benelliot-nice.com/cxone-expert-enhancements/hotfix/bug-123/expert-enhancements-embed.js`
-- Develop: `https://releases.benelliot-nice.com/cxone-expert-enhancements/develop/expert-enhancements-embed.js`
-- Latest: `https://releases.benelliot-nice.com/cxone-expert-enhancements/latest/expert-enhancements-embed.js`
-- Pinned: `https://releases.benelliot-nice.com/cxone-expert-enhancements/releases/v0.0.8/expert-enhancements-embed.js`
+- Feature: `https://releases.benelliot-nice.com/cxone-expert-enhancements/feature/auto-load-css/embed.js`
+- Hotfix: `https://releases.benelliot-nice.com/cxone-expert-enhancements/hotfix/bug-123/embed.js`
+- Develop: `https://releases.benelliot-nice.com/cxone-expert-enhancements/develop/embed.js`
+- Latest: `https://releases.benelliot-nice.com/cxone-expert-enhancements/latest/embed.js`
+- Pinned: `https://releases.benelliot-nice.com/cxone-expert-enhancements/releases/v0.0.8/embed.js`
 
 **Note:** Versioned releases are deployed to `releases/v{version}/` subdirectory to avoid polluting the S3 bucket root.
 
@@ -419,7 +419,8 @@ git push
 git checkout -b feature/test-deploy
 
 # 2. Make a small change
-echo "/* test */" >> dist/css-editor.css
+echo "/* test */" >> src/css-editor.css
+npm run build
 
 # 3. Commit and push
 git add .
@@ -430,7 +431,7 @@ git push -u origin feature/test-deploy
 # Go to: https://github.com/{user}/{repo}/actions
 
 # 5. Verify deployment
-# URL: https://releases.benelliot-nice.com/cxone-expert-enhancements/feature/test-deploy/expert-enhancements-embed.js
+# URL: https://releases.benelliot-nice.com/cxone-expert-enhancements/feature/test-deploy/embed.js
 
 # 6. Check PR comment for deployment URLs (if PR was created)
 ```
@@ -467,8 +468,8 @@ gh pr create --base main --title "Release v0.0.2"
 # - Develop branch synced with main (no conflicts)
 
 # 5. Test deployments:
-# https://releases.benelliot-nice.com/cxone-expert-enhancements/latest/expert-enhancements-embed.js
-# https://releases.benelliot-nice.com/cxone-expert-enhancements/releases/v0.0.2/expert-enhancements-embed.js
+# https://releases.benelliot-nice.com/cxone-expert-enhancements/latest/embed.js
+# https://releases.benelliot-nice.com/cxone-expert-enhancements/releases/v0.0.2/embed.js
 ```
 
 ## Advanced: Manual Deployment
