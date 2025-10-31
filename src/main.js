@@ -9,7 +9,7 @@
 console.log('[Expert Enhancements] Main entry point loading...');
 
 // ============================================================================
-// Import CSS (Vite will bundle these)
+// Import CSS (Vite will bundle these, we also load them dynamically)
 // ============================================================================
 
 import './core.css';
@@ -103,28 +103,65 @@ function loadMonacoLoader() {
     });
 }
 
+// Load CSS file
+function loadCSS() {
+    return new Promise((resolve) => {
+        // Auto-detect CDN base from this script's URL
+        const scripts = document.getElementsByTagName('script');
+        const thisScript = Array.from(scripts).find(s => s.src && s.src.includes('expert-enhancements-embed'));
+
+        let cssUrl;
+        if (thisScript && thisScript.src) {
+            const scriptPath = thisScript.src;
+            const basePath = scriptPath.substring(0, scriptPath.lastIndexOf('/'));
+            cssUrl = `${basePath}/expert-enhancements-core.css`;
+        } else {
+            // Fallback to relative path
+            cssUrl = 'expert-enhancements-core.css';
+        }
+
+        console.log('[Expert Enhancements] Loading CSS:', cssUrl);
+
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = cssUrl;
+        link.onload = () => {
+            console.log('[Expert Enhancements] CSS loaded');
+            resolve();
+        };
+        link.onerror = () => {
+            console.warn('[Expert Enhancements] CSS failed to load, continuing anyway');
+            resolve();
+        };
+        document.head.appendChild(link);
+    });
+}
+
 async function initializeUI() {
     try {
         console.log('[Expert Enhancements] Initializing UI...');
 
-        // 1. Load Monaco loader first (before Monaco.init())
+        // 1. Load CSS first
+        await loadCSS();
+
+        // 2. Load Monaco loader (before Monaco.init())
         await loadMonacoLoader();
 
-        // 2. Initialize Monaco
+        // 3. Initialize Monaco
         console.log('[Expert Enhancements] Pre-loading Monaco...');
         await Monaco.init();
         console.log('[Expert Enhancements] Monaco ready');
 
-        // 3. Create toggle button
+        // 4. Create toggle button
         createToggleButton();
 
-        // 4. Create overlay
+        // 5. Create overlay
         Overlay.create();
 
-        // 5. Update app switcher
+        // 6. Update app switcher
         Overlay.updateAppSwitcher();
 
-        // 6. Restore and load last active app
+        // 7. Restore and load last active app
         const commonState = Storage.getCommonState();
         const lastActiveApp = commonState.lastActiveApp || 'css-editor';
 
@@ -142,7 +179,7 @@ async function initializeUI() {
 
         await AppManager.switchTo(lastActiveApp);
 
-        // 7. Restore overlay state
+        // 8. Restore overlay state
         if (commonState.overlayOpen) {
             console.log('[Expert Enhancements] Restoring overlay open state');
             setTimeout(() => {
