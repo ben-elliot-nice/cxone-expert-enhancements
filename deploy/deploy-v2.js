@@ -16,10 +16,10 @@ const CONFIG = {
   basePrefix: 'cxone-expert-enhancements',
   files: [
     // Bundled files (Vite build output)
-    // NOTE: Everything is now bundled into expert-enhancements-embed.js
-    // Previously separate files (core.js, css.js, html.js, settings.js) are no longer needed
-    { local: 'dist/expert-enhancements-embed.js', remote: 'expert-enhancements-embed.js', contentType: 'application/javascript' },
-    { local: 'dist/expert-enhancements-core.css', remote: 'expert-enhancements-core.css', contentType: 'text/css' },
+    // NOTE: Simplified naming - just embed.js and core.css
+    // Everything bundled into single JS file (core, css-editor, html-editor, settings)
+    { local: 'dist/embed.js', remote: 'embed.js', contentType: 'application/javascript' },
+    { local: 'dist/core.css', remote: 'core.css', contentType: 'text/css' },
   ]
 };
 

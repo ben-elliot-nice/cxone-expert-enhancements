@@ -16,15 +16,15 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, 'src/main.js'),
       name: 'ExpertEnhancements',
-      fileName: () => 'expert-enhancements-embed.js', // Override to remove format suffix
+      fileName: () => 'embed.js', // Simplified filename
       formats: ['iife'] // IIFE format for browser compatibility
     },
     rollupOptions: {
       output: {
         assetFileNames: (assetInfo) => {
-          // Rename CSS to match current structure
+          // Simplified CSS filename
           if (assetInfo.name.endsWith('.css')) {
-            return 'expert-enhancements-core.css';
+            return 'core.css';
           }
           return assetInfo.name;
         }

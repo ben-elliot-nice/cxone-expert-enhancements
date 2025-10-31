@@ -108,16 +108,16 @@ function loadCSS() {
     return new Promise((resolve) => {
         // Auto-detect CDN base from this script's URL
         const scripts = document.getElementsByTagName('script');
-        const thisScript = Array.from(scripts).find(s => s.src && s.src.includes('expert-enhancements-embed'));
+        const thisScript = Array.from(scripts).find(s => s.src && s.src.includes('embed'));
 
         let cssUrl;
         if (thisScript && thisScript.src) {
             const scriptPath = thisScript.src;
             const basePath = scriptPath.substring(0, scriptPath.lastIndexOf('/'));
-            cssUrl = `${basePath}/expert-enhancements-core.css`;
+            cssUrl = `${basePath}/core.css`;
         } else {
             // Fallback to relative path
-            cssUrl = 'expert-enhancements-core.css';
+            cssUrl = 'core.css';
         }
 
         console.log('[Expert Enhancements] Loading CSS:', cssUrl);
