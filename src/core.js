@@ -1053,7 +1053,7 @@ console.log('[Enhancements Core] Initializing...');
             confirmText.style.paddingLeft = '1rem';
             confirmText.style.paddingRight = '0.5rem';
             confirmText.style.flex = '1';
-            confirmText.style.background = 'rgba(220, 53, 69, 0.15)';
+            confirmText.style.background = '#fff5f6';
 
             const buttonGroup = document.createElement('span');
             buttonGroup.style.display = 'flex';
