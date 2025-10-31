@@ -1041,7 +1041,7 @@ console.log('[Enhancements Core] Initializing...');
             button.style.gap = '0';
             button.style.justifyContent = 'space-between';
             button.style.padding = '0';
-            button.style.width = originalWidth;
+            button.style.minWidth = originalWidth;
             button.style.height = originalHeight;
             button.style.minHeight = originalHeight;
 
@@ -1123,7 +1123,7 @@ console.log('[Enhancements Core] Initializing...');
                 button.style.gap = '';
                 button.style.justifyContent = '';
                 button.style.padding = '';
-                button.style.width = '';
+                button.style.minWidth = '';
                 button.style.height = '';
                 button.style.minHeight = originalMinHeight;
             };
