@@ -46,24 +46,29 @@ DO_SPACES_ENDPOINT=syd1.digitaloceanspaces.com
 
 ### Making Changes
 
-All source files are in the `/dist/` directory:
+All source files are in the `/src/` directory:
 
-- `dist/expert-enhancements-embed.js` - Loader script
-- `dist/expert-enhancements-core.js` - Core app manager
-- `dist/expert-enhancements-core.css` - Core styling
-- `dist/expert-enhancements-css.js` - CSS Editor module
-- `dist/expert-enhancements-css.css` - CSS Editor styling
-- `dist/expert-enhancements-html.js` - HTML Editor module
+- `src/main.js` - Main entry point (Vite)
+- `src/core.js` - Core app manager
+- `src/core.css` - Core styling
+- `src/css-editor.js` - CSS Editor module
+- `src/css-editor.css` - CSS Editor styling
+- `src/html-editor.js` - HTML Editor module
+- `src/settings.js` - Settings module
 
-**Important:** There is currently no build step. Edit files in `/dist/` directly.
+**Important:** After making changes, run `npm run build` to bundle for deployment.
 
 ### Testing Your Changes
 
-#### Option 1: Local File Testing
+#### Option 1: Vite Dev Server (Recommended)
 
-1. Make your changes to files in `/dist/`
-2. Update your CXone Expert site to load from your local files
-3. Test in browser
+1. Make your changes to files in `/src/`
+2. Start the dev server:
+   ```bash
+   npm run dev
+   ```
+3. Open http://localhost:5173/ in your browser
+4. Changes reload automatically with HMR
 
 #### Option 2: Deploy to Test Branch
 
@@ -71,15 +76,15 @@ All source files are in the `/dist/` directory:
 # Make sure you're on a feature branch
 git checkout -b feature/my-feature
 
-# Deploy to your branch-specific path
+# Build and deploy to your branch-specific path
 npm run deploy
 ```
 
-This deploys to: `https://releases.benelliot-nice.com/cxone-expert-enhancements/feature-my-feature/`
+This builds and deploys to: `https://releases.benelliot-nice.com/cxone-expert-enhancements/feature-my-feature/`
 
 Then update your embed tag to test:
 ```html
-<script src="https://releases.benelliot-nice.com/cxone-expert-enhancements/feature-my-feature/expert-enhancements-embed.js"></script>
+<script src="https://releases.benelliot-nice.com/cxone-expert-enhancements/feature-my-feature/embed.js"></script>
 ```
 
 ### Git Workflow
@@ -153,9 +158,11 @@ See [GIT_WORKFLOW.md](GIT_WORKFLOW.md) for detailed branching, versioning, and r
 
 ### Creating a New App Module
 
-New apps follow this structure:
+1. Create a new file in `src/` (e.g., `src/my-app.js`):
 
 ```javascript
+import { AppManager } from './core.js';
+
 const MyApp = {
     name: 'My App',
     id: 'my-app',
@@ -173,11 +180,23 @@ const MyApp = {
     }
 };
 
-// Register the app
-AppManager.registerApp(MyApp.id, MyApp);
+// Register the app (auto-executes on import)
+AppManager.register(MyApp);
+
+export { MyApp };
 ```
 
-See `dist/expert-enhancements-css.js` for a complete example.
+2. Import in `src/main.js`:
+```javascript
+import './my-app.js';
+```
+
+3. Build:
+```bash
+npm run build
+```
+
+See `src/css-editor.js` for a complete example.
 
 ## Getting Help
 

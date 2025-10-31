@@ -272,8 +272,18 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, 'src/main.js'),
       name: 'ExpertEnhancements',
-      fileName: 'expert-enhancements-embed',
+      fileName: () => 'embed.js',
       formats: ['iife']
+    },
+    rollupOptions: {
+      output: {
+        assetFileNames: (assetInfo) => {
+          if (assetInfo.name.endsWith('.css')) {
+            return 'core.css';
+          }
+          return assetInfo.name;
+        }
+      }
     }
   }
 });
