@@ -1061,6 +1061,15 @@ console.log('[HTML Editor App] Loading...');
                     return;
                 }
 
+                // Ensure target editor is active and created before import
+                // This is critical for preserving undo history when importing across apps
+                if (!field.active) {
+                    field.active = true;
+                    this.updateGrid(); // Creates the Monaco editor
+                    // Give the editor time to fully initialize
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+
                 // Create separator comment
                 const separator = `\n\n<!-- ========================================\n     Imported from: ${fileName}\n     Date: ${new Date().toLocaleString()}\n     ======================================== -->\n`;
 
