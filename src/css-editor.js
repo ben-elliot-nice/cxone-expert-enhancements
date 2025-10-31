@@ -6,10 +6,10 @@
  * @version 1.0.0
  */
 
-(function() {
-    'use strict';
+// ES Module - import dependencies from core
+import { AppManager } from './core.js';
 
-    console.log('[CSS Editor App] Loading...');
+console.log('[CSS Editor App] Loading...');
 
     // ============================================================================
     // State & Configuration
@@ -2048,17 +2048,13 @@
         }
     };
 
-    // ============================================================================
-    // Register App
-    // ============================================================================
+// ============================================================================
+// Register App & Export
+// ============================================================================
 
-    // Wait for core to be ready
-    const waitForCore = setInterval(() => {
-        if (window.ExpertEnhancements && window.ExpertEnhancements.AppManager) {
-            clearInterval(waitForCore);
-            window.ExpertEnhancements.AppManager.register(CSSEditorApp);
-            console.log('[CSS Editor App] Registered');
-        }
-    }, 100);
+// Register with AppManager (ES modules load synchronously, core is already initialized)
+AppManager.register(CSSEditorApp);
+console.log('[CSS Editor App] Registered');
 
-})();
+// Export for potential external use
+export { CSSEditorApp };
