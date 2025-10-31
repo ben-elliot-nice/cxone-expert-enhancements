@@ -48,6 +48,9 @@ console.log('[CSS Editor App] Loading...');
         id: 'css-editor',
         name: 'CSS Editor',
 
+        // Dependencies: Apps that must be loaded before this app can initialize
+        dependencies: ['settings'],
+
         // App-specific constraints for overlay sizing
         constraints: {
             minWidth: 420,
@@ -2104,9 +2107,26 @@ console.log('[CSS Editor App] Loading...');
 // Register App & Export
 // ============================================================================
 
-// Register with AppManager (ES modules load synchronously, core is already initialized)
-AppManager.register(CSSEditorApp);
-console.log('[CSS Editor App] Registered');
+// Register with AppManager (gracefully handles registration failures)
+try {
+    // Debug/Test: Allow URL parameter to force registration failure
+    const urlParams = new URLSearchParams(window.location.search);
+    const failApps = urlParams.getAll('failApp');
+
+    if (failApps.includes('css-editor')) {
+        console.warn('[CSS Editor App] ⚠ Simulating registration failure (failApp URL param)');
+        throw new Error('Simulated failure for testing (URL param: failApp=css-editor)');
+    }
+
+    const registered = AppManager.register(CSSEditorApp);
+    if (registered) {
+        console.log('[CSS Editor App] Successfully registered');
+    } else {
+        console.error('[CSS Editor App] Registration failed - check AppManager logs');
+    }
+} catch (error) {
+    console.error('[CSS Editor App] Unexpected error during registration:', error);
+}
 
 // Export for potential external use
 export { CSSEditorApp };

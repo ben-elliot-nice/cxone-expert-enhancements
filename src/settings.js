@@ -461,9 +461,26 @@ console.log('[Settings App] Loading...');
 // Register App & Export
 // ============================================================================
 
-// Register with AppManager (ES modules load synchronously, core is already initialized)
-AppManager.register(SettingsApp);
-console.log('[Settings App] Registered');
+// Register with AppManager (gracefully handles registration failures)
+try {
+    // Debug/Test: Allow URL parameter to force registration failure
+    const urlParams = new URLSearchParams(window.location.search);
+    const failApps = urlParams.getAll('failApp');
+
+    if (failApps.includes('settings')) {
+        console.warn('[Settings App] ⚠ Simulating registration failure (failApp URL param)');
+        throw new Error('Simulated failure for testing (URL param: failApp=settings)');
+    }
+
+    const registered = AppManager.register(SettingsApp);
+    if (registered) {
+        console.log('[Settings App] Successfully registered');
+    } else {
+        console.error('[Settings App] Registration failed - check AppManager logs');
+    }
+} catch (error) {
+    console.error('[Settings App] Unexpected error during registration:', error);
+}
 
 // Export for potential external use
 export { SettingsApp };

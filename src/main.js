@@ -37,11 +37,14 @@ console.log(`[Expert Enhancements] Core loaded (v${version})`);
 
 // ============================================================================
 // Import Apps (these auto-register with AppManager on load)
+// Note: Static imports are bundled by Vite. Error handling is in each app's
+// registration code and in AppManager.register() for graceful degradation.
+// IMPORTANT: Import apps in dependency order - base apps first!
 // ============================================================================
 
-import './css-editor.js';
-import './html-editor.js';
-import './settings.js';
+import './settings.js';     // Base app (no dependencies) - must load first
+import './css-editor.js';   // Depends on: settings
+import './html-editor.js';  // Depends on: settings
 
 // ============================================================================
 // Initialization Complete - Now Initialize UI
@@ -141,27 +144,44 @@ async function initializeUI() {
     try {
         console.log('[Expert Enhancements] Initializing UI...');
 
-        // 1. Load CSS first
+        // 1. Check registered apps (static imports have already run)
+        const registeredApps = AppManager.getApps();
+        console.log(`[Expert Enhancements] ${registeredApps.length} app(s) registered:`,
+            registeredApps.map(app => app.name).join(', ') || 'none');
+
+        // Report any failed registrations
+        const failedRegistrations = AppManager.getFailedApps();
+        if (failedRegistrations.length > 0) {
+            console.warn('[Expert Enhancements] Failed app registrations:', failedRegistrations);
+        }
+
+        // Check if any apps were registered
+        if (registeredApps.length === 0) {
+            console.error('[Expert Enhancements] No apps registered! Widget cannot function.');
+            // Still create UI to show error message
+        }
+
+        // 2. Load CSS
         await loadCSS();
 
-        // 2. Load Monaco loader (before Monaco.init())
+        // 3. Load Monaco loader (before Monaco.init())
         await loadMonacoLoader();
 
-        // 3. Initialize Monaco
+        // 4. Initialize Monaco
         console.log('[Expert Enhancements] Pre-loading Monaco...');
         await Monaco.init();
         console.log('[Expert Enhancements] Monaco ready');
 
-        // 4. Create toggle button
+        // 5. Create toggle button
         createToggleButton();
 
-        // 5. Create overlay
+        // 6. Create overlay
         Overlay.create();
 
-        // 6. Update app switcher
+        // 7. Update app switcher
         Overlay.updateAppSwitcher();
 
-        // 7. Restore and load last active app
+        // 8. Restore and load last active app with fallback
         const commonState = Storage.getCommonState();
         const lastActiveApp = commonState.lastActiveApp || 'css-editor';
 
@@ -177,15 +197,40 @@ async function initializeUI() {
             loadingShown = true;
         }
 
-        await AppManager.switchTo(lastActiveApp);
+        // Try to load last active app, with fallback to first available
+        let appLoaded = false;
+        if (registeredApps.length > 0) {
+            appLoaded = await AppManager.switchTo(lastActiveApp);
 
-        // 8. Restore overlay state
+            if (!appLoaded) {
+                console.warn(`[Expert Enhancements] Failed to load last active app "${lastActiveApp}", trying first available app...`);
+                const firstApp = AppManager.getFirstAvailableApp();
+
+                if (firstApp) {
+                    console.log('[Expert Enhancements] Loading first available app:', firstApp);
+                    appLoaded = await AppManager.switchTo(firstApp);
+                }
+            }
+        }
+
+        // If still no app loaded, show error
+        if (!appLoaded) {
+            console.error('[Expert Enhancements] Failed to load any app!');
+            if (loadingShown) {
+                LoadingOverlay.showError('No apps available. Please refresh the page or contact support.');
+            } else {
+                UI.showToast('Failed to load any apps. Widget may not function correctly.', 'error', 10000);
+            }
+        }
+
+        // 9. Restore overlay state
         if (commonState.overlayOpen) {
             console.log('[Expert Enhancements] Restoring overlay open state');
             setTimeout(() => {
                 Overlay.toggle();
-                // Hide loading overlay after app is mounted
-                if (loadingShown) {
+                // Hide loading overlay after app is mounted (only if app loaded successfully)
+                // If no app loaded, keep error message visible
+                if (loadingShown && appLoaded) {
                     setTimeout(() => {
                         LoadingOverlay.hide();
                     }, 500);
@@ -197,6 +242,14 @@ async function initializeUI() {
 
     } catch (error) {
         console.error('[Expert Enhancements] Initialization failed:', error);
+        // Try to show error to user
+        try {
+            if (LoadingOverlay.isShown()) {
+                LoadingOverlay.showError(`Initialization failed: ${error.message}`);
+            }
+        } catch (e) {
+            console.error('[Expert Enhancements] Failed to show error overlay:', e);
+        }
     }
 }
 
