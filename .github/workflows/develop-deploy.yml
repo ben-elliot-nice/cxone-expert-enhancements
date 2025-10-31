@@ -50,16 +50,12 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Main embed script:**" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`html" >> $GITHUB_STEP_SUMMARY
-          echo "<script src=\"${BASE_URL}/develop/expert-enhancements-embed.js\"></script>" >> $GITHUB_STEP_SUMMARY
+          echo "<script src=\"${BASE_URL}/develop/embed.js\"></script>" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Direct file links:**" >> $GITHUB_STEP_SUMMARY
-          echo "- [expert-enhancements-embed.js](${BASE_URL}/develop/expert-enhancements-embed.js)" >> $GITHUB_STEP_SUMMARY
-          echo "- [expert-enhancements-core.js](${BASE_URL}/develop/expert-enhancements-core.js)" >> $GITHUB_STEP_SUMMARY
-          echo "- [expert-enhancements-core.css](${BASE_URL}/develop/expert-enhancements-core.css)" >> $GITHUB_STEP_SUMMARY
-          echo "- [expert-enhancements-css.js](${BASE_URL}/develop/expert-enhancements-css.js)" >> $GITHUB_STEP_SUMMARY
-          echo "- [expert-enhancements-css.css](${BASE_URL}/develop/expert-enhancements-css.css)" >> $GITHUB_STEP_SUMMARY
-          echo "- [expert-enhancements-html.js](${BASE_URL}/develop/expert-enhancements-html.js)" >> $GITHUB_STEP_SUMMARY
+          echo "**Direct file links (bundled with Vite):**" >> $GITHUB_STEP_SUMMARY
+          echo "- [embed.js](${BASE_URL}/develop/embed.js) (bundled JS)" >> $GITHUB_STEP_SUMMARY
+          echo "- [core.css](${BASE_URL}/develop/core.css) (bundled CSS)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📝 Testing Instructions" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

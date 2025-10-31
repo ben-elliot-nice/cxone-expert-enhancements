@@ -128,43 +128,31 @@ jobs:
 
             #### Option 1: Latest Version (Auto-Updates)
             \`\`\`html
-            <script src="${baseUrl}/latest/expert-enhancements-embed.js"></script>
+            <script src="${baseUrl}/latest/embed.js"></script>
             \`\`\`
 
             #### Option 2: Pinned Version (No Auto-Updates)
             \`\`\`html
-            <script src="${baseUrl}/releases/v${version}/expert-enhancements-embed.js"></script>
+            <script src="${baseUrl}/releases/v${version}/embed.js"></script>
             \`\`\`
 
             ### 📝 Changes
 
             ${changelog}
 
-            ### 🔗 Deployment URLs
+            ### 🔗 Deployment URLs (Bundled with Vite)
 
             **Pinned Version (v${version}):**
-            - [expert-enhancements-embed.js](${baseUrl}/releases/v${version}/expert-enhancements-embed.js)
-            - [expert-enhancements-core.js](${baseUrl}/releases/v${version}/expert-enhancements-core.js)
-            - [expert-enhancements-core.css](${baseUrl}/releases/v${version}/expert-enhancements-core.css)
-            - [expert-enhancements-css.js](${baseUrl}/releases/v${version}/expert-enhancements-css.js)
-            - [expert-enhancements-css.css](${baseUrl}/releases/v${version}/expert-enhancements-css.css)
-            - [expert-enhancements-html.js](${baseUrl}/releases/v${version}/expert-enhancements-html.js)
+            - [embed.js](${baseUrl}/releases/v${version}/embed.js) (bundled JS)
+            - [core.css](${baseUrl}/releases/v${version}/core.css) (bundled CSS)
 
             **Latest:**
-            - [expert-enhancements-embed.js](${baseUrl}/latest/expert-enhancements-embed.js)
-            - [expert-enhancements-core.js](${baseUrl}/latest/expert-enhancements-core.js)
-            - [expert-enhancements-core.css](${baseUrl}/latest/expert-enhancements-core.css)
-            - [expert-enhancements-css.js](${baseUrl}/latest/expert-enhancements-css.js)
-            - [expert-enhancements-css.css](${baseUrl}/latest/expert-enhancements-css.css)
-            - [expert-enhancements-html.js](${baseUrl}/latest/expert-enhancements-html.js)
+            - [embed.js](${baseUrl}/latest/embed.js) (bundled JS)
+            - [core.css](${baseUrl}/latest/core.css) (bundled CSS)
 
             **Main Branch:**
-            - [expert-enhancements-embed.js](${baseUrl}/main/expert-enhancements-embed.js)
-            - [expert-enhancements-core.js](${baseUrl}/main/expert-enhancements-core.js)
-            - [expert-enhancements-core.css](${baseUrl}/main/expert-enhancements-core.css)
-            - [expert-enhancements-css.js](${baseUrl}/main/expert-enhancements-css.js)
-            - [expert-enhancements-css.css](${baseUrl}/main/expert-enhancements-css.css)
-            - [expert-enhancements-html.js](${baseUrl}/main/expert-enhancements-html.js)
+            - [embed.js](${baseUrl}/main/embed.js) (bundled JS)
+            - [core.css](${baseUrl}/main/core.css) (bundled CSS)
 
             ---
 
@@ -201,31 +189,23 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "#### Option 1: Latest (Recommended - Auto-Updates)" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`html" >> $GITHUB_STEP_SUMMARY
-          echo "<script src=\"${BASE_URL}/latest/expert-enhancements-embed.js\"></script>" >> $GITHUB_STEP_SUMMARY
+          echo "<script src=\"${BASE_URL}/latest/embed.js\"></script>" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "#### Option 2: Pinned Version (No Auto-Updates)" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`html" >> $GITHUB_STEP_SUMMARY
-          echo "<script src=\"${BASE_URL}/releases/v${VERSION}/expert-enhancements-embed.js\"></script>" >> $GITHUB_STEP_SUMMARY
+          echo "<script src=\"${BASE_URL}/releases/v${VERSION}/embed.js\"></script>" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 🔗 All Deployment URLs" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 All Deployment URLs (Bundled with Vite)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Pinned v${VERSION}:**" >> $GITHUB_STEP_SUMMARY
-          echo "- [expert-enhancements-embed.js](${BASE_URL}/releases/v${VERSION}/expert-enhancements-embed.js)" >> $GITHUB_STEP_SUMMARY
-          echo "- [expert-enhancements-core.js](${BASE_URL}/releases/v${VERSION}/expert-enhancements-core.js)" >> $GITHUB_STEP_SUMMARY
-          echo "- [expert-enhancements-core.css](${BASE_URL}/releases/v${VERSION}/expert-enhancements-core.css)" >> $GITHUB_STEP_SUMMARY
-          echo "- [expert-enhancements-css.js](${BASE_URL}/releases/v${VERSION}/expert-enhancements-css.js)" >> $GITHUB_STEP_SUMMARY
-          echo "- [expert-enhancements-css.css](${BASE_URL}/releases/v${VERSION}/expert-enhancements-css.css)" >> $GITHUB_STEP_SUMMARY
-          echo "- [expert-enhancements-html.js](${BASE_URL}/releases/v${VERSION}/expert-enhancements-html.js)" >> $GITHUB_STEP_SUMMARY
+          echo "- [embed.js](${BASE_URL}/releases/v${VERSION}/embed.js) (bundled JS)" >> $GITHUB_STEP_SUMMARY
+          echo "- [core.css](${BASE_URL}/releases/v${VERSION}/core.css) (bundled CSS)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Latest:**" >> $GITHUB_STEP_SUMMARY
-          echo "- [expert-enhancements-embed.js](${BASE_URL}/latest/expert-enhancements-embed.js)" >> $GITHUB_STEP_SUMMARY
-          echo "- [expert-enhancements-core.js](${BASE_URL}/latest/expert-enhancements-core.js)" >> $GITHUB_STEP_SUMMARY
-          echo "- [expert-enhancements-core.css](${BASE_URL}/latest/expert-enhancements-core.css)" >> $GITHUB_STEP_SUMMARY
-          echo "- [expert-enhancements-css.js](${BASE_URL}/latest/expert-enhancements-css.js)" >> $GITHUB_STEP_SUMMARY
-          echo "- [expert-enhancements-css.css](${BASE_URL}/latest/expert-enhancements-css.css)" >> $GITHUB_STEP_SUMMARY
-          echo "- [expert-enhancements-html.js](${BASE_URL}/latest/expert-enhancements-html.js)" >> $GITHUB_STEP_SUMMARY
+          echo "- [embed.js](${BASE_URL}/latest/embed.js) (bundled JS)" >> $GITHUB_STEP_SUMMARY
+          echo "- [core.css](${BASE_URL}/latest/core.css) (bundled CSS)" >> $GITHUB_STEP_SUMMARY
 
       - name: Sync README changes back to develop
         if: steps.check-tag.outputs.exists == 'false'

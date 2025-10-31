@@ -53,12 +53,12 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Main embed script:**" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`html" >> $GITHUB_STEP_SUMMARY
-          echo "<script src=\"${BASE_URL}/${SANITIZED_BRANCH}/expert-enhancements-embed.js\"></script>" >> $GITHUB_STEP_SUMMARY
+          echo "<script src=\"${BASE_URL}/${SANITIZED_BRANCH}/embed.js\"></script>" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Direct file links (bundled with Vite):**" >> $GITHUB_STEP_SUMMARY
-          echo "- [expert-enhancements-embed.js](${BASE_URL}/${SANITIZED_BRANCH}/expert-enhancements-embed.js) (bundled JS)" >> $GITHUB_STEP_SUMMARY
-          echo "- [expert-enhancements-core.css](${BASE_URL}/${SANITIZED_BRANCH}/expert-enhancements-core.css) (bundled CSS)" >> $GITHUB_STEP_SUMMARY
+          echo "- [embed.js](${BASE_URL}/${SANITIZED_BRANCH}/embed.js) (bundled JS)" >> $GITHUB_STEP_SUMMARY
+          echo "- [core.css](${BASE_URL}/${SANITIZED_BRANCH}/core.css) (bundled CSS)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📝 Testing Instructions" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -75,7 +75,7 @@ jobs:
             const branch = context.ref.replace('refs/heads/', '');
             const sanitizedBranch = branch.replace(/[^a-zA-Z0-9-_/]/g, '-').toLowerCase();
             const baseUrl = 'https://${{ vars.DO_SPACES_BUCKET }}.${{ vars.DO_SPACES_ENDPOINT }}/cxone-expert-enhancements';
-            const embedUrl = `${baseUrl}/${sanitizedBranch}/expert-enhancements-embed.js`;
+            const embedUrl = `${baseUrl}/${sanitizedBranch}/embed.js`;
 
             const comment = `## 🚀 Branch Deployment Successful
 
@@ -92,8 +92,8 @@ jobs:
 
             ### All Files (Bundled with Vite)
 
-            - [expert-enhancements-embed.js](${baseUrl}/${sanitizedBranch}/expert-enhancements-embed.js) (bundled JS)
-            - [expert-enhancements-core.css](${baseUrl}/${sanitizedBranch}/expert-enhancements-core.css) (bundled CSS)
+            - [embed.js](${baseUrl}/${sanitizedBranch}/embed.js) (bundled JS)
+            - [core.css](${baseUrl}/${sanitizedBranch}/core.css) (bundled CSS)
             `;
 
             github.rest.issues.createComment({
