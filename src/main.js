@@ -36,60 +36,20 @@ import {
 console.log(`[Expert Enhancements] Core loaded (v${version})`);
 
 // ============================================================================
-// Load Apps Dynamically (with graceful error handling)
+// Import Apps (these auto-register with AppManager on load)
+// Note: Static imports are bundled by Vite. Error handling is in each app's
+// registration code and in AppManager.register() for graceful degradation.
 // ============================================================================
 
-async function loadApps() {
-    console.log('[Expert Enhancements] Loading apps...');
-
-    const appModules = [
-        { name: 'CSS Editor', path: './css-editor.js' },
-        { name: 'HTML Editor', path: './html-editor.js' },
-        { name: 'Settings', path: './settings.js' }
-    ];
-
-    const results = await Promise.allSettled(
-        appModules.map(async ({ name, path }) => {
-            try {
-                await import(path);
-                console.log(`[Expert Enhancements] ✓ Loaded ${name}`);
-                return { success: true, name, path };
-            } catch (error) {
-                console.error(`[Expert Enhancements] ✗ Failed to load ${name}:`, error);
-                return { success: false, name, path, error: error.message };
-            }
-        })
-    );
-
-    // Summary of loaded apps
-    const successful = results.filter(r => r.status === 'fulfilled' && r.value.success);
-    const failed = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success));
-
-    console.log(`[Expert Enhancements] App loading complete: ${successful.length} succeeded, ${failed.length} failed`);
-
-    if (failed.length > 0) {
-        console.warn('[Expert Enhancements] Failed apps:', failed.map(r =>
-            r.status === 'fulfilled' ? r.value.name : 'unknown'
-        ));
-    }
-
-    // Report registered apps
-    const registeredApps = AppManager.getApps();
-    console.log(`[Expert Enhancements] ${registeredApps.length} app(s) registered:`,
-        registeredApps.map(app => app.name).join(', ') || 'none');
-
-    // Report failed registrations
-    const failedRegistrations = AppManager.getFailedApps();
-    if (failedRegistrations.length > 0) {
-        console.warn('[Expert Enhancements] Failed registrations:', failedRegistrations);
-    }
-
-    return { successful: successful.length, failed: failed.length, registered: registeredApps.length };
-}
+import './css-editor.js';
+import './html-editor.js';
+import './settings.js';
 
 // ============================================================================
 // Initialization Complete - Now Initialize UI
 // ============================================================================
+
+console.log('[Expert Enhancements] All modules loaded successfully');
 
 if (import.meta.env.DEV) {
     console.log('%c[Expert Enhancements] Development Mode', 'color: #4CAF50; font-weight: bold');
@@ -183,11 +143,19 @@ async function initializeUI() {
     try {
         console.log('[Expert Enhancements] Initializing UI...');
 
-        // 1. Load apps first (gracefully handles failures)
-        const loadResults = await loadApps();
+        // 1. Check registered apps (static imports have already run)
+        const registeredApps = AppManager.getApps();
+        console.log(`[Expert Enhancements] ${registeredApps.length} app(s) registered:`,
+            registeredApps.map(app => app.name).join(', ') || 'none');
+
+        // Report any failed registrations
+        const failedRegistrations = AppManager.getFailedApps();
+        if (failedRegistrations.length > 0) {
+            console.warn('[Expert Enhancements] Failed app registrations:', failedRegistrations);
+        }
 
         // Check if any apps were registered
-        if (loadResults.registered === 0) {
+        if (registeredApps.length === 0) {
             console.error('[Expert Enhancements] No apps registered! Widget cannot function.');
             // Still create UI to show error message
         }
@@ -230,7 +198,7 @@ async function initializeUI() {
 
         // Try to load last active app, with fallback to first available
         let appLoaded = false;
-        if (loadResults.registered > 0) {
+        if (registeredApps.length > 0) {
             appLoaded = await AppManager.switchTo(lastActiveApp);
 
             if (!appLoaded) {
