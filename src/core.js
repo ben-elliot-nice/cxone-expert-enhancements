@@ -21,17 +21,64 @@ console.log('[Enhancements Core] Initializing...');
     let appContainer = null;
 
     const initializedApps = new Set();
+    const failedApps = new Map(); // Track apps that failed to register
 
     const AppManager = {
         /**
-         * Register an app
+         * Register an app (graceful - does not throw)
+         * Supports optional dependencies field: { dependencies: ['app-id1', 'app-id2'] }
          */
         register(app) {
-            if (!app.id || !app.name || !app.init || !app.mount || !app.unmount) {
-                throw new Error('Invalid app interface. Required: id, name, init, mount, unmount');
+            try {
+                // Validate app interface
+                if (!app || typeof app !== 'object') {
+                    const error = 'Invalid app: must be an object';
+                    console.error(`[App Manager] Registration failed:`, error);
+                    failedApps.set('unknown', { error, timestamp: new Date() });
+                    return false;
+                }
+
+                const appId = app.id || 'unknown';
+
+                if (!app.id || !app.name || !app.init || !app.mount || !app.unmount) {
+                    const error = `Invalid app interface for "${app.name || appId}". Required: id, name, init, mount, unmount`;
+                    console.error(`[App Manager] Registration failed:`, error);
+                    failedApps.set(appId, { error, app: app.name || appId, timestamp: new Date() });
+                    return false;
+                }
+
+                // Check for duplicate registration
+                if (apps.has(app.id)) {
+                    console.warn(`[App Manager] App "${app.name}" (${app.id}) is already registered. Skipping.`);
+                    return false;
+                }
+
+                // Validate dependencies (if specified)
+                if (app.dependencies && Array.isArray(app.dependencies)) {
+                    const missingDeps = app.dependencies.filter(depId => !apps.has(depId));
+
+                    if (missingDeps.length > 0) {
+                        const error = `Missing dependencies: ${missingDeps.join(', ')}`;
+                        console.warn(`[App Manager] ⚠ App "${app.name}" (${app.id}) has unmet dependencies: ${missingDeps.join(', ')}`);
+                        failedApps.set(appId, { error, app: app.name, timestamp: new Date(), type: 'dependency' });
+                        return false;
+                    }
+
+                    console.log(`[App Manager] Dependencies satisfied for "${app.name}":`, app.dependencies.join(', '));
+                }
+
+                // Register app
+                apps.set(app.id, app);
+                console.log(`[App Manager] ✓ Registered app: ${app.name} (${app.id})`);
+                return true;
+
+            } catch (error) {
+                const appId = app?.id || 'unknown';
+                const appName = app?.name || appId;
+                console.error(`[App Manager] Unexpected error registering "${appName}":`, error);
+                failedApps.set(appId, { error: error.message, app: appName, timestamp: new Date() });
+                return false;
             }
-            apps.set(app.id, app);
-            console.log(`[App Manager] Registered app: ${app.name} (${app.id})`);
         },
 
         /**
@@ -39,6 +86,24 @@ console.log('[Enhancements Core] Initializing...');
          */
         getApps() {
             return Array.from(apps.values());
+        },
+
+        /**
+         * Get failed app registrations (for debugging)
+         */
+        getFailedApps() {
+            return Array.from(failedApps.entries()).map(([id, info]) => ({
+                id,
+                ...info
+            }));
+        },
+
+        /**
+         * Get first available app ID
+         */
+        getFirstAvailableApp() {
+            const appList = this.getApps();
+            return appList.length > 0 ? appList[0].id : null;
         },
 
         /**
@@ -52,6 +117,42 @@ console.log('[Enhancements Core] Initializing...');
             }
 
             try {
+                // Check dependencies before initializing
+                if (app.dependencies && Array.isArray(app.dependencies)) {
+                    const missingDeps = app.dependencies.filter(depId => !apps.has(depId));
+                    const uninitializedDeps = app.dependencies.filter(depId => apps.has(depId) && !initializedApps.has(depId));
+
+                    if (missingDeps.length > 0) {
+                        console.error(`[App Manager] Cannot load "${app.name}" - missing dependencies: ${missingDeps.join(', ')}`);
+                        UI.showToast(`Cannot load ${app.name}: missing dependencies`, 'error');
+                        return false;
+                    }
+
+                    // Auto-initialize uninitialized dependencies
+                    if (uninitializedDeps.length > 0) {
+                        console.log(`[App Manager] Auto-initializing dependencies for "${app.name}": ${uninitializedDeps.join(', ')}`);
+                        for (const depId of uninitializedDeps) {
+                            const depApp = apps.get(depId);
+                            if (depApp && !initializedApps.has(depId)) {
+                                console.log(`[App Manager] Initializing dependency: ${depApp.name}`);
+                                const context = {
+                                    Monaco,
+                                    API,
+                                    Storage,
+                                    UI,
+                                    DOM,
+                                    Overlay,
+                                    LoadingOverlay,
+                                    FileImport,
+                                    Formatter
+                                };
+                                await depApp.init(context);
+                                initializedApps.add(depId);
+                            }
+                        }
+                    }
+                }
+
                 // Initialize app if not already initialized
                 if (!initializedApps.has(appId)) {
                     console.log(`[App Manager] Initializing: ${app.name}`);
