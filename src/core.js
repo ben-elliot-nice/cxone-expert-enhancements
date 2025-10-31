@@ -1080,6 +1080,7 @@ console.log('[Enhancements Core] Initializing...');
             // Store original button content and dimensions
             const originalText = button.textContent;
             const originalColor = button.style.color;
+            const originalWidth = button.offsetWidth + 'px';
             const originalHeight = button.offsetHeight + 'px';
             const originalMinHeight = button.style.minHeight;
 
@@ -1090,6 +1091,7 @@ console.log('[Enhancements Core] Initializing...');
             button.style.gap = '0';
             button.style.justifyContent = 'space-between';
             button.style.padding = '0';
+            button.style.width = originalWidth;
             button.style.height = originalHeight;
             button.style.minHeight = originalHeight;
 
@@ -1101,6 +1103,7 @@ console.log('[Enhancements Core] Initializing...');
             confirmText.style.paddingLeft = '1rem';
             confirmText.style.paddingRight = '0.5rem';
             confirmText.style.flex = '1';
+            confirmText.style.background = '#fff5f6';
 
             const buttonGroup = document.createElement('span');
             buttonGroup.style.display = 'flex';
@@ -1170,6 +1173,7 @@ console.log('[Enhancements Core] Initializing...');
                 button.style.gap = '';
                 button.style.justifyContent = '';
                 button.style.padding = '';
+                button.style.width = '';
                 button.style.height = '';
                 button.style.minHeight = originalMinHeight;
             };
