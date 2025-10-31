@@ -26,6 +26,7 @@ console.log('[Enhancements Core] Initializing...');
     const AppManager = {
         /**
          * Register an app (graceful - does not throw)
+         * Supports optional dependencies field: { dependencies: ['app-id1', 'app-id2'] }
          */
         register(app) {
             try {
@@ -50,6 +51,20 @@ console.log('[Enhancements Core] Initializing...');
                 if (apps.has(app.id)) {
                     console.warn(`[App Manager] App "${app.name}" (${app.id}) is already registered. Skipping.`);
                     return false;
+                }
+
+                // Validate dependencies (if specified)
+                if (app.dependencies && Array.isArray(app.dependencies)) {
+                    const missingDeps = app.dependencies.filter(depId => !apps.has(depId));
+
+                    if (missingDeps.length > 0) {
+                        const error = `Missing dependencies: ${missingDeps.join(', ')}`;
+                        console.warn(`[App Manager] ⚠ App "${app.name}" (${app.id}) has unmet dependencies: ${missingDeps.join(', ')}`);
+                        failedApps.set(appId, { error, app: app.name, timestamp: new Date(), type: 'dependency' });
+                        return false;
+                    }
+
+                    console.log(`[App Manager] Dependencies satisfied for "${app.name}":`, app.dependencies.join(', '));
                 }
 
                 // Register app
@@ -102,6 +117,42 @@ console.log('[Enhancements Core] Initializing...');
             }
 
             try {
+                // Check dependencies before initializing
+                if (app.dependencies && Array.isArray(app.dependencies)) {
+                    const missingDeps = app.dependencies.filter(depId => !apps.has(depId));
+                    const uninitializedDeps = app.dependencies.filter(depId => apps.has(depId) && !initializedApps.has(depId));
+
+                    if (missingDeps.length > 0) {
+                        console.error(`[App Manager] Cannot load "${app.name}" - missing dependencies: ${missingDeps.join(', ')}`);
+                        UI.showToast(`Cannot load ${app.name}: missing dependencies`, 'error');
+                        return false;
+                    }
+
+                    // Auto-initialize uninitialized dependencies
+                    if (uninitializedDeps.length > 0) {
+                        console.log(`[App Manager] Auto-initializing dependencies for "${app.name}": ${uninitializedDeps.join(', ')}`);
+                        for (const depId of uninitializedDeps) {
+                            const depApp = apps.get(depId);
+                            if (depApp && !initializedApps.has(depId)) {
+                                console.log(`[App Manager] Initializing dependency: ${depApp.name}`);
+                                const context = {
+                                    Monaco,
+                                    API,
+                                    Storage,
+                                    UI,
+                                    DOM,
+                                    Overlay,
+                                    LoadingOverlay,
+                                    FileImport,
+                                    Formatter
+                                };
+                                await depApp.init(context);
+                                initializedApps.add(depId);
+                            }
+                        }
+                    }
+                }
+
                 // Initialize app if not already initialized
                 if (!initializedApps.has(appId)) {
                     console.log(`[App Manager] Initializing: ${app.name}`);

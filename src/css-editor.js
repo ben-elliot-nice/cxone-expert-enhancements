@@ -48,6 +48,9 @@ console.log('[CSS Editor App] Loading...');
         id: 'css-editor',
         name: 'CSS Editor',
 
+        // Dependencies: Apps that must be loaded before this app can initialize
+        dependencies: ['settings'],
+
         // App-specific constraints for overlay sizing
         constraints: {
             minWidth: 420,
@@ -2106,6 +2109,15 @@ console.log('[CSS Editor App] Loading...');
 
 // Register with AppManager (gracefully handles registration failures)
 try {
+    // Debug/Test: Allow URL parameter to force registration failure
+    const urlParams = new URLSearchParams(window.location.search);
+    const failApps = urlParams.getAll('failApp');
+
+    if (failApps.includes('css-editor')) {
+        console.warn('[CSS Editor App] ⚠ Simulating registration failure (failApp URL param)');
+        throw new Error('Simulated failure for testing (URL param: failApp=css-editor)');
+    }
+
     const registered = AppManager.register(CSSEditorApp);
     if (registered) {
         console.log('[CSS Editor App] Successfully registered');

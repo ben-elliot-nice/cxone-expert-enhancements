@@ -38,6 +38,9 @@ console.log('[HTML Editor App] Loading...');
         id: 'html-editor',
         name: 'HTML Editor',
 
+        // Dependencies: Apps that must be loaded before this app can initialize
+        dependencies: ['settings'],
+
         // App-specific constraints for overlay sizing
         constraints: {
             minWidth: 420,
@@ -1765,6 +1768,15 @@ console.log('[HTML Editor App] Loading...');
 
 // Register with AppManager (gracefully handles registration failures)
 try {
+    // Debug/Test: Allow URL parameter to force registration failure
+    const urlParams = new URLSearchParams(window.location.search);
+    const failApps = urlParams.getAll('failApp');
+
+    if (failApps.includes('html-editor')) {
+        console.warn('[HTML Editor App] ⚠ Simulating registration failure (failApp URL param)');
+        throw new Error('Simulated failure for testing (URL param: failApp=html-editor)');
+    }
+
     const registered = AppManager.register(HTMLEditorApp);
     if (registered) {
         console.log('[HTML Editor App] Successfully registered');

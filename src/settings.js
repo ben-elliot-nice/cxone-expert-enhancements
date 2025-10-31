@@ -463,6 +463,15 @@ console.log('[Settings App] Loading...');
 
 // Register with AppManager (gracefully handles registration failures)
 try {
+    // Debug/Test: Allow URL parameter to force registration failure
+    const urlParams = new URLSearchParams(window.location.search);
+    const failApps = urlParams.getAll('failApp');
+
+    if (failApps.includes('settings')) {
+        console.warn('[Settings App] ⚠ Simulating registration failure (failApp URL param)');
+        throw new Error('Simulated failure for testing (URL param: failApp=settings)');
+    }
+
     const registered = AppManager.register(SettingsApp);
     if (registered) {
         console.log('[Settings App] Successfully registered');
