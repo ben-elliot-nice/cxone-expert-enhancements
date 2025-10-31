@@ -1711,9 +1711,17 @@ console.log('[HTML Editor App] Loading...');
 // Register App & Export
 // ============================================================================
 
-// Register with AppManager (ES modules load synchronously, core is already initialized)
-AppManager.register(HTMLEditorApp);
-console.log('[HTML Editor App] Registered');
+// Register with AppManager (gracefully handles registration failures)
+try {
+    const registered = AppManager.register(HTMLEditorApp);
+    if (registered) {
+        console.log('[HTML Editor App] Successfully registered');
+    } else {
+        console.error('[HTML Editor App] Registration failed - check AppManager logs');
+    }
+} catch (error) {
+    console.error('[HTML Editor App] Unexpected error during registration:', error);
+}
 
 // Export for potential external use
 export { HTMLEditorApp };

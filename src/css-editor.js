@@ -2052,9 +2052,17 @@ console.log('[CSS Editor App] Loading...');
 // Register App & Export
 // ============================================================================
 
-// Register with AppManager (ES modules load synchronously, core is already initialized)
-AppManager.register(CSSEditorApp);
-console.log('[CSS Editor App] Registered');
+// Register with AppManager (gracefully handles registration failures)
+try {
+    const registered = AppManager.register(CSSEditorApp);
+    if (registered) {
+        console.log('[CSS Editor App] Successfully registered');
+    } else {
+        console.error('[CSS Editor App] Registration failed - check AppManager logs');
+    }
+} catch (error) {
+    console.error('[CSS Editor App] Unexpected error during registration:', error);
+}
 
 // Export for potential external use
 export { CSSEditorApp };

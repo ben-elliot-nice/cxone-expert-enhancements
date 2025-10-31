@@ -36,18 +36,60 @@ import {
 console.log(`[Expert Enhancements] Core loaded (v${version})`);
 
 // ============================================================================
-// Import Apps (these auto-register with AppManager on load)
+// Load Apps Dynamically (with graceful error handling)
 // ============================================================================
 
-import './css-editor.js';
-import './html-editor.js';
-import './settings.js';
+async function loadApps() {
+    console.log('[Expert Enhancements] Loading apps...');
+
+    const appModules = [
+        { name: 'CSS Editor', path: './css-editor.js' },
+        { name: 'HTML Editor', path: './html-editor.js' },
+        { name: 'Settings', path: './settings.js' }
+    ];
+
+    const results = await Promise.allSettled(
+        appModules.map(async ({ name, path }) => {
+            try {
+                await import(path);
+                console.log(`[Expert Enhancements] ✓ Loaded ${name}`);
+                return { success: true, name, path };
+            } catch (error) {
+                console.error(`[Expert Enhancements] ✗ Failed to load ${name}:`, error);
+                return { success: false, name, path, error: error.message };
+            }
+        })
+    );
+
+    // Summary of loaded apps
+    const successful = results.filter(r => r.status === 'fulfilled' && r.value.success);
+    const failed = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success));
+
+    console.log(`[Expert Enhancements] App loading complete: ${successful.length} succeeded, ${failed.length} failed`);
+
+    if (failed.length > 0) {
+        console.warn('[Expert Enhancements] Failed apps:', failed.map(r =>
+            r.status === 'fulfilled' ? r.value.name : 'unknown'
+        ));
+    }
+
+    // Report registered apps
+    const registeredApps = AppManager.getApps();
+    console.log(`[Expert Enhancements] ${registeredApps.length} app(s) registered:`,
+        registeredApps.map(app => app.name).join(', ') || 'none');
+
+    // Report failed registrations
+    const failedRegistrations = AppManager.getFailedApps();
+    if (failedRegistrations.length > 0) {
+        console.warn('[Expert Enhancements] Failed registrations:', failedRegistrations);
+    }
+
+    return { successful: successful.length, failed: failed.length, registered: registeredApps.length };
+}
 
 // ============================================================================
 // Initialization Complete - Now Initialize UI
 // ============================================================================
-
-console.log('[Expert Enhancements] All modules loaded successfully');
 
 if (import.meta.env.DEV) {
     console.log('%c[Expert Enhancements] Development Mode', 'color: #4CAF50; font-weight: bold');
@@ -141,27 +183,36 @@ async function initializeUI() {
     try {
         console.log('[Expert Enhancements] Initializing UI...');
 
-        // 1. Load CSS first
+        // 1. Load apps first (gracefully handles failures)
+        const loadResults = await loadApps();
+
+        // Check if any apps were registered
+        if (loadResults.registered === 0) {
+            console.error('[Expert Enhancements] No apps registered! Widget cannot function.');
+            // Still create UI to show error message
+        }
+
+        // 2. Load CSS
         await loadCSS();
 
-        // 2. Load Monaco loader (before Monaco.init())
+        // 3. Load Monaco loader (before Monaco.init())
         await loadMonacoLoader();
 
-        // 3. Initialize Monaco
+        // 4. Initialize Monaco
         console.log('[Expert Enhancements] Pre-loading Monaco...');
         await Monaco.init();
         console.log('[Expert Enhancements] Monaco ready');
 
-        // 4. Create toggle button
+        // 5. Create toggle button
         createToggleButton();
 
-        // 5. Create overlay
+        // 6. Create overlay
         Overlay.create();
 
-        // 6. Update app switcher
+        // 7. Update app switcher
         Overlay.updateAppSwitcher();
 
-        // 7. Restore and load last active app
+        // 8. Restore and load last active app with fallback
         const commonState = Storage.getCommonState();
         const lastActiveApp = commonState.lastActiveApp || 'css-editor';
 
@@ -177,9 +228,33 @@ async function initializeUI() {
             loadingShown = true;
         }
 
-        await AppManager.switchTo(lastActiveApp);
+        // Try to load last active app, with fallback to first available
+        let appLoaded = false;
+        if (loadResults.registered > 0) {
+            appLoaded = await AppManager.switchTo(lastActiveApp);
 
-        // 8. Restore overlay state
+            if (!appLoaded) {
+                console.warn(`[Expert Enhancements] Failed to load last active app "${lastActiveApp}", trying first available app...`);
+                const firstApp = AppManager.getFirstAvailableApp();
+
+                if (firstApp) {
+                    console.log('[Expert Enhancements] Loading first available app:', firstApp);
+                    appLoaded = await AppManager.switchTo(firstApp);
+                }
+            }
+        }
+
+        // If still no app loaded, show error
+        if (!appLoaded) {
+            console.error('[Expert Enhancements] Failed to load any app!');
+            if (loadingShown) {
+                LoadingOverlay.showError('No apps available. Please refresh the page or contact support.');
+            } else {
+                UI.showToast('Failed to load any apps. Widget may not function correctly.', 'error', 10000);
+            }
+        }
+
+        // 9. Restore overlay state
         if (commonState.overlayOpen) {
             console.log('[Expert Enhancements] Restoring overlay open state');
             setTimeout(() => {
@@ -197,6 +272,14 @@ async function initializeUI() {
 
     } catch (error) {
         console.error('[Expert Enhancements] Initialization failed:', error);
+        // Try to show error to user
+        try {
+            if (LoadingOverlay.isShown()) {
+                LoadingOverlay.showError(`Initialization failed: ${error.message}`);
+            }
+        } catch (e) {
+            console.error('[Expert Enhancements] Failed to show error overlay:', e);
+        }
     }
 }
 
