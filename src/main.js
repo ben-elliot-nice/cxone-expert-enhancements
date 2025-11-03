@@ -14,6 +14,7 @@ console.log('[Expert Enhancements] Main entry point loading...');
 
 import './core.css';
 import './css-editor.css';
+import './hierarchy-creator.css';
 
 // ============================================================================
 // Import Core & Initialize (must be first - provides foundation)
@@ -42,9 +43,10 @@ console.log(`[Expert Enhancements] Core loaded (v${version})`);
 // IMPORTANT: Import apps in dependency order - base apps first!
 // ============================================================================
 
-import './settings.js';     // Base app (no dependencies) - must load first
-import './css-editor.js';   // Depends on: settings
-import './html-editor.js';  // Depends on: settings
+import './settings.js';         // Base app (no dependencies) - must load first
+import './css-editor.js';       // Depends on: settings
+import './html-editor.js';      // Depends on: settings
+import './hierarchy-creator.js'; // Depends on: settings
 
 // ============================================================================
 // Initialization Complete - Now Initialize UI
