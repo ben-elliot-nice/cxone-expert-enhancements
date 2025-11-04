@@ -103,10 +103,13 @@ console.log('[CSS Editor App] Loading...');
             this._baseEditor.monacoEditors = monacoEditors;
             this._baseEditor.isMobileView = isMobileView;
 
-            // Set hook for CSS-specific behavior (live preview)
+            // Set hooks for CSS-specific behavior
             this._baseEditor.onEditorContentChange = () => {
                 this.updateLivePreview();
             };
+            this._baseEditor.onSaveAll = () => this.saveAll();
+            this._baseEditor.onSaveOpenTabs = () => this.saveOpenTabs();
+            this._baseEditor.onFormatAllActive = () => this.formatAllActive();
 
             // Wait for Monaco to be ready
             await context.Monaco.init();
@@ -419,94 +422,17 @@ console.log('[CSS Editor App] Loading...');
         },
 
         /**
-         * Setup save dropdown event listeners
+         * Setup save dropdown event listeners (delegated to BaseEditor)
          */
         setupSaveDropdown() {
-            const saveBtn = document.getElementById('save-btn');
-            const discardBtn = document.getElementById('discard-btn');
-            const dropdownToggle = document.getElementById('save-dropdown-toggle');
-            const dropdownMenu = document.getElementById('save-dropdown-menu');
-            const dropdown = document.querySelector('.save-dropdown');
-
-            if (saveBtn) {
-                saveBtn.addEventListener('click', () => this.saveAll());
-            }
-
-            if (discardBtn) {
-                discardBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    this.discardAll();
-                });
-            }
-
-            if (dropdownToggle && dropdownMenu && dropdown) {
-                dropdownToggle.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    dropdownMenu.classList.toggle('show');
-                    dropdown.classList.toggle('open');
-                });
-            }
-
-            // Close dropdowns when clicking outside
-            document.addEventListener('click', (e) => {
-                // Close global dropdown
-                if (dropdown && dropdownMenu && !dropdown.contains(e.target)) {
-                    dropdownMenu.classList.remove('show');
-                    dropdown.classList.remove('open');
-                }
-
-                // Close editor dropdowns
-                if (!e.target.closest('.editor-save-dropdown')) {
-                    document.querySelectorAll('.editor-save-dropdown-menu.show').forEach(menu => {
-                        menu.classList.remove('show');
-                    });
-                }
-            });
+            return this._baseEditor.setupSaveDropdown();
         },
 
         /**
-         * Toggle editor for a role
-         * Left click: Open only this editor (close others)
-         * Shift+click: Toggle this editor alongside others
+         * Toggle editor for a role (delegated to BaseEditor)
          */
         toggleEditor(roleId, event) {
-            const role = editorState[roleId];
-            if (!role) return;
-
-            const activeCount = Object.values(editorState).filter(r => r.active).length;
-            const isShiftClick = event && event.shiftKey;
-
-            if (isShiftClick) {
-                // Shift+click: Toggle this editor while keeping others
-                if (role.active) {
-                    role.active = false;
-                } else {
-                    const maxEditors = context.Config.get('editor.maxActiveTabs');
-                    if (activeCount >= maxEditors) {
-                        context.UI.showToast(`Maximum ${maxEditors} editors can be open at once`, 'warning');
-                        return;
-                    }
-                    role.active = true;
-                }
-            } else {
-                // Regular click: Open only this editor
-                if (role.active && activeCount === 1) {
-                    // Don't close if it's the only one open
-                    return;
-                }
-
-                // Close all others
-                Object.keys(editorState).forEach(rid => {
-                    editorState[rid].active = false;
-                });
-
-                // Open this one
-                role.active = true;
-            }
-
-            this.updateGrid();
-            this.updateToggleButtons();
-            this.saveState();
+            return this._baseEditor.toggleEditor(roleId, event);
         },
 
         /**
@@ -834,32 +760,14 @@ console.log('[CSS Editor App] Loading...');
          * Toggle editor dropdown menu
          */
         toggleEditorDropdown(roleId) {
-            const menu = document.querySelector(`[data-menu-role="${roleId}"]`);
-            if (!menu) return;
-
-            // Close all other editor dropdowns AND the global dropdown
-            document.querySelectorAll('.editor-save-dropdown-menu.show').forEach(m => {
-                if (m !== menu) m.classList.remove('show');
-            });
-            const globalDropdown = document.getElementById('save-dropdown-menu');
-            if (globalDropdown) globalDropdown.classList.remove('show');
-
-            menu.classList.toggle('show');
+            return this._baseEditor.toggleEditorDropdown(roleId);
         },
 
         /**
-         * Toggle actions dropdown menu
+         * Toggle actions dropdown menu (delegated to BaseEditor)
          */
         toggleActionsDropdown(roleId) {
-            const menu = document.querySelector(`[data-actions-menu-role="${roleId}"]`);
-            if (!menu) return;
-
-            // Close all other actions dropdowns
-            document.querySelectorAll('.editor-actions-menu.show').forEach(m => {
-                if (m !== menu) m.classList.remove('show');
-            });
-
-            menu.classList.toggle('show');
+            return this._baseEditor.toggleActionsDropdown(roleId);
         },
 
         /**
@@ -1295,29 +1203,9 @@ console.log('[CSS Editor App] Loading...');
          * Setup keyboard shortcuts
          */
         setupKeyboardShortcuts() {
-            keyboardHandler = (e) => {
-                // Ctrl+S or Cmd+S - Save open tabs
-                if ((e.ctrlKey || e.metaKey) && e.key === 's' && !e.shiftKey) {
-                    e.preventDefault();
-                    this.saveOpenTabs();
-                }
-                // Ctrl+Shift+S or Cmd+Shift+S - Save all
-                else if ((e.ctrlKey || e.metaKey) && e.key === 'S' && e.shiftKey) {
-                    e.preventDefault();
-                    this.saveAll();
-                }
-                // Ctrl+Shift+F or Cmd+Shift+F - Format active editors (only if available)
-                else if ((e.ctrlKey || e.metaKey) && e.key === 'F' && e.shiftKey) {
-                    e.preventDefault();
-                    if (context.Formatter.isReady()) {
-                        this.formatAllActive();
-                    }
-                    // Silent no-op if formatter not available
-                }
-            };
-
-            document.addEventListener('keydown', keyboardHandler);
-            console.log('[CSS Editor] Keyboard shortcuts registered: Ctrl+S (save open), Ctrl+Shift+S (save all), Ctrl+Shift+F (format)');
+            this._baseEditor.setupKeyboardShortcuts();
+            // Store reference to BaseEditor's handler in module-level variable for cleanup
+            keyboardHandler = this._baseEditor.keyboardHandler;
         },
 
         /**

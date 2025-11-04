@@ -35,8 +35,11 @@ export class BaseEditor {
         this.isMobileView = false;
         this.keyboardHandler = null;
 
-        // Hook for app-specific behavior (e.g., CSS live preview)
-        this.onEditorContentChange = null;
+        // Hooks for app-specific behavior
+        this.onEditorContentChange = null;  // e.g., CSS live preview
+        this.onSaveAll = null;  // Save all editors callback
+        this.onSaveOpenTabs = null;  // Save open tabs callback
+        this.onFormatAllActive = null;  // Format all active editors callback
     }
 
     /**
@@ -986,5 +989,168 @@ export class BaseEditor {
                 status.style.color = item.isDirty ? '#ff9800' : '#4caf50';
             }
         });
+    }
+
+    /**
+     * Toggle editor for an item
+     * Left click: Open only this editor (close others)
+     * Shift+click: Toggle this editor alongside others
+     */
+    toggleEditor(itemId, event) {
+        const item = this.editorState[itemId];
+        if (!item) return;
+
+        const activeCount = Object.values(this.editorState).filter(i => i.active).length;
+        const isShiftClick = event && event.shiftKey;
+
+        if (isShiftClick) {
+            // Shift+click: Toggle this editor while keeping others
+            if (item.active) {
+                item.active = false;
+            } else {
+                const maxEditors = this.context.Config.get('editor.maxActiveTabs');
+                if (activeCount >= maxEditors) {
+                    this.context.UI.showToast(`Maximum ${maxEditors} editors can be open at once`, 'warning');
+                    return;
+                }
+                item.active = true;
+            }
+        } else {
+            // Regular click: Open only this editor
+            if (item.active && activeCount === 1) {
+                // Don't close if it's the only one open
+                return;
+            }
+
+            // Close all others
+            Object.keys(this.editorState).forEach(id => {
+                this.editorState[id].active = false;
+            });
+
+            // Open this one
+            item.active = true;
+        }
+
+        this.updateGrid();
+        this.updateToggleButtons();
+        this.saveState();
+    }
+
+    /**
+     * Setup save dropdown event listeners
+     */
+    setupSaveDropdown() {
+        const saveBtn = document.getElementById('save-btn');
+        const discardBtn = document.getElementById('discard-btn');
+        const dropdownToggle = document.getElementById('save-dropdown-toggle');
+        const dropdownMenu = document.getElementById('save-dropdown-menu');
+        const dropdown = document.querySelector('.save-dropdown');
+
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => {
+                if (this.onSaveAll) {
+                    this.onSaveAll();
+                }
+            });
+        }
+
+        if (discardBtn) {
+            discardBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.discardAll();
+            });
+        }
+
+        if (dropdownToggle && dropdownMenu && dropdown) {
+            dropdownToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                dropdownMenu.classList.toggle('show');
+                dropdown.classList.toggle('open');
+            });
+        }
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', (e) => {
+            // Close global dropdown
+            if (dropdown && dropdownMenu && !dropdown.contains(e.target)) {
+                dropdownMenu.classList.remove('show');
+                dropdown.classList.remove('open');
+            }
+
+            // Close editor dropdowns
+            if (!e.target.closest('.editor-save-dropdown')) {
+                document.querySelectorAll('.editor-save-dropdown-menu.show').forEach(menu => {
+                    menu.classList.remove('show');
+                });
+            }
+        });
+    }
+
+    /**
+     * Toggle editor dropdown menu (save/revert dropdown within an editor pane)
+     */
+    toggleEditorDropdown(itemId) {
+        const dataAttr = this.config.dataAttribute;
+        const menu = document.querySelector(`[data-menu-${dataAttr}="${itemId}"]`);
+        if (!menu) return;
+
+        // Close all other editor dropdowns AND the global dropdown
+        document.querySelectorAll('.editor-save-dropdown-menu.show').forEach(m => {
+            if (m !== menu) m.classList.remove('show');
+        });
+        const globalDropdown = document.getElementById('save-dropdown-menu');
+        if (globalDropdown) globalDropdown.classList.remove('show');
+
+        menu.classList.toggle('show');
+    }
+
+    /**
+     * Toggle actions dropdown menu (format/import/export dropdown)
+     */
+    toggleActionsDropdown(itemId) {
+        const dataAttr = this.config.dataAttribute;
+        const menu = document.querySelector(`[data-actions-menu-${dataAttr}="${itemId}"]`);
+        if (!menu) return;
+
+        // Close all other actions dropdowns
+        document.querySelectorAll('.editor-actions-menu.show').forEach(m => {
+            if (m !== menu) m.classList.remove('show');
+        });
+
+        menu.classList.toggle('show');
+    }
+
+    /**
+     * Setup keyboard shortcuts for save and format operations
+     */
+    setupKeyboardShortcuts() {
+        this.keyboardHandler = (e) => {
+            // Ctrl+S or Cmd+S - Save open tabs
+            if ((e.ctrlKey || e.metaKey) && e.key === 's' && !e.shiftKey) {
+                e.preventDefault();
+                if (this.onSaveOpenTabs) {
+                    this.onSaveOpenTabs();
+                }
+            }
+            // Ctrl+Shift+S or Cmd+Shift+S - Save all
+            else if ((e.ctrlKey || e.metaKey) && e.key === 'S' && e.shiftKey) {
+                e.preventDefault();
+                if (this.onSaveAll) {
+                    this.onSaveAll();
+                }
+            }
+            // Ctrl+Shift+F or Cmd+Shift+F - Format active editors (only if available)
+            else if ((e.ctrlKey || e.metaKey) && e.key === 'F' && e.shiftKey) {
+                e.preventDefault();
+                if (this.context.Formatter.isReady() && this.onFormatAllActive) {
+                    this.onFormatAllActive();
+                }
+                // Silent no-op if formatter not available
+            }
+        };
+
+        document.addEventListener('keydown', this.keyboardHandler);
+        const editorTypeUpper = this.config.editorType.toUpperCase();
+        console.log(`[${editorTypeUpper} Editor] Keyboard shortcuts registered: Ctrl+S (save open), Ctrl+Shift+S (save all), Ctrl+Shift+F (format)`);
     }
 }
