@@ -321,6 +321,230 @@ export class BaseEditor {
     }
 
     // ============================================================================
+    // Import/Export Operations
+    // ============================================================================
+
+    /**
+     * Export item content to file
+     */
+    exportItem(itemId) {
+        const item = this.editorState[itemId];
+        if (!item) return;
+
+        try {
+            const content = item.content || '';
+            const blob = new Blob([content], { type: this.config.mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${this.config.formFieldPrefix}${itemId}${this.config.fileExtension}`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            this.context.UI.showToast(`Exported ${item.label}`, 'success');
+        } catch (error) {
+            this.context.UI.showToast(`Failed to export: ${error.message}`, 'error');
+        }
+    }
+
+    /**
+     * Import file into item (appends content)
+     */
+    importItem(itemId, file) {
+        const item = this.editorState[itemId];
+        if (!item) return;
+
+        const expectedExt = this.config.fileExtension;
+
+        // Validate file type
+        if (!file.name.endsWith(expectedExt)) {
+            this.context.UI.showToast(`Please select a ${this.config.editorType.toUpperCase()} file (${expectedExt})`, 'error');
+            return;
+        }
+
+        // Validate file size (max 5MB)
+        const maxSizeMB = this.context.Config.get('files.maxSizeMB');
+        const maxSize = maxSizeMB * 1024 * 1024;
+        if (file.size > maxSize) {
+            this.context.UI.showToast(
+                `File too large. Maximum size is ${maxSizeMB}MB (file is ${(file.size / 1024 / 1024).toFixed(2)}MB)`,
+                'error'
+            );
+            return;
+        }
+
+        // Check for empty files
+        if (file.size === 0) {
+            this.context.UI.showToast('Cannot import empty file', 'error');
+            return;
+        }
+
+        // Show loading state
+        this.context.LoadingOverlay.show(`Importing ${file.name}...`);
+
+        const reader = new FileReader();
+
+        reader.onload = (e) => {
+            try {
+                const importedContent = e.target.result;
+
+                // Create separator comment
+                const commentStyle = this.config.commentStyle;
+                let separator;
+                if (commentStyle === '/* */') {
+                    separator = `\n\n/* ========================================\n   Imported from: ${file.name}\n   Date: ${new Date().toLocaleString()}\n   ======================================== */\n`;
+                } else {
+                    separator = `\n\n<!-- ========================================\n     Imported from: ${file.name}\n     Date: ${new Date().toLocaleString()}\n     ======================================== -->\n`;
+                }
+
+                // Append content to existing
+                const currentContent = item.content || '';
+                const newContent = currentContent + separator + importedContent;
+
+                // Update state
+                item.content = newContent;
+                item.isDirty = true;
+
+                // Update Monaco editor using executeEdits for undo support
+                if (this.monacoEditors[itemId]) {
+                    const editor = this.monacoEditors[itemId];
+                    const model = editor.getModel();
+                    const lineCount = model.getLineCount();
+                    const lastLineLength = model.getLineLength(lineCount);
+
+                    const monaco = this.context.Monaco.get();
+                    editor.executeEdits('import', [{
+                        range: new monaco.Range(lineCount, lastLineLength + 1, lineCount, lastLineLength + 1),
+                        text: separator + importedContent
+                    }]);
+                }
+
+                // Save state and update UI
+                this.saveState();
+                this.updateToggleButtons();
+
+                this.context.LoadingOverlay.hide();
+                this.context.UI.showToast(
+                    `Content from ${file.name} appended to ${item.label}`,
+                    'success',
+                    5000
+                );
+            } catch (error) {
+                this.context.LoadingOverlay.hide();
+                this.context.UI.showToast(`Failed to import: ${error.message}`, 'error');
+            }
+        };
+
+        reader.onerror = () => {
+            this.context.LoadingOverlay.hide();
+            this.context.UI.showToast('Failed to read file', 'error');
+        };
+
+        reader.readAsText(file);
+    }
+
+    /**
+     * Import file via drag & drop (with item selector)
+     */
+    async importFile(fileContent, fileName) {
+        try {
+            // Hide loading overlay before showing selector (waiting for user input)
+            this.context.LoadingOverlay.hide();
+
+            // Prepare item list for selector
+            const items = Object.keys(this.editorState).map(itemId => ({
+                id: itemId,
+                label: this.editorState[itemId].label
+            }));
+
+            // Show item selector dialog
+            const selectedItemId = await this.context.FileImport.showRoleSelector(
+                items,
+                this.config.editorType
+            );
+
+            if (!selectedItemId) {
+                this.context.LoadingOverlay.hide();
+                this.context.UI.showToast('Import cancelled', 'info');
+                return;
+            }
+
+            const item = this.editorState[selectedItemId];
+            if (!item) {
+                this.context.LoadingOverlay.hide();
+                this.context.UI.showToast(`Selected ${this.config.itemLabel} not found`, 'error');
+                return;
+            }
+
+            // Ensure target editor is active and created before import
+            // This is critical for preserving undo history when importing across apps
+            if (!item.active) {
+                item.active = true;
+                this.updateGrid(); // Creates the Monaco editor
+                // Give the editor time to fully initialize
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+
+            // Create separator comment
+            const commentStyle = this.config.commentStyle;
+            let separator;
+            if (commentStyle === '/* */') {
+                separator = `\n\n/* ========================================\n   Imported from: ${fileName}\n   Date: ${new Date().toLocaleString()}\n   ======================================== */\n`;
+            } else {
+                separator = `\n\n<!-- ========================================\n     Imported from: ${fileName}\n     Date: ${new Date().toLocaleString()}\n     ======================================== -->\n`;
+            }
+
+            // Append content to existing
+            const currentContent = item.content || '';
+            const newContent = currentContent + separator + fileContent;
+
+            // Update state
+            item.content = newContent;
+            item.isDirty = true;
+
+            // Update Monaco editor using executeEdits for undo support
+            if (this.monacoEditors[selectedItemId]) {
+                const editor = this.monacoEditors[selectedItemId];
+                const model = editor.getModel();
+                const lineCount = model.getLineCount();
+                const lastLineLength = model.getLineLength(lineCount);
+
+                const monaco = this.context.Monaco.get();
+                editor.executeEdits('import', [{
+                    range: new monaco.Range(lineCount, lastLineLength + 1, lineCount, lastLineLength + 1),
+                    text: separator + fileContent
+                }]);
+
+                // Focus editor and ensure proper layout after import
+                setTimeout(() => {
+                    editor.layout();
+                    editor.focus();
+
+                    // Ensure editor captures scroll events
+                    const editorDom = editor.getDomNode();
+                    if (editorDom) {
+                        editorDom.style.pointerEvents = 'auto';
+                    }
+                }, 50);
+            }
+
+            // Save state and update UI
+            this.saveState();
+            this.updateToggleButtons();
+
+            this.context.LoadingOverlay.hide();
+            this.context.UI.showToast(
+                `Content from ${fileName} appended to ${item.label}`,
+                'success',
+                5000
+            );
+        } catch (error) {
+            this.context.LoadingOverlay.hide();
+            this.context.UI.showToast(`Failed to import: ${error.message}`, 'error');
+        }
+    }
+
+    // ============================================================================
     // Grid & Layout Utilities
     // ============================================================================
 

@@ -771,193 +771,24 @@ console.log('[CSS Editor App] Loading...');
         },
 
         /**
-         * Export CSS for a role
+         * Export CSS for a role (delegated to BaseEditor)
          */
         exportRole(roleId) {
-            const role = editorState[roleId];
-            if (!role) return;
-
-            try {
-                const content = role.content || '';
-                const blob = new Blob([content], { type: 'text/css' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `css_template_${roleId}.css`;
-                a.click();
-                URL.revokeObjectURL(url);
-
-                context.UI.showToast(`Exported ${role.label}`, 'success');
-            } catch (error) {
-                context.UI.showToast(`Failed to export: ${error.message}`, 'error');
-            }
+            return this._baseEditor.exportItem(roleId);
         },
 
         /**
-         * Import CSS file into a role (appends content)
+         * Import CSS file into a role (appends content) (delegated to BaseEditor)
          */
         importRole(roleId, file) {
-            const role = editorState[roleId];
-            if (!role) return;
-
-            // Validate file type
-            if (!file.name.endsWith('.css')) {
-                context.UI.showToast('Please select a CSS file (.css)', 'error');
-                return;
-            }
-
-            // Validate file size (max 5MB)
-            const maxSizeMB = context.Config.get('files.maxSizeMB');
-            const maxSize = maxSizeMB * 1024 * 1024;
-            if (file.size > maxSize) {
-                context.UI.showToast(`File too large. Maximum size is 5MB (file is ${(file.size / 1024 / 1024).toFixed(2)}MB)`, 'error');
-                return;
-            }
-
-            // Check for empty files
-            if (file.size === 0) {
-                context.UI.showToast('Cannot import empty file', 'error');
-                return;
-            }
-
-            // Show loading state
-            context.LoadingOverlay.show(`Importing ${file.name}...`);
-
-            const reader = new FileReader();
-
-            reader.onload = (e) => {
-                try {
-                    const importedContent = e.target.result;
-
-                    // Create separator comment
-                    const separator = `\n\n/* ========================================\n   Imported from: ${file.name}\n   Date: ${new Date().toLocaleString()}\n   ======================================== */\n`;
-
-                    // Append content to existing
-                    const currentContent = role.content || '';
-                    const newContent = currentContent + separator + importedContent;
-
-                    // Update state
-                    role.content = newContent;
-                    role.isDirty = true;
-
-                    // Update Monaco editor using executeEdits for undo support
-                    if (monacoEditors[roleId]) {
-                        const editor = monacoEditors[roleId];
-                        const model = editor.getModel();
-                        const lineCount = model.getLineCount();
-                        const lastLineLength = model.getLineLength(lineCount);
-
-                        editor.executeEdits('import', [{
-                            range: new monaco.Range(lineCount, lastLineLength + 1, lineCount, lastLineLength + 1),
-                            text: separator + importedContent
-                        }]);
-                    }
-
-                    // Save state and update UI
-                    this.saveState();
-                    this.updateToggleButtons();
-
-                    context.LoadingOverlay.hide();
-                    context.UI.showToast(`Content from ${file.name} appended to ${role.label}`, 'success', 5000);
-                } catch (error) {
-                    context.LoadingOverlay.hide();
-                    context.UI.showToast(`Failed to import: ${error.message}`, 'error');
-                }
-            };
-
-            reader.onerror = () => {
-                context.LoadingOverlay.hide();
-                context.UI.showToast('Failed to read file', 'error');
-            };
-
-            reader.readAsText(file);
+            return this._baseEditor.importItem(roleId, file);
         },
 
         /**
-         * Import CSS file via drag & drop (with role selector)
+         * Import CSS file via drag & drop (with role selector) (delegated to BaseEditor)
          */
         async importFile(fileContent, fileName) {
-            try {
-                // Hide loading overlay before showing role selector (waiting for user input)
-                context.LoadingOverlay.hide();
-
-                // Prepare role list for selector
-                const roles = Object.keys(editorState).map(roleId => ({
-                    id: roleId,
-                    label: editorState[roleId].label
-                }));
-
-                // Show role selector dialog
-                const selectedRoleId = await context.FileImport.showRoleSelector(roles, 'css');
-
-                if (!selectedRoleId) {
-                    context.LoadingOverlay.hide();
-                    context.UI.showToast('Import cancelled', 'info');
-                    return;
-                }
-
-                const role = editorState[selectedRoleId];
-                if (!role) {
-                    context.LoadingOverlay.hide();
-                    context.UI.showToast('Selected role not found', 'error');
-                    return;
-                }
-
-                // Ensure target editor is active and created before import
-                // This is critical for preserving undo history when importing across apps
-                if (!role.active) {
-                    role.active = true;
-                    this.updateGrid(); // Creates the Monaco editor
-                    // Give the editor time to fully initialize
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                }
-
-                // Create separator comment
-                const separator = `\n\n/* ========================================\n   Imported from: ${fileName}\n   Date: ${new Date().toLocaleString()}\n   ======================================== */\n`;
-
-                // Append content to existing
-                const currentContent = role.content || '';
-                const newContent = currentContent + separator + fileContent;
-
-                // Update state
-                role.content = newContent;
-                role.isDirty = true;
-
-                // Update Monaco editor using executeEdits for undo support
-                if (monacoEditors[selectedRoleId]) {
-                    const editor = monacoEditors[selectedRoleId];
-                    const model = editor.getModel();
-                    const lineCount = model.getLineCount();
-                    const lastLineLength = model.getLineLength(lineCount);
-
-                    editor.executeEdits('import', [{
-                        range: new monaco.Range(lineCount, lastLineLength + 1, lineCount, lastLineLength + 1),
-                        text: separator + fileContent
-                    }]);
-
-                    // Focus editor and ensure proper layout after import
-                    setTimeout(() => {
-                        editor.layout();
-                        editor.focus();
-
-                        // Ensure editor captures scroll events
-                        const editorDom = editor.getDomNode();
-                        if (editorDom) {
-                            editorDom.style.pointerEvents = 'auto';
-                        }
-                    }, 50);
-                }
-
-                // Save state and update UI
-                this.saveState();
-                this.updateToggleButtons();
-
-                context.LoadingOverlay.hide();
-                context.UI.showToast(`Content from ${fileName} appended to ${role.label}`, 'success', 5000);
-            } catch (error) {
-                context.LoadingOverlay.hide();
-                context.UI.showToast(`Failed to import: ${error.message}`, 'error');
-            }
+            return this._baseEditor.importFile(fileContent, fileName);
         },
 
         /**

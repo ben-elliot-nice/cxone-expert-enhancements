@@ -736,193 +736,24 @@ console.log('[HTML Editor App] Loading...');
         },
 
         /**
-         * Export HTML for a field
+         * Export HTML for a field (delegated to BaseEditor)
          */
         exportField(fieldId) {
-            const field = editorState[fieldId];
-            if (!field) return;
-
-            try {
-                const content = field.content || '';
-                const blob = new Blob([content], { type: 'text/html' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `html_template_${fieldId}.html`;
-                a.click();
-                URL.revokeObjectURL(url);
-
-                context.UI.showToast(`Exported ${field.label}`, 'success');
-            } catch (error) {
-                context.UI.showToast(`Failed to export: ${error.message}`, 'error');
-            }
+            return this._baseEditor.exportItem(fieldId);
         },
 
         /**
-         * Import HTML file into a field (appends content)
+         * Import HTML file into a field (appends content) (delegated to BaseEditor)
          */
         importField(fieldId, file) {
-            const field = editorState[fieldId];
-            if (!field) return;
-
-            // Validate file type
-            if (!file.name.endsWith('.html')) {
-                context.UI.showToast('Please select an HTML file (.html)', 'error');
-                return;
-            }
-
-            // Validate file size (max 5MB)
-            const maxSizeMB = context.Config.get('files.maxSizeMB');
-            const maxSize = maxSizeMB * 1024 * 1024;
-            if (file.size > maxSize) {
-                context.UI.showToast(`File too large. Maximum size is ${maxSizeMB}MB (file is ${(file.size / 1024 / 1024).toFixed(2)}MB)`, 'error');
-                return;
-            }
-
-            // Check for empty files
-            if (file.size === 0) {
-                context.UI.showToast('Cannot import empty file', 'error');
-                return;
-            }
-
-            // Show loading state
-            context.LoadingOverlay.show(`Importing ${file.name}...`);
-
-            const reader = new FileReader();
-
-            reader.onload = (e) => {
-                try {
-                    const importedContent = e.target.result;
-
-                    // Create separator comment
-                    const separator = `\n\n<!-- ========================================\n     Imported from: ${file.name}\n     Date: ${new Date().toLocaleString()}\n     ======================================== -->\n`;
-
-                    // Append content to existing
-                    const currentContent = field.content || '';
-                    const newContent = currentContent + separator + importedContent;
-
-                    // Update state
-                    field.content = newContent;
-                    field.isDirty = true;
-
-                    // Update Monaco editor using executeEdits for undo support
-                    if (monacoEditors[fieldId]) {
-                        const editor = monacoEditors[fieldId];
-                        const model = editor.getModel();
-                        const lineCount = model.getLineCount();
-                        const lastLineLength = model.getLineLength(lineCount);
-
-                        editor.executeEdits('import', [{
-                            range: new monaco.Range(lineCount, lastLineLength + 1, lineCount, lastLineLength + 1),
-                            text: separator + importedContent
-                        }]);
-                    }
-
-                    // Save state and update UI
-                    this.saveState();
-                    this.updateToggleButtons();
-
-                    context.LoadingOverlay.hide();
-                    context.UI.showToast(`Content from ${file.name} appended to ${field.label}`, 'success', 5000);
-                } catch (error) {
-                    context.LoadingOverlay.hide();
-                    context.UI.showToast(`Failed to import: ${error.message}`, 'error');
-                }
-            };
-
-            reader.onerror = () => {
-                context.LoadingOverlay.hide();
-                context.UI.showToast('Failed to read file', 'error');
-            };
-
-            reader.readAsText(file);
+            return this._baseEditor.importItem(fieldId, file);
         },
 
         /**
-         * Import HTML file via drag & drop (with field selector)
+         * Import HTML file via drag & drop (with field selector) (delegated to BaseEditor)
          */
         async importFile(fileContent, fileName) {
-            try {
-                // Hide loading overlay before showing field selector (waiting for user input)
-                context.LoadingOverlay.hide();
-
-                // Prepare field list for selector
-                const roles = Object.keys(editorState).map(fieldId => ({
-                    id: fieldId,
-                    label: editorState[fieldId].label
-                }));
-
-                // Show field selector dialog
-                const selectedFieldId = await context.FileImport.showRoleSelector(roles, 'html');
-
-                if (!selectedFieldId) {
-                    context.LoadingOverlay.hide();
-                    context.UI.showToast('Import cancelled', 'info');
-                    return;
-                }
-
-                const field = editorState[selectedFieldId];
-                if (!field) {
-                    context.LoadingOverlay.hide();
-                    context.UI.showToast('Selected field not found', 'error');
-                    return;
-                }
-
-                // Ensure target editor is active and created before import
-                // This is critical for preserving undo history when importing across apps
-                if (!field.active) {
-                    field.active = true;
-                    this.updateGrid(); // Creates the Monaco editor
-                    // Give the editor time to fully initialize
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                }
-
-                // Create separator comment
-                const separator = `\n\n<!-- ========================================\n     Imported from: ${fileName}\n     Date: ${new Date().toLocaleString()}\n     ======================================== -->\n`;
-
-                // Append content to existing
-                const currentContent = field.content || '';
-                const newContent = currentContent + separator + fileContent;
-
-                // Update state
-                field.content = newContent;
-                field.isDirty = true;
-
-                // Update Monaco editor using executeEdits for undo support
-                if (monacoEditors[selectedFieldId]) {
-                    const editor = monacoEditors[selectedFieldId];
-                    const model = editor.getModel();
-                    const lineCount = model.getLineCount();
-                    const lastLineLength = model.getLineLength(lineCount);
-
-                    editor.executeEdits('import', [{
-                        range: new monaco.Range(lineCount, lastLineLength + 1, lineCount, lastLineLength + 1),
-                        text: separator + fileContent
-                    }]);
-
-                    // Focus editor and ensure proper layout after import
-                    setTimeout(() => {
-                        editor.layout();
-                        editor.focus();
-
-                        // Ensure editor captures scroll events
-                        const editorDom = editor.getDomNode();
-                        if (editorDom) {
-                            editorDom.style.pointerEvents = 'auto';
-                        }
-                    }, 50);
-                }
-
-                // Save state and update UI
-                this.saveState();
-                this.updateToggleButtons();
-
-                context.LoadingOverlay.hide();
-                context.UI.showToast(`Content from ${fileName} appended to ${field.label}`, 'success', 5000);
-            } catch (error) {
-                context.LoadingOverlay.hide();
-                context.UI.showToast(`Failed to import: ${error.message}`, 'error');
-            }
+            return this._baseEditor.importFile(fileContent, fileName);
         },
 
         /**
