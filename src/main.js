@@ -20,6 +20,8 @@ import './css-editor.css';
 // ============================================================================
 
 import {
+    Config,
+    ConfigManager,
     AppManager,
     Monaco,
     API,
@@ -76,7 +78,7 @@ function loadMonacoLoader() {
 
         // Load Monaco loader script
         const loaderScript = document.createElement('script');
-        loaderScript.src = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js';
+        loaderScript.src = `${Config.get('advanced.cdnUrls.monaco')}/loader.js`;
 
         loaderScript.onload = () => {
             console.log('[Expert Enhancements] Monaco loader loaded, restoring page AMD');
@@ -144,6 +146,9 @@ async function initializeUI() {
     try {
         console.log('[Expert Enhancements] Initializing UI...');
 
+        // Configuration system is already initialized in core.js
+        console.log('[Expert Enhancements] Using configuration:', Config.exportConfig().effective);
+
         // 1. Check registered apps (static imports have already run)
         const registeredApps = AppManager.getApps();
         console.log(`[Expert Enhancements] ${registeredApps.length} app(s) registered:`,
@@ -191,7 +196,7 @@ async function initializeUI() {
         let loadingShown = false;
         if (commonState.overlayOpen) {
             LoadingOverlay.show('Initializing editor...', {
-                timeout: 30000,
+                timeout: Config.get('performance.loadingTimeout'),
                 showProgress: true
             });
             loadingShown = true;
@@ -259,21 +264,27 @@ function createToggleButton() {
     toggleButton.id = 'expert-enhancements-toggle';
     toggleButton.innerHTML = '&lt;/&gt;';
     toggleButton.title = 'CXone Expert Enhancements';
+
+    // Get config values
+    const btnConfig = Config.get('advanced.toggleButton');
+    const primaryColor = Config.get('appearance.primaryColor');
+    const zIndex = Config.get('advanced.zIndex.toggleButton');
+
     toggleButton.style.cssText = `
         position: fixed;
-        top: 15px;
-        right: -45px;
-        width: 100px;
-        height: 50px;
-        border-radius: 25px;
-        background: #667eea;
+        top: ${btnConfig.top}px;
+        right: ${btnConfig.right}px;
+        width: ${btnConfig.width}px;
+        height: ${btnConfig.height}px;
+        border-radius: ${btnConfig.borderRadius}px;
+        background: ${primaryColor};
         border: 3px solid white;
         color: white;
         font-size: 20px;
         font-weight: bold;
         font-family: monospace;
         cursor: pointer;
-        z-index: 999998;
+        z-index: ${zIndex};
         box-shadow: -4px 4px 20px rgba(0, 0, 0, 0.3);
         transition: all 0.3s ease;
         display: flex;
@@ -284,8 +295,11 @@ function createToggleButton() {
     `;
 
     toggleButton.addEventListener('mouseenter', () => {
+        const primaryColor = Config.get('appearance.primaryColor');
         toggleButton.style.transform = 'scale(1.1)';
-        toggleButton.style.boxShadow = '-6px 6px 30px rgba(102, 126, 234, 0.5)';
+        // Create glow effect with primary color
+        const rgb = primaryColor.match(/\w\w/g).map(x => parseInt(x, 16)).join(', ');
+        toggleButton.style.boxShadow = `-6px 6px 30px rgba(${rgb}, 0.5)`;
     });
 
     toggleButton.addEventListener('mouseleave', () => {
