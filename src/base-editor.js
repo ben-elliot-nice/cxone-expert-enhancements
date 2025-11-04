@@ -545,6 +545,115 @@ export class BaseEditor {
     }
 
     // ============================================================================
+    // Formatting Operations
+    // ============================================================================
+
+    /**
+     * Format content for a specific item
+     * @param {string} itemId - Item identifier
+     * @param {boolean} silent - If true, suppress success toast
+     * @returns {Object|null} - { changed: boolean, label: string } or null on error/empty
+     */
+    async formatItem(itemId, silent = false) {
+        if (!this.context.Formatter.isReady()) {
+            this.context.UI.showToast('Code formatting is currently unavailable', 'warning');
+            return null;
+        }
+
+        const item = this.editorState[itemId];
+        const editor = this.monacoEditors[itemId];
+
+        if (!item || !editor) return null;
+
+        try {
+            console.log(`[${this.config.editorType.toUpperCase()} Editor] Formatting ${itemId}...`);
+
+            // Get current content
+            const content = editor.getValue();
+
+            if (!content || content.trim() === '') {
+                this.context.UI.showToast('Nothing to format', 'warning');
+                return null;
+            }
+
+            // Format using Prettier with configured formatter method
+            const formatted = await this.context.Formatter[this.config.formatterMethod](content);
+
+            // Check if content actually changed
+            const changed = content !== formatted;
+
+            // Update editor with formatted content
+            editor.setValue(formatted);
+
+            // Mark as dirty if content changed
+            item.content = formatted;
+            item.isDirty = item.content !== this.originalContent[itemId];
+            this.updateToggleButtons();
+
+            if (!silent) {
+                const message = changed ? `${item.label} formatted` : `${item.label} already formatted`;
+                this.context.UI.showToast(message, 'success');
+            }
+
+            return { changed, label: item.label };
+        } catch (error) {
+            console.error(`[${this.config.editorType.toUpperCase()} Editor] Format ${itemId} failed:`, error);
+            this.context.UI.showToast(`Formatting failed: ${error.message}`, 'error');
+            return null;
+        }
+    }
+
+    /**
+     * Format all active editors
+     */
+    async formatAllActive() {
+        if (!this.context.Formatter.isReady()) {
+            this.context.UI.showToast('Code formatting is currently unavailable', 'warning');
+            return;
+        }
+
+        const activeItems = Object.keys(this.editorState).filter(
+            id => this.editorState[id].active
+        );
+
+        if (activeItems.length === 0) {
+            this.context.UI.showToast('No editors open to format', 'warning');
+            return;
+        }
+
+        try {
+            console.log(`[${this.config.editorType.toUpperCase()} Editor] Formatting ${activeItems.length} active editor(s)...`);
+
+            // Format each active editor (silent mode to avoid duplicate toasts)
+            const results = [];
+            for (const itemId of activeItems) {
+                const result = await this.formatItem(itemId, true);
+                if (result) {
+                    results.push(result);
+                }
+            }
+
+            // Build appropriate toast message based on what actually changed
+            const changedResults = results.filter(r => r.changed);
+            const changedCount = changedResults.length;
+
+            let message;
+            if (changedCount === 0) {
+                message = results.length === 1 ? `${results[0].label} already formatted` : 'Already formatted';
+            } else if (changedCount === 1) {
+                message = `${changedResults[0].label} formatted`;
+            } else {
+                message = `${changedCount} editors formatted`;
+            }
+
+            this.context.UI.showToast(message, 'success');
+        } catch (error) {
+            console.error(`[${this.config.editorType.toUpperCase()} Editor] Format all active failed:`, error);
+            this.context.UI.showToast(`Formatting failed: ${error.message}`, 'error');
+        }
+    }
+
+    // ============================================================================
     // Grid & Layout Utilities
     // ============================================================================
 

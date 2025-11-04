@@ -801,100 +801,14 @@ console.log('[HTML Editor App] Loading...');
          * @returns {Object|null} - { changed: boolean, label: string } or null on error/empty
          */
         async formatField(fieldId, silent = false) {
-            if (!context.Formatter.isReady()) {
-                context.UI.showToast('Code formatting is currently unavailable', 'warning');
-                return null;
-            }
-
-            const field = editorState[fieldId];
-            const editor = monacoEditors[fieldId];
-
-            if (!field || !editor) return null;
-
-            try {
-                console.log(`[HTML Editor] Formatting ${fieldId}...`);
-
-                // Get current content
-                const content = editor.getValue();
-
-                if (!content || content.trim() === '') {
-                    context.UI.showToast('Nothing to format', 'warning');
-                    return null;
-                }
-
-                // Format using Prettier
-                const formatted = await context.Formatter.formatHTML(content);
-
-                // Check if content actually changed
-                const changed = content !== formatted;
-
-                // Update editor with formatted content
-                editor.setValue(formatted);
-
-                // Mark as dirty if content changed
-                field.content = formatted;
-                field.isDirty = field.content !== originalContent[fieldId];
-                this.updateToggleButtons();
-
-                if (!silent) {
-                    const message = changed ? `${field.label} formatted` : `${field.label} already formatted`;
-                    context.UI.showToast(message, 'success');
-                }
-
-                return { changed, label: field.label };
-            } catch (error) {
-                console.error(`[HTML Editor] Format ${fieldId} failed:`, error);
-                context.UI.showToast(`Formatting failed: ${error.message}`, 'error');
-                return null;
-            }
+            return this._baseEditor.formatItem(fieldId, silent);
         },
 
         /**
          * Format all active editors
          */
         async formatAllActive() {
-            if (!context.Formatter.isReady()) {
-                context.UI.showToast('Code formatting is currently unavailable', 'warning');
-                return;
-            }
-
-            const activeFields = Object.keys(editorState).filter(field => editorState[field].active);
-
-            if (activeFields.length === 0) {
-                context.UI.showToast('No editors open to format', 'warning');
-                return;
-            }
-
-            try {
-                console.log(`[HTML Editor] Formatting ${activeFields.length} active editor(s)...`);
-
-                // Format each active editor (silent mode to avoid duplicate toasts)
-                const results = [];
-                for (const fieldId of activeFields) {
-                    const result = await this.formatField(fieldId, true);
-                    if (result) {
-                        results.push(result);
-                    }
-                }
-
-                // Build appropriate toast message based on what actually changed
-                const changedResults = results.filter(r => r.changed);
-                const changedCount = changedResults.length;
-
-                let message;
-                if (changedCount === 0) {
-                    message = results.length === 1 ? `${results[0].label} already formatted` : 'Already formatted';
-                } else if (changedCount === 1) {
-                    message = `${changedResults[0].label} formatted`;
-                } else {
-                    message = `${changedCount} editors formatted`;
-                }
-
-                context.UI.showToast(message, 'success');
-            } catch (error) {
-                console.error('[HTML Editor] Format all active failed:', error);
-                context.UI.showToast(`Formatting failed: ${error.message}`, 'error');
-            }
+            return this._baseEditor.formatAllActive();
         },
 
         /**

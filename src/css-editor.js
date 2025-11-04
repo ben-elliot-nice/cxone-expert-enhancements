@@ -835,100 +835,14 @@ console.log('[CSS Editor App] Loading...');
          * @returns {Object|null} - { changed: boolean, label: string } or null on error/empty
          */
         async formatRole(roleId, silent = false) {
-            if (!context.Formatter.isReady()) {
-                context.UI.showToast('Code formatting is currently unavailable', 'warning');
-                return null;
-            }
-
-            const role = editorState[roleId];
-            const editor = monacoEditors[roleId];
-
-            if (!role || !editor) return null;
-
-            try {
-                console.log(`[CSS Editor] Formatting ${roleId}...`);
-
-                // Get current content
-                const content = editor.getValue();
-
-                if (!content || content.trim() === '') {
-                    context.UI.showToast('Nothing to format', 'warning');
-                    return null;
-                }
-
-                // Format using Prettier
-                const formatted = await context.Formatter.formatCSS(content);
-
-                // Check if content actually changed
-                const changed = content !== formatted;
-
-                // Update editor with formatted content
-                editor.setValue(formatted);
-
-                // Mark as dirty if content changed
-                role.content = formatted;
-                role.isDirty = role.content !== originalContent[roleId];
-                this.updateToggleButtons();
-
-                if (!silent) {
-                    const message = changed ? `${role.label} formatted` : `${role.label} already formatted`;
-                    context.UI.showToast(message, 'success');
-                }
-
-                return { changed, label: role.label };
-            } catch (error) {
-                console.error(`[CSS Editor] Format ${roleId} failed:`, error);
-                context.UI.showToast(`Formatting failed: ${error.message}`, 'error');
-                return null;
-            }
+            return this._baseEditor.formatItem(roleId, silent);
         },
 
         /**
          * Format all active editors
          */
         async formatAllActive() {
-            if (!context.Formatter.isReady()) {
-                context.UI.showToast('Code formatting is currently unavailable', 'warning');
-                return;
-            }
-
-            const activeRoles = Object.keys(editorState).filter(role => editorState[role].active);
-
-            if (activeRoles.length === 0) {
-                context.UI.showToast('No editors open to format', 'warning');
-                return;
-            }
-
-            try {
-                console.log(`[CSS Editor] Formatting ${activeRoles.length} active editor(s)...`);
-
-                // Format each active editor (silent mode to avoid duplicate toasts)
-                const results = [];
-                for (const roleId of activeRoles) {
-                    const result = await this.formatRole(roleId, true);
-                    if (result) {
-                        results.push(result);
-                    }
-                }
-
-                // Build appropriate toast message based on what actually changed
-                const changedResults = results.filter(r => r.changed);
-                const changedCount = changedResults.length;
-
-                let message;
-                if (changedCount === 0) {
-                    message = results.length === 1 ? `${results[0].label} already formatted` : 'Already formatted';
-                } else if (changedCount === 1) {
-                    message = `${changedResults[0].label} formatted`;
-                } else {
-                    message = `${changedCount} editors formatted`;
-                }
-
-                context.UI.showToast(message, 'success');
-            } catch (error) {
-                console.error('[CSS Editor] Format all active failed:', error);
-                context.UI.showToast(`Formatting failed: ${error.message}`, 'error');
-            }
+            return this._baseEditor.formatAllActive();
         },
 
         /**
