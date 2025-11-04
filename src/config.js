@@ -143,26 +143,39 @@ const DEFAULT_CONFIG = {
  */
 function parseEmbedConfig() {
     try {
-        // Find the embed script tag
+        // Strategy 1: Check if we're being loaded as a module and have currentScript
+        if (document.currentScript && document.currentScript.hasAttribute('data-config')) {
+            const configAttr = document.currentScript.getAttribute('data-config');
+            const parsed = JSON.parse(configAttr);
+            console.log('[Config] Parsed embed configuration from currentScript:', parsed);
+            return parsed;
+        }
+
+        // Strategy 2: Find any script tag with data-config attribute
         const scripts = document.getElementsByTagName('script');
+        const configScript = Array.from(scripts).find(s => s.hasAttribute('data-config'));
+
+        if (configScript) {
+            const configAttr = configScript.getAttribute('data-config');
+            const parsed = JSON.parse(configAttr);
+            console.log('[Config] Parsed embed configuration from script with data-config:', parsed);
+            return parsed;
+        }
+
+        // Strategy 3: Find the embed script tag by URL pattern
         const embedScript = Array.from(scripts).find(s =>
             s.src && (s.src.includes('embed') || s.src.includes('expert-enhancements'))
         );
 
-        if (!embedScript) {
-            console.log('[Config] No embed script found');
-            return {};
+        if (embedScript && embedScript.hasAttribute('data-config')) {
+            const configAttr = embedScript.getAttribute('data-config');
+            const parsed = JSON.parse(configAttr);
+            console.log('[Config] Parsed embed configuration from embed script:', parsed);
+            return parsed;
         }
 
-        const configAttr = embedScript.getAttribute('data-config');
-        if (!configAttr) {
-            console.log('[Config] No data-config attribute found');
-            return {};
-        }
-
-        const parsed = JSON.parse(configAttr);
-        console.log('[Config] Parsed embed configuration:', parsed);
-        return parsed;
+        console.log('[Config] No data-config attribute found on any script tag');
+        return {};
 
     } catch (error) {
         console.error('[Config] Failed to parse embed configuration:', error);

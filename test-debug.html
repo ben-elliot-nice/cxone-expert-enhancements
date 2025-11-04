@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Config Loading</title>
+</head>
+<body>
+    <h1>Debug Config Loading</h1>
+    <pre id="output"></pre>
+
+    <script
+        src="./dist/embed.js"
+        data-config='{"editor": {"theme": "vs-light", "fontSize": 16}}'
+    ></script>
+
+    <script>
+        const output = document.getElementById('output');
+
+        function log(msg) {
+            output.textContent += msg + '\n';
+            console.log(msg);
+        }
+
+        setTimeout(() => {
+            log('=== Debug Info ===');
+            log('');
+
+            // Check if ExpertEnhancements loaded
+            if (window.ExpertEnhancements) {
+                log('✓ ExpertEnhancements loaded');
+            } else {
+                log('✗ ExpertEnhancements NOT loaded');
+                return;
+            }
+
+            // Check Config
+            const config = window.ExpertEnhancements.Config;
+            if (config) {
+                log('✓ Config available');
+                log('');
+
+                // Check embed config
+                log('Embed Config:');
+                log(JSON.stringify(config.embedConfig, null, 2));
+                log('');
+
+                // Check if theme was loaded
+                const theme = config.get('editor.theme');
+                log(`editor.theme = ${theme}`);
+                log(`Expected: vs-light`);
+                log(`Match: ${theme === 'vs-light' ? '✓' : '✗'}`);
+                log('');
+
+                // Check if fontSize was loaded
+                const fontSize = config.get('editor.fontSize');
+                log(`editor.fontSize = ${fontSize}`);
+                log(`Expected: 16`);
+                log(`Match: ${fontSize === 16 ? '✓' : '✗'}`);
+                log('');
+
+                // Check source
+                log(`editor.theme source: ${config.getSource('editor.theme')}`);
+                log(`Expected: embed`);
+
+            } else {
+                log('✗ Config NOT available');
+            }
+        }, 500);
+    </script>
+</body>
+</html>
