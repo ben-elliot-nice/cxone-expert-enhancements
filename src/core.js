@@ -1588,8 +1588,8 @@ console.log('[Enhancements Core] Configuration system initialized');
                 const originalRequire = window.require;
 
                 console.log('[Formatter] Temporarily hiding AMD to avoid Monaco conflict');
-                window.define = undefined;
-                window.require = undefined;
+                delete window.define;
+                delete window.require;
 
                 // Helper to wait for a global variable with exponential backoff
                 // Max timeout: use config value
@@ -1636,8 +1636,8 @@ console.log('[Enhancements Core] Configuration system initialized');
                         console.log('[Formatter] Loading plugin scripts...');
 
                         // Hide AMD before loading CSS plugin
-                        window.define = undefined;
-                        window.require = undefined;
+                        delete window.define;
+                        delete window.require;
 
                         // Load CSS parser (postcss)
                         const cssParserScript = document.createElement('script');
@@ -1664,8 +1664,8 @@ console.log('[Enhancements Core] Configuration system initialized');
                         await cssLoaded;
 
                         // Hide AMD before loading HTML plugin
-                        window.define = undefined;
-                        window.require = undefined;
+                        delete window.define;
+                        delete window.require;
 
                         // Load HTML parser
                         const htmlParserScript = document.createElement('script');
