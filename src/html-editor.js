@@ -237,65 +237,17 @@ console.log('[HTML Editor App] Loading...');
         },
 
         /**
-         * Get current state for persistence
+         * Get current state for persistence (delegated to BaseEditor)
          */
         getState() {
-            const state = {
-                activeFields: Object.keys(editorState).filter(field => editorState[field].active),
-                content: {},
-                isDirty: {},
-                originalContent: {}
-            };
-
-            Object.keys(editorState).forEach(field => {
-                const fieldState = editorState[field];
-                state.content[field] = fieldState.content;
-                state.isDirty[field] = fieldState.isDirty;
-                state.originalContent[field] = originalContent[field];
-            });
-
-            return state;
+            return this._baseEditor.getState();
         },
 
         /**
-         * Restore state
+         * Restore state (delegated to BaseEditor)
          */
         setState(state) {
-            if (!state) return;
-
-            // Restore active fields
-            if (state.activeFields) {
-                state.activeFields.forEach(field => {
-                    if (editorState[field]) {
-                        editorState[field].active = true;
-                    }
-                });
-            }
-
-            // Restore content
-            if (state.content) {
-                Object.keys(state.content).forEach(field => {
-                    if (editorState[field]) {
-                        editorState[field].content = state.content[field];
-                    }
-                });
-            }
-
-            // Restore dirty state
-            if (state.isDirty) {
-                Object.keys(state.isDirty).forEach(field => {
-                    if (editorState[field]) {
-                        editorState[field].isDirty = state.isDirty[field];
-                    }
-                });
-            }
-
-            // Restore original content (server baseline)
-            if (state.originalContent) {
-                Object.keys(state.originalContent).forEach(field => {
-                    originalContent[field] = state.originalContent[field];
-                });
-            }
+            return this._baseEditor.setState(state);
         },
 
         /**
@@ -615,11 +567,10 @@ console.log('[HTML Editor App] Loading...');
         },
 
         /**
-         * Save current state to storage
+         * Save current state to storage (delegated to BaseEditor)
          */
         saveState() {
-            const state = this.getState();
-            context.Storage.setAppState(this.id, state);
+            return this._baseEditor.saveState();
         },
 
         /**

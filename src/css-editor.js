@@ -271,71 +271,30 @@ console.log('[CSS Editor App] Loading...');
         },
 
         /**
-         * Get current state for persistence
+         * Get current state for persistence (delegated to BaseEditor with CSS-specific additions)
          */
         getState() {
-            const state = {
-                activeRoles: Object.keys(editorState).filter(role => editorState[role].active),
-                content: {},
-                isDirty: {},
-                originalContent: {},
-                livePreview: {
-                    enabled: livePreviewEnabled,
-                    selectedRole: livePreviewRole
-                }
-            };
+            const state = this._baseEditor.getState();
 
-            Object.keys(editorState).forEach(role => {
-                const roleState = editorState[role];
-                state.content[role] = roleState.content;
-                state.isDirty[role] = roleState.isDirty;
-                state.originalContent[role] = originalContent[role];
-            });
+            // Add CSS-specific live preview state
+            state.livePreview = {
+                enabled: livePreviewEnabled,
+                selectedRole: livePreviewRole
+            };
 
             return state;
         },
 
         /**
-         * Restore state
+         * Restore state (delegated to BaseEditor with CSS-specific additions)
          */
         setState(state) {
             if (!state) return;
 
-            // Restore active roles
-            if (state.activeRoles) {
-                state.activeRoles.forEach(role => {
-                    if (editorState[role]) {
-                        editorState[role].active = true;
-                    }
-                });
-            }
+            // Restore base state
+            this._baseEditor.setState(state);
 
-            // Restore content
-            if (state.content) {
-                Object.keys(state.content).forEach(role => {
-                    if (editorState[role]) {
-                        editorState[role].content = state.content[role];
-                    }
-                });
-            }
-
-            // Restore dirty state
-            if (state.isDirty) {
-                Object.keys(state.isDirty).forEach(role => {
-                    if (editorState[role]) {
-                        editorState[role].isDirty = state.isDirty[role];
-                    }
-                });
-            }
-
-            // Restore original content (server baseline)
-            if (state.originalContent) {
-                Object.keys(state.originalContent).forEach(role => {
-                    originalContent[role] = state.originalContent[role];
-                });
-            }
-
-            // Restore live preview state
+            // Restore CSS-specific live preview state
             if (state.livePreview) {
                 livePreviewEnabled = state.livePreview.enabled || false;
                 livePreviewRole = state.livePreview.selectedRole || 'anonymous';
@@ -640,9 +599,10 @@ console.log('[CSS Editor App] Loading...');
         },
 
         /**
-         * Save current state to storage
+         * Save current state to storage (uses custom getState for CSS-specific state)
          */
         saveState() {
+            // Use custom getState to include CSS-specific state
             const state = this.getState();
             context.Storage.setAppState(this.id, state);
         },

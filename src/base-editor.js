@@ -100,6 +100,89 @@ export class BaseEditor {
     }
 
     // ============================================================================
+    // State Management
+    // ============================================================================
+
+    /**
+     * Get current state for persistence
+     */
+    getState() {
+        const itemLabel = this.config.itemLabel;
+        const activeKey = itemLabel === 'role' ? 'activeRoles' : 'activeFields';
+
+        const state = {
+            [activeKey]: Object.keys(this.editorState).filter(
+                id => this.editorState[id].active
+            ),
+            content: {},
+            isDirty: {},
+            originalContent: {}
+        };
+
+        Object.keys(this.editorState).forEach(itemId => {
+            const itemState = this.editorState[itemId];
+            state.content[itemId] = itemState.content;
+            state.isDirty[itemId] = itemState.isDirty;
+            state.originalContent[itemId] = this.originalContent[itemId];
+        });
+
+        return state;
+    }
+
+    /**
+     * Restore state
+     */
+    setState(state) {
+        if (!state) return;
+
+        const itemLabel = this.config.itemLabel;
+        const activeKey = itemLabel === 'role' ? 'activeRoles' : 'activeFields';
+
+        // Restore active items
+        if (state[activeKey]) {
+            state[activeKey].forEach(itemId => {
+                if (this.editorState[itemId]) {
+                    this.editorState[itemId].active = true;
+                }
+            });
+        }
+
+        // Restore content
+        if (state.content) {
+            Object.keys(state.content).forEach(itemId => {
+                if (this.editorState[itemId]) {
+                    this.editorState[itemId].content = state.content[itemId];
+                }
+            });
+        }
+
+        // Restore dirty state
+        if (state.isDirty) {
+            Object.keys(state.isDirty).forEach(itemId => {
+                if (this.editorState[itemId]) {
+                    this.editorState[itemId].isDirty = state.isDirty[itemId];
+                }
+            });
+        }
+
+        // Restore original content (server baseline)
+        if (state.originalContent) {
+            Object.keys(state.originalContent).forEach(itemId => {
+                this.originalContent[itemId] = state.originalContent[itemId];
+            });
+        }
+    }
+
+    /**
+     * Save current state to storage
+     */
+    saveState() {
+        const appId = `${this.config.editorType}-editor`;
+        const state = this.getState();
+        this.context.Storage.setAppState(appId, state);
+    }
+
+    // ============================================================================
     // Grid & Layout Utilities
     // ============================================================================
 
