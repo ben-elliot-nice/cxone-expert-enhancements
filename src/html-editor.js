@@ -270,54 +270,13 @@ console.log('[HTML Editor App] Loading...');
         },
 
         /**
-         * Load HTML data from API
+         * Load HTML data from API (delegated to BaseEditor)
          * @param {boolean} skipContent - If true, only fetch CSRF token (checkpoint protection)
          */
         async loadData(skipContent = false) {
-            try {
-                const url = '/deki/cp/custom_html.php?params=%2F';
-                const response = await context.API.fetch(url);
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
-                const html = await response.text();
-                const { doc, data } = context.API.parseFormHTML(html);
-
-                // Always extract CSRF token
-                csrfToken = data.csrf_token;
-
-                if (skipContent) {
-                    // Checkpoint protection: we have dirty edits, so don't fetch HTML content
-                    // This prevents other people's changes from overwriting work-in-progress
-                } else {
-                    // No dirty edits - safe to fetch fresh HTML from server
-
-                    const textareas = {
-                        'html_template_head': 'head',
-                        'html_template_tail': 'tail'
-                    };
-
-                    Object.entries(textareas).forEach(([name, fieldId]) => {
-                        const textarea = doc.querySelector(`textarea[name="${name}"]`);
-                        if (textarea) {
-                            const content = textarea.textContent;
-                            editorState[fieldId].content = content;
-                            originalContent[fieldId] = content;
-                        }
-                    });
-                }
-
-                // Show editor container
-                document.getElementById('html-editor-container').style.display = 'block';
-
-                console.log('[HTML Editor] Data loaded');
-
-            } catch (error) {
-                console.error('[HTML Editor] Failed to load data:', error);
-                context.UI.showToast('Failed to load HTML: ' + error.message, 'error');
-            }
+            await this._baseEditor.loadData(skipContent);
+            // Sync csrfToken to module variable for save operations
+            csrfToken = this._baseEditor.csrfToken;
         },
 
         /**

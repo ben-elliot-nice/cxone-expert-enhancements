@@ -100,6 +100,63 @@ export class BaseEditor {
     }
 
     // ============================================================================
+    // Data Loading
+    // ============================================================================
+
+    /**
+     * Load data from API
+     * @param {boolean} skipContent - If true, only fetch CSRF token (checkpoint protection)
+     */
+    async loadData(skipContent = false) {
+        try {
+            const response = await this.context.API.fetch(this.config.apiEndpoint);
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const html = await response.text();
+            const { doc, data } = this.context.API.parseFormHTML(html);
+
+            // Always extract CSRF token
+            this.csrfToken = data.csrf_token;
+
+            if (skipContent) {
+                // Checkpoint protection: we have dirty edits, so don't fetch content
+                // This prevents other people's changes from overwriting work-in-progress
+                console.log(`[${this.getEditorTypeUpper()} Editor] Skipped content load (checkpoint protection)`);
+            } else {
+                // No dirty edits - safe to fetch fresh content from server
+                this.config.itemsConfig.forEach(({ id }) => {
+                    const fieldName = `${this.config.formFieldPrefix}${id}`;
+                    const textarea = doc.querySelector(`textarea[name="${fieldName}"]`);
+                    if (textarea) {
+                        const content = textarea.textContent;
+                        this.editorState[id].content = content;
+                        this.originalContent[id] = content;
+                    }
+                });
+            }
+
+            // Show editor container
+            const containerId = `${this.config.editorType}-editor-container`;
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.style.display = 'block';
+            }
+
+            console.log(`[${this.getEditorTypeUpper()} Editor] Data loaded`);
+
+        } catch (error) {
+            console.error(`[${this.getEditorTypeUpper()} Editor] Failed to load data:`, error);
+            this.context.UI.showToast(
+                `Failed to load ${this.config.editorType.toUpperCase()}: ${error.message}`,
+                'error'
+            );
+        }
+    }
+
+    // ============================================================================
     // State Management
     // ============================================================================
 

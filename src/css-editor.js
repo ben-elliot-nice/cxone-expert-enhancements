@@ -310,58 +310,13 @@ console.log('[CSS Editor App] Loading...');
         },
 
         /**
-         * Load CSS data from API
+         * Load CSS data from API (delegated to BaseEditor)
          * @param {boolean} skipContent - If true, only fetch CSRF token (checkpoint protection)
          */
         async loadData(skipContent = false) {
-            try {
-                const url = '/deki/cp/custom_css.php?params=%2F';
-                const response = await context.API.fetch(url);
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
-                const html = await response.text();
-                const { doc, data } = context.API.parseFormHTML(html);
-
-                // Always extract CSRF token
-                csrfToken = data.csrf_token;
-
-                if (skipContent) {
-                    // Checkpoint protection: we have dirty edits, so don't fetch CSS content
-                    // This prevents other people's changes from overwriting work-in-progress
-                } else {
-                    // No dirty edits - safe to fetch fresh CSS from server
-
-                    const textareas = {
-                        'css_template_all': 'all',
-                        'css_template_anonymous': 'anonymous',
-                        'css_template_viewer': 'viewer',
-                        'css_template_seated': 'seated',
-                        'css_template_admin': 'admin',
-                        'css_template_grape': 'grape'
-                    };
-
-                    Object.entries(textareas).forEach(([name, roleId]) => {
-                        const textarea = doc.querySelector(`textarea[name="${name}"]`);
-                        if (textarea) {
-                            const content = textarea.textContent;
-                            editorState[roleId].content = content;
-                            originalContent[roleId] = content;
-                        }
-                    });
-                }
-
-                // Show editor container
-                document.getElementById('css-editor-container').style.display = 'block';
-
-                console.log('[CSS Editor] Data loaded');
-
-            } catch (error) {
-                console.error('[CSS Editor] Failed to load data:', error);
-                context.UI.showToast('Failed to load CSS: ' + error.message, 'error');
-            }
+            await this._baseEditor.loadData(skipContent);
+            // Sync csrfToken to module variable for save operations
+            csrfToken = this._baseEditor.csrfToken;
         },
 
         /**
