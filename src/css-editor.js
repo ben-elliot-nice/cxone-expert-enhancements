@@ -327,7 +327,7 @@ console.log('[CSS Editor App] Loading...');
          * Check viewport width and switch between mobile/desktop view (delegated to BaseEditor)
          */
         checkViewportWidth() {
-            const result = this._baseEditor.checkViewportWidth.call(this);
+            const result = this._baseEditor.checkViewportWidth();
             // Sync back to module variable
             isMobileView = this._baseEditor.isMobileView;
             return result;
@@ -375,7 +375,7 @@ console.log('[CSS Editor App] Loading...');
          * Update editors grid (delegated to BaseEditor)
          */
         updateGrid() {
-            return this._baseEditor.updateGrid.call(this);
+            return this._baseEditor.updateGrid();
         },
 
         /**
