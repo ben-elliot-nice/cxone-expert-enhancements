@@ -96,6 +96,7 @@ console.log('[CSS Editor App] Loading...');
             });
 
             // Share state with BaseEditor
+            this._baseEditor.id = this.id;
             this._baseEditor.context = ctx;
             this._baseEditor.editorState = editorState;
             this._baseEditor.originalContent = originalContent;
@@ -850,143 +851,28 @@ console.log('[CSS Editor App] Loading...');
          * Uses inline confirmation
          */
         discardAll() {
-            console.log('[CSS Editor] discardAll called');
-
-            if (Object.keys(originalContent).length === 0) {
-                context.UI.showToast('No original content to revert to', 'warning');
-                return;
-            }
-
-            // Check if any editors have unsaved changes
-            const hasUnsavedChanges = Object.values(editorState).some(role => role.isDirty);
-            const discardBtn = document.getElementById('discard-btn');
-
-            console.log('[CSS Editor] discardAll - hasUnsavedChanges:', hasUnsavedChanges);
-            console.log('[CSS Editor] discardAll - discardBtn:', discardBtn);
-            console.log('[CSS Editor] discardAll - discardBtn.classList:', discardBtn?.classList);
-
-            if (hasUnsavedChanges) {
-                if (discardBtn && !discardBtn.classList.contains('confirming')) {
-                    console.log('[CSS Editor] discardAll - Showing inline confirmation');
-                    // Show inline confirmation
-                    context.UI.showInlineConfirmation(discardBtn, () => {
-                        this.performDiscardAll();
-                    });
-                } else {
-                    console.log('[CSS Editor] discardAll - Button already confirming or not found');
-                }
-                return;
-            }
-
-            // No unsaved changes - show "no changes" message
-            if (discardBtn && !discardBtn.classList.contains('showing-no-changes')) {
-                console.log('[CSS Editor] discardAll - Showing no changes message');
-                context.UI.showNoChangesMessage(discardBtn);
-            }
+            return this._baseEditor.discardAll();
         },
 
         /**
          * Actually perform discard all (after confirmation)
          */
         performDiscardAll() {
-            console.log('[CSS Editor] performDiscardAll executing');
-
-            // Revert all state to original content
-            Object.keys(editorState).forEach(roleId => {
-                editorState[roleId].content = originalContent[roleId] || '';
-                editorState[roleId].isDirty = false;
-
-                // If editor is active, update its content
-                const editor = monacoEditors[roleId];
-                if (editor) {
-                    editor.setValue(editorState[roleId].content);
-                }
-            });
-
-            this.updateToggleButtons();
-
-            // Check if all editors are now clean - if so, clear app state
-            const allClean = Object.values(editorState).every(s => !s.isDirty);
-            if (allClean) {
-                console.log('[CSS Editor] All editors clean, clearing app state');
-                context.Storage.clearAppState(this.id);
-            } else {
-                this.saveState();
-            }
-
-            // Close dropdown menu
-            const dropdownMenu = document.getElementById('save-dropdown-menu');
-            if (dropdownMenu) dropdownMenu.classList.remove('show');
-            const dropdown = document.querySelector('.save-dropdown');
-            if (dropdown) dropdown.classList.remove('open');
-
-            context.UI.showToast('All changes discarded', 'success');
+            return this._baseEditor.performDiscardAll();
         },
 
         /**
          * Revert a single role (with inline confirmation)
          */
         revertRole(roleId) {
-            console.log(`[CSS Editor] revertRole called for: ${roleId}`);
-
-            const role = editorState[roleId];
-            if (!role) return;
-
-            // Check if editor has unsaved changes
-            const revertBtn = document.querySelector(`[data-revert-role="${roleId}"]`);
-            if (!revertBtn) return;
-
-            if (role.isDirty) {
-                if (!revertBtn.classList.contains('confirming')) {
-                    // Show inline confirmation
-                    context.UI.showInlineConfirmation(revertBtn, () => {
-                        this.performRevert(roleId);
-                    });
-                }
-                return;
-            }
-
-            // No unsaved changes - show "no changes" message
-            if (!revertBtn.classList.contains('showing-no-changes')) {
-                context.UI.showNoChangesMessage(revertBtn);
-            }
+            return this._baseEditor.revertItem(roleId);
         },
 
         /**
          * Actually perform revert (after confirmation)
          */
         performRevert(roleId) {
-            console.log(`[CSS Editor] performRevert executing for: ${roleId}`);
-
-            const role = editorState[roleId];
-            if (!role) return;
-
-            // Revert content to original
-            role.content = originalContent[roleId] || '';
-            role.isDirty = false;
-
-            // If editor is active, update its content
-            const editor = monacoEditors[roleId];
-            if (editor) {
-                editor.setValue(role.content);
-            }
-
-            this.updateToggleButtons();
-
-            // Check if all editors are now clean - if so, clear app state
-            const allClean = Object.values(editorState).every(s => !s.isDirty);
-            if (allClean) {
-                console.log('[CSS Editor] All editors clean, clearing app state');
-                context.Storage.clearAppState(this.id);
-            } else {
-                this.saveState();
-            }
-
-            // Close dropdown menu
-            const menu = document.querySelector(`[data-menu-role="${roleId}"]`);
-            if (menu) menu.classList.remove('show');
-
-            context.UI.showToast(`${role.label} reverted`, 'success');
+            return this._baseEditor.performRevert(roleId);
         },
 
         /**

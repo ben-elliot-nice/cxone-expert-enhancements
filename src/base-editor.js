@@ -654,6 +654,149 @@ export class BaseEditor {
     }
 
     // ============================================================================
+    // Revert & Discard Operations
+    // ============================================================================
+
+    /**
+     * Discard all changes (revert to original) with inline confirmation
+     */
+    discardAll() {
+        console.log(`[${this.config.editorType.toUpperCase()} Editor] discardAll called`);
+
+        if (Object.keys(this.originalContent).length === 0) {
+            this.context.UI.showToast('No original content to revert to', 'warning');
+            return;
+        }
+
+        // Check if any editors have unsaved changes
+        const hasUnsavedChanges = Object.values(this.editorState).some(item => item.isDirty);
+        const discardBtn = document.getElementById('discard-btn');
+
+        if (hasUnsavedChanges) {
+            if (discardBtn && !discardBtn.classList.contains('confirming')) {
+                console.log(`[${this.config.editorType.toUpperCase()} Editor] discardAll - Showing inline confirmation`);
+                // Show inline confirmation
+                this.context.UI.showInlineConfirmation(discardBtn, () => {
+                    this.performDiscardAll();
+                });
+            }
+            return;
+        }
+
+        // No unsaved changes - show "no changes" message
+        if (discardBtn && !discardBtn.classList.contains('showing-no-changes')) {
+            console.log(`[${this.config.editorType.toUpperCase()} Editor] discardAll - Showing no changes message`);
+            this.context.UI.showNoChangesMessage(discardBtn);
+        }
+    }
+
+    /**
+     * Actually perform discard all (after confirmation)
+     */
+    performDiscardAll() {
+        console.log(`[${this.config.editorType.toUpperCase()} Editor] performDiscardAll executing`);
+
+        // Revert all state to original content
+        Object.keys(this.editorState).forEach(itemId => {
+            this.editorState[itemId].content = this.originalContent[itemId] || '';
+            this.editorState[itemId].isDirty = false;
+
+            // If editor is active, update its content
+            const editor = this.monacoEditors[itemId];
+            if (editor) {
+                editor.setValue(this.editorState[itemId].content);
+            }
+        });
+
+        this.updateToggleButtons();
+
+        // Check if all editors are now clean - if so, clear app state
+        const allClean = Object.values(this.editorState).every(s => !s.isDirty);
+        if (allClean) {
+            console.log(`[${this.config.editorType.toUpperCase()} Editor] All editors clean, clearing app state`);
+            this.context.Storage.clearAppState(this.id);
+        } else {
+            this.saveState();
+        }
+
+        // Close dropdown menu
+        const dropdownMenu = document.getElementById('save-dropdown-menu');
+        if (dropdownMenu) dropdownMenu.classList.remove('show');
+        const dropdown = document.querySelector('.save-dropdown');
+        if (dropdown) dropdown.classList.remove('open');
+
+        this.context.UI.showToast('All changes discarded', 'success');
+    }
+
+    /**
+     * Revert a single item (with inline confirmation)
+     * @param {string} itemId - Item identifier
+     */
+    revertItem(itemId) {
+        console.log(`[${this.config.editorType.toUpperCase()} Editor] revertItem called for: ${itemId}`);
+
+        const item = this.editorState[itemId];
+        if (!item) return;
+
+        // Check if editor has unsaved changes
+        const revertBtn = document.querySelector(`[data-revert-${this.config.dataAttribute}="${itemId}"]`);
+        if (!revertBtn) return;
+
+        if (item.isDirty) {
+            if (!revertBtn.classList.contains('confirming')) {
+                // Show inline confirmation
+                this.context.UI.showInlineConfirmation(revertBtn, () => {
+                    this.performRevert(itemId);
+                });
+            }
+            return;
+        }
+
+        // No unsaved changes - show "no changes" message
+        if (!revertBtn.classList.contains('showing-no-changes')) {
+            this.context.UI.showNoChangesMessage(revertBtn);
+        }
+    }
+
+    /**
+     * Actually perform revert (after confirmation)
+     * @param {string} itemId - Item identifier
+     */
+    performRevert(itemId) {
+        console.log(`[${this.config.editorType.toUpperCase()} Editor] performRevert executing for: ${itemId}`);
+
+        const item = this.editorState[itemId];
+        if (!item) return;
+
+        // Revert content to original
+        item.content = this.originalContent[itemId] || '';
+        item.isDirty = false;
+
+        // If editor is active, update its content
+        const editor = this.monacoEditors[itemId];
+        if (editor) {
+            editor.setValue(item.content);
+        }
+
+        this.updateToggleButtons();
+
+        // Check if all editors are now clean - if so, clear app state
+        const allClean = Object.values(this.editorState).every(s => !s.isDirty);
+        if (allClean) {
+            console.log(`[${this.config.editorType.toUpperCase()} Editor] All editors clean, clearing app state`);
+            this.context.Storage.clearAppState(this.id);
+        } else {
+            this.saveState();
+        }
+
+        // Close dropdown menu
+        const menu = document.querySelector(`[data-menu-${this.config.dataAttribute}="${itemId}"]`);
+        if (menu) menu.classList.remove('show');
+
+        this.context.UI.showToast(`${item.label} reverted`, 'success');
+    }
+
+    // ============================================================================
     // Grid & Layout Utilities
     // ============================================================================
 

@@ -86,6 +86,7 @@ console.log('[HTML Editor App] Loading...');
             });
 
             // Share state with BaseEditor
+            this._baseEditor.id = this.id;
             this._baseEditor.context = ctx;
             this._baseEditor.editorState = editorState;
             this._baseEditor.originalContent = originalContent;
@@ -815,113 +816,28 @@ console.log('[HTML Editor App] Loading...');
          * Discard all changes (with inline confirmation)
          */
         discardAll() {
-            // Check if there are any unsaved changes
-            const hasUnsavedChanges = Object.values(editorState).some(field => field.isDirty);
-            const discardBtn = document.getElementById('discard-btn');
-
-            if (hasUnsavedChanges) {
-                // Show inline confirmation
-                if (discardBtn && !discardBtn.classList.contains('confirming')) {
-                    context.UI.showInlineConfirmation(discardBtn, () => {
-                        this.performDiscardAll();
-                    });
-                }
-                return;
-            }
-
-            // No changes - show "No changes" message
-            if (discardBtn && !discardBtn.classList.contains('showing-no-changes')) {
-                context.UI.showNoChangesMessage(discardBtn);
-            }
+            return this._baseEditor.discardAll();
         },
 
         /**
          * Execute discard all (after confirmation)
          */
         performDiscardAll() {
-            Object.keys(editorState).forEach(fieldId => {
-                editorState[fieldId].content = originalContent[fieldId] || '';
-                editorState[fieldId].isDirty = false;
-
-                const editor = monacoEditors[fieldId];
-                if (editor) {
-                    editor.setValue(editorState[fieldId].content);
-                }
-            });
-
-            this.updateToggleButtons();
-
-            // Check if all editors are now clean - if so, clear app state
-            const allClean = Object.values(editorState).every(s => !s.isDirty);
-            if (allClean) {
-                console.log('[HTML Editor] All editors clean, clearing app state');
-                context.Storage.clearAppState(this.id);
-            } else {
-                this.saveState();
-            }
-
-            context.UI.showToast('All changes discarded', 'success');
+            return this._baseEditor.performDiscardAll();
         },
 
         /**
          * Revert changes for a specific field (with inline confirmation)
          */
         revertField(fieldId) {
-            const field = editorState[fieldId];
-            if (!field) return;
-
-            const revertBtn = document.querySelector(`[data-revert-field="${fieldId}"]`);
-            if (!revertBtn) return;
-
-            if (field.isDirty) {
-                // Show inline confirmation
-                if (!revertBtn.classList.contains('confirming')) {
-                    context.UI.showInlineConfirmation(revertBtn, () => {
-                        this.performRevert(fieldId);
-                    });
-                }
-                return;
-            }
-
-            // No changes - show "No changes" message
-            if (!revertBtn.classList.contains('showing-no-changes')) {
-                context.UI.showNoChangesMessage(revertBtn);
-            }
+            return this._baseEditor.revertItem(fieldId);
         },
 
         /**
          * Execute revert (after confirmation)
          */
         performRevert(fieldId) {
-            const field = editorState[fieldId];
-            if (!field) return;
-
-            field.content = originalContent[fieldId] || '';
-            field.isDirty = false;
-
-            const editor = monacoEditors[fieldId];
-            if (editor) {
-                editor.setValue(field.content);
-            }
-
-            // Close the dropdown
-            const menu = document.querySelector(`[data-menu-field="${fieldId}"]`);
-            if (menu) {
-                menu.classList.remove('show');
-            }
-
-            this.updateToggleButtons();
-
-            // Check if all editors are now clean - if so, clear app state
-            const allClean = Object.values(editorState).every(s => !s.isDirty);
-            if (allClean) {
-                console.log('[HTML Editor] All editors clean, clearing app state');
-                context.Storage.clearAppState(this.id);
-            } else {
-                this.saveState();
-            }
-
-            context.UI.showToast(`${field.label} reverted`, 'success');
+            return this._baseEditor.performRevert(fieldId);
         },
 
         /**
