@@ -1153,4 +1153,90 @@ export class BaseEditor {
         const editorTypeUpper = this.config.editorType.toUpperCase();
         console.log(`[${editorTypeUpper} Editor] Keyboard shortcuts registered: Ctrl+S (save open), Ctrl+Shift+S (save all), Ctrl+Shift+F (format)`);
     }
+
+    /**
+     * Build toggle bar with item buttons (desktop) or dropdown (mobile)
+     * Never rebuilds the save dropdown - only toggle buttons or mobile selector
+     */
+    buildToggleBar() {
+        const toggleBar = document.getElementById('toggle-bar');
+        if (!toggleBar) return;
+
+        const dataAttr = this.config.dataAttribute;
+        const itemsConfig = this.config.itemsConfig;
+
+        // Clear existing buttons/selectors (but keep save dropdown)
+        const existingButtons = toggleBar.querySelectorAll('.toggle-btn, .mobile-selector-wrapper');
+        existingButtons.forEach(el => el.remove());
+
+        if (this.isMobileView) {
+            // Create mobile dropdown selector
+            const wrapper = document.createElement('div');
+            wrapper.className = 'mobile-selector-wrapper';
+
+            const label = document.createElement('label');
+            label.htmlFor = 'mobile-editor-select';
+            label.textContent = 'Editor: ';
+            label.className = 'mobile-selector-label';
+
+            const select = document.createElement('select');
+            select.id = 'mobile-editor-select';
+            select.className = 'mobile-editor-select';
+
+            // Add options for each item with status icons
+            itemsConfig.forEach(({ id, label: itemLabel }) => {
+                const item = this.editorState[id];
+                const option = document.createElement('option');
+                option.value = id;
+                const statusIcon = item.isDirty ? '● ' : '✓ ';
+                option.textContent = statusIcon + itemLabel;
+                option.setAttribute(`data-${dataAttr}`, id);
+                select.appendChild(option);
+            });
+
+            // Set current selection - respect already active editor
+            let activeItem = Object.keys(this.editorState).find(id => this.editorState[id].active);
+
+            // Only activate first editor if truly no active editors exist
+            if (!activeItem) {
+                const firstItem = itemsConfig[0].id;
+                this.editorState[firstItem].active = true;
+                activeItem = firstItem;
+                const editorTypeUpper = this.config.editorType.toUpperCase();
+                console.log(`[${editorTypeUpper} Editor] No active editor found, activating first: ${activeItem}`);
+                // Need to render the editor
+                setTimeout(() => {
+                    this.updateGrid();
+                    this.saveState();
+                }, 0);
+            }
+
+            select.value = activeItem;
+
+            // Add change listener
+            select.addEventListener('change', (e) => this.handleMobileEditorChange(e.target.value));
+
+            wrapper.appendChild(label);
+            wrapper.appendChild(select);
+
+            // Insert at the beginning of toggle bar (before save dropdown)
+            const firstChild = toggleBar.firstChild;
+            toggleBar.insertBefore(wrapper, firstChild);
+        } else {
+            // Create desktop toggle buttons
+            itemsConfig.forEach(({ id, label }) => {
+                const btn = document.createElement('button');
+                btn.className = 'toggle-btn';
+                btn.setAttribute(`data-${dataAttr}`, id);
+                btn.textContent = label;
+                btn.addEventListener('click', (e) => this.toggleEditor(id, e));
+
+                // Insert before the save dropdown
+                const saveDropdown = toggleBar.querySelector('.save-dropdown');
+                toggleBar.insertBefore(btn, saveDropdown);
+            });
+        }
+
+        this.updateToggleButtons();
+    }
 }

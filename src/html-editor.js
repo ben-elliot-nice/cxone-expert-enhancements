@@ -286,86 +286,10 @@ console.log('[HTML Editor App] Loading...');
 
         /**
          * Build toggle bar with field buttons or mobile dropdown
+         * (delegated to BaseEditor)
          */
         buildToggleBar() {
-            const toggleBar = document.getElementById('toggle-bar');
-            if (!toggleBar) return;
-
-
-            // Clear existing buttons/selectors (but keep save dropdown)
-            const existingButtons = toggleBar.querySelectorAll('.toggle-btn, .mobile-selector-wrapper');
-            existingButtons.forEach(el => el.remove());
-
-            if (isMobileView) {
-                // Create mobile dropdown selector
-                const wrapper = document.createElement('div');
-                wrapper.className = 'mobile-selector-wrapper';
-
-                const label = document.createElement('label');
-                label.htmlFor = 'mobile-editor-select';
-                label.textContent = 'Editor: ';
-                label.className = 'mobile-selector-label';
-
-                const select = document.createElement('select');
-                select.id = 'mobile-editor-select';
-                select.className = 'mobile-editor-select';
-
-                // Add options for each field with status icons
-                FIELD_CONFIG.forEach(({ id, label: fieldLabel }) => {
-                    const field = editorState[id];
-                    const option = document.createElement('option');
-                    option.value = id;
-                    const statusIcon = field.isDirty ? '● ' : '✓ ';
-                    option.textContent = statusIcon + fieldLabel;
-                    option.setAttribute('data-field', id);
-                    select.appendChild(option);
-                });
-
-                // Set current selection - respect already active editor
-                let activeField = Object.keys(editorState).find(field => editorState[field].active);
-
-                // Only activate first editor if truly no active editors exist
-                if (!activeField) {
-                    const firstField = FIELD_CONFIG[0].id;
-                    editorState[firstField].active = true;
-                    activeField = firstField;
-                    console.log(`[HTML Editor] No active editor found, activating first: ${activeField}`);
-                    // Need to render the editor
-                    setTimeout(() => {
-                        this.updateGrid();
-                        this.saveState();
-                    }, 0);
-                } else {
-                    console.log(`[HTML Editor] Using existing active editor: ${activeField}`);
-                }
-
-                select.value = activeField;
-
-                // Add change listener
-                select.addEventListener('change', (e) => this.handleMobileEditorChange(e.target.value));
-
-                wrapper.appendChild(label);
-                wrapper.appendChild(select);
-
-                // Insert at the beginning of toggle bar (before save dropdown)
-                const firstChild = toggleBar.firstChild;
-                toggleBar.insertBefore(wrapper, firstChild);
-            } else {
-                // Create desktop toggle buttons
-                FIELD_CONFIG.forEach(({ id, label }) => {
-                    const btn = document.createElement('button');
-                    btn.className = 'toggle-btn';
-                    btn.setAttribute('data-field', id);
-                    btn.textContent = label;
-                    btn.addEventListener('click', (e) => this.toggleEditor(id, e));
-
-                    // Insert before the save dropdown
-                    const saveDropdown = toggleBar.querySelector('.save-dropdown');
-                    toggleBar.insertBefore(btn, saveDropdown);
-                });
-            }
-
-            this.updateToggleButtons();
+            return this._baseEditor.buildToggleBar();
         },
 
         /**

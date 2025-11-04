@@ -334,84 +334,10 @@ console.log('[CSS Editor App] Loading...');
 
         /**
          * Build toggle bar with role buttons (desktop) or dropdown (mobile)
-         * Never rebuilds the save dropdown - only toggle buttons or mobile selector
+         * (delegated to BaseEditor)
          */
         buildToggleBar() {
-            const toggleBar = document.getElementById('toggle-bar');
-            if (!toggleBar) return;
-
-
-            // Clear existing buttons/selectors (but keep save dropdown)
-            const existingButtons = toggleBar.querySelectorAll('.toggle-btn, .mobile-selector-wrapper');
-            existingButtons.forEach(el => el.remove());
-
-            if (isMobileView) {
-                // Create mobile dropdown selector
-                const wrapper = document.createElement('div');
-                wrapper.className = 'mobile-selector-wrapper';
-
-                const label = document.createElement('label');
-                label.htmlFor = 'mobile-editor-select';
-                label.textContent = 'Editor: ';
-                label.className = 'mobile-selector-label';
-
-                const select = document.createElement('select');
-                select.id = 'mobile-editor-select';
-                select.className = 'mobile-editor-select';
-
-                // Add options for each role with status icons
-                ROLE_CONFIG.forEach(({ id, label: roleLabel }) => {
-                    const role = editorState[id];
-                    const option = document.createElement('option');
-                    option.value = id;
-                    const statusIcon = role.isDirty ? '● ' : '✓ ';
-                    option.textContent = statusIcon + roleLabel;
-                    option.setAttribute('data-role', id);
-                    select.appendChild(option);
-                });
-
-                // Set current selection - respect already active editor
-                let activeRole = Object.keys(editorState).find(role => editorState[role].active);
-
-                // Only activate first editor if truly no active editors exist
-                if (!activeRole) {
-                    const firstRole = ROLE_CONFIG[0].id;
-                    editorState[firstRole].active = true;
-                    activeRole = firstRole;
-                    // Need to render the editor
-                    setTimeout(() => {
-                        this.updateGrid();
-                        this.saveState();
-                    }, 0);
-                }
-
-                select.value = activeRole;
-
-                // Add change listener
-                select.addEventListener('change', (e) => this.handleMobileEditorChange(e.target.value));
-
-                wrapper.appendChild(label);
-                wrapper.appendChild(select);
-
-                // Insert at the beginning of toggle bar (before save dropdown)
-                const firstChild = toggleBar.firstChild;
-                toggleBar.insertBefore(wrapper, firstChild);
-            } else {
-                // Create desktop toggle buttons
-                ROLE_CONFIG.forEach(({ id, label }) => {
-                    const btn = document.createElement('button');
-                    btn.className = 'toggle-btn';
-                    btn.setAttribute('data-role', id);
-                    btn.textContent = label;
-                    btn.addEventListener('click', (e) => this.toggleEditor(id, e));
-
-                    // Insert before the save dropdown
-                    const saveDropdown = toggleBar.querySelector('.save-dropdown');
-                    toggleBar.insertBefore(btn, saveDropdown);
-                });
-            }
-
-            this.updateToggleButtons();
+            return this._baseEditor.buildToggleBar();
         },
 
         /**
