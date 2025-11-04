@@ -102,6 +102,11 @@ console.log('[CSS Editor App] Loading...');
             this._baseEditor.monacoEditors = monacoEditors;
             this._baseEditor.isMobileView = isMobileView;
 
+            // Set hook for CSS-specific behavior (live preview)
+            this._baseEditor.onEditorContentChange = () => {
+                this.updateLivePreview();
+            };
+
             // Wait for Monaco to be ready
             await context.Monaco.init();
 
@@ -745,54 +750,17 @@ console.log('[CSS Editor App] Loading...');
         },
 
         /**
-         * Create Monaco editor instance
+         * Create Monaco editor instance (delegated to BaseEditor)
          */
         createMonacoEditor(roleId, container) {
-            const role = editorState[roleId];
-            const monaco = context.Monaco.get();
-
-            // Create editor immediately (may have 0 dimensions if overlay is hidden)
-            const editor = monaco.editor.create(container, {
-                value: role.content || '',
-                language: 'css',
-                theme: context.Config.get('editor.theme'),
-                automaticLayout: false,
-                minimap: { enabled: context.Config.get('editor.minimapEnabled') },
-                fontSize: context.Config.get('editor.fontSize'),
-                wordWrap: context.Config.get('editor.wordWrap'),
-                scrollBeyondLastLine: context.Config.get('editor.scrollBeyondLastLine'),
-                tabSize: context.Config.get('editor.tabSize')
-            });
-
-            monacoEditors[roleId] = editor;
-
-            // Track changes
-            editor.onDidChangeModelContent(() => {
-                role.content = editor.getValue();
-                role.isDirty = role.content !== originalContent[roleId];
-                this.updateToggleButtons();
-                this.updateLivePreview();
-            });
-
-            console.log(`[CSS Editor] Created Monaco editor for: ${roleId}`);
+            return this._baseEditor.createMonacoEditor(roleId, container);
         },
 
         /**
-         * Initialize editors (activate default if none active)
+         * Initialize editors (activate default if none active) (delegated to BaseEditor)
          */
         initializeEditors(skipDefault = false) {
-            const hasActive = Object.values(editorState).some(r => r.active);
-
-            // Only set default if we should not skip and nothing is active
-            if (!skipDefault && !hasActive) {
-                // Activate 'all' by default
-                editorState.all.active = true;
-                console.log('[CSS Editor] No saved state, activating default: all');
-            } else {
-                console.log('[CSS Editor] Skipping default activation, skipDefault:', skipDefault, 'hasActive:', hasActive);
-            }
-
-            this.updateGrid();
+            return this._baseEditor.initializeEditors(skipDefault);
         },
 
         /**

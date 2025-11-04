@@ -261,6 +261,66 @@ export class BaseEditor {
     }
 
     // ============================================================================
+    // Monaco Editor Operations
+    // ============================================================================
+
+    /**
+     * Create Monaco editor instance
+     */
+    createMonacoEditor(itemId, container) {
+        const item = this.editorState[itemId];
+        const monaco = this.context.Monaco.get();
+
+        // Create editor immediately (may have 0 dimensions if overlay is hidden)
+        const editor = monaco.editor.create(container, {
+            value: item.content || '',
+            language: this.config.monacoLanguage,
+            theme: this.context.Config.get('editor.theme'),
+            automaticLayout: false,
+            minimap: { enabled: this.context.Config.get('editor.minimapEnabled') },
+            fontSize: this.context.Config.get('editor.fontSize'),
+            wordWrap: this.context.Config.get('editor.wordWrap'),
+            scrollBeyondLastLine: this.context.Config.get('editor.scrollBeyondLastLine'),
+            tabSize: this.context.Config.get('editor.tabSize')
+        });
+
+        this.monacoEditors[itemId] = editor;
+
+        // Track changes
+        editor.onDidChangeModelContent(() => {
+            item.content = editor.getValue();
+            item.isDirty = item.content !== this.originalContent[itemId];
+            this.updateToggleButtons();
+
+            // Call app-specific hook if defined (e.g., for CSS live preview)
+            if (this.onEditorContentChange) {
+                this.onEditorContentChange(itemId, editor);
+            }
+        });
+
+        this.log(`Created Monaco editor for: ${itemId}`);
+    }
+
+    /**
+     * Initialize editors (activate default if none active)
+     */
+    initializeEditors(skipDefault = false) {
+        const hasActive = Object.values(this.editorState).some(item => item.active);
+
+        // Only set default if we should not skip and nothing is active
+        if (!skipDefault && !hasActive) {
+            // Activate first item by default
+            const firstItem = this.config.itemsConfig[0];
+            this.editorState[firstItem.id].active = true;
+            this.log(`No saved state, activating default: ${firstItem.id}`);
+        } else {
+            this.log(`Skipping default activation, skipDefault: ${skipDefault}, hasActive: ${hasActive}`);
+        }
+
+        this.updateGrid();
+    }
+
+    // ============================================================================
     // Grid & Layout Utilities
     // ============================================================================
 

@@ -715,53 +715,17 @@ console.log('[HTML Editor App] Loading...');
         },
 
         /**
-         * Create Monaco editor instance
+         * Create Monaco editor instance (delegated to BaseEditor)
          */
         createMonacoEditor(fieldId, container) {
-            const field = editorState[fieldId];
-            const monaco = context.Monaco.get();
-
-            // Create editor immediately (CSS now properly sizes containers)
-            const editor = monaco.editor.create(container, {
-                value: field.content || '',
-                language: 'html',
-                theme: context.Config.get('editor.theme'),
-                automaticLayout: false,
-                minimap: { enabled: context.Config.get('editor.minimapEnabled') },
-                fontSize: context.Config.get('editor.fontSize'),
-                wordWrap: context.Config.get('editor.wordWrap'),
-                scrollBeyondLastLine: context.Config.get('editor.scrollBeyondLastLine'),
-                tabSize: context.Config.get('editor.tabSize')
-            });
-
-            monacoEditors[fieldId] = editor;
-
-            // Track changes
-            editor.onDidChangeModelContent(() => {
-                field.content = editor.getValue();
-                field.isDirty = field.content !== originalContent[fieldId];
-                this.updateToggleButtons();
-            });
-
-            console.log(`[HTML Editor] Created Monaco editor for: ${fieldId}`);
+            return this._baseEditor.createMonacoEditor(fieldId, container);
         },
 
         /**
-         * Initialize editors (activate default if none active)
+         * Initialize editors (activate default if none active) (delegated to BaseEditor)
          */
         initializeEditors(skipDefault = false) {
-            const hasActive = Object.values(editorState).some(f => f.active);
-
-            // Only set default if we should not skip and nothing is active
-            if (!skipDefault && !hasActive) {
-                // Activate 'head' by default
-                editorState.head.active = true;
-                console.log('[HTML Editor] No saved state, activating default: head');
-            } else {
-                console.log('[HTML Editor] Skipping default activation, skipDefault:', skipDefault, 'hasActive:', hasActive);
-            }
-
-            this.updateGrid();
+            return this._baseEditor.initializeEditors(skipDefault);
         },
 
         /**
