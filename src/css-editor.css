@@ -108,7 +108,7 @@
     border-right: none;
 }
 
-.btn-dropdown-toggle {
+.btn.btn-dropdown-toggle {
     background: #0d6efd;
     color: white;
     border: 1px solid #0d6efd;
@@ -124,12 +124,12 @@
     min-width: 28px;
 }
 
-.btn-dropdown-toggle:hover {
+.btn.btn-dropdown-toggle:hover {
     background: #0b5ed7;
     border-color: #0a58ca;
 }
 
-.btn-dropdown-toggle:active {
+.btn.btn-dropdown-toggle:active {
     background: #0a58ca;
 }
 
