@@ -90,6 +90,7 @@ console.log('[HTML Editor App] Loading...');
             this._baseEditor.editorState = editorState;
             this._baseEditor.originalContent = originalContent;
             this._baseEditor.monacoEditors = monacoEditors;
+            this._baseEditor.isMobileView = isMobileView;
 
             // Wait for Monaco to be ready
             await context.Monaco.init();
@@ -251,67 +252,20 @@ console.log('[HTML Editor App] Loading...');
         },
 
         /**
-         * Check viewport width and switch between mobile/desktop view
+         * Check viewport width and switch between mobile/desktop view (delegated to BaseEditor)
          */
         checkViewportWidth() {
-            const wasMobileView = isMobileView;
-
-            // Get overlay width to determine mobile/desktop view
-            // Use overlay instead of editor container to avoid issues when container is hidden
-            const overlay = document.getElementById('expert-enhancements-overlay');
-            if (overlay) {
-                const containerWidth = overlay.offsetWidth;
-                const desktopBreakpoint = context.Config.get('advanced.breakpoints.desktop');
-                isMobileView = containerWidth < desktopBreakpoint;
-            }
-
-            // If view mode changed, rebuild the toggle bar
-            if (wasMobileView !== isMobileView) {
-                this.buildToggleBar();
-
-                // If switching to mobile and multiple editors are active, keep only the first
-                if (isMobileView) {
-                    const activeFields = Object.keys(editorState).filter(field => editorState[field].active);
-                    if (activeFields.length > 1) {
-                        // Deactivate all except the first
-                        activeFields.slice(1).forEach(fieldId => {
-                            editorState[fieldId].active = false;
-                        });
-                        this.updateGrid();
-                    }
-                }
-            }
+            const result = this._baseEditor.checkViewportWidth.call(this);
+            // Sync back to module variable
+            isMobileView = this._baseEditor.isMobileView;
+            return result;
         },
 
         /**
-         * Handle mobile dropdown editor change
+         * Handle mobile dropdown editor change (delegated to BaseEditor)
          */
         handleMobileEditorChange(newFieldId) {
-            console.log(`[HTML Editor] handleMobileEditorChange to: ${newFieldId}`);
-
-            const currentActiveField = Object.keys(editorState).find(field => editorState[field].active);
-
-            // If selecting the same field, do nothing
-            if (newFieldId === currentActiveField) {
-                return;
-            }
-
-            // Deactivate all editors
-            Object.keys(editorState).forEach(fieldId => {
-                editorState[fieldId].active = false;
-            });
-
-            // Activate selected editor
-            editorState[newFieldId].active = true;
-
-            this.updateGrid();
-            this.saveState();
-
-            // Update option text to reflect current status icons
-            const mobileSelect = document.getElementById('mobile-editor-select');
-            if (mobileSelect) {
-                this.updateToggleButtons();
-            }
+            return this._baseEditor.handleMobileEditorChange(newFieldId);
         },
 
         /**

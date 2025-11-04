@@ -183,6 +183,84 @@ export class BaseEditor {
     }
 
     // ============================================================================
+    // Viewport & Mobile Detection
+    // ============================================================================
+
+    /**
+     * Check viewport width and switch between mobile/desktop view
+     */
+    checkViewportWidth() {
+        const wasMobileView = this.isMobileView;
+
+        // Get overlay width to determine mobile/desktop view
+        // Use overlay instead of editor container to avoid issues when container is hidden
+        const overlay = document.getElementById('expert-enhancements-overlay');
+        if (overlay) {
+            const containerWidth = overlay.offsetWidth;
+            const desktopBreakpoint = this.context.Config.get('advanced.breakpoints.desktop');
+            this.isMobileView = containerWidth < desktopBreakpoint;
+        }
+
+        // If view mode changed, rebuild the toggle bar
+        if (wasMobileView !== this.isMobileView) {
+            // Note: buildToggleBar() will be extracted in Phase 9
+            // For now, it must be implemented by the child class
+            this.buildToggleBar();
+
+            // If switching to mobile and multiple editors are active, keep only the first
+            if (this.isMobileView) {
+                const activeItems = Object.keys(this.editorState).filter(
+                    id => this.editorState[id].active
+                );
+                if (activeItems.length > 1) {
+                    // Deactivate all except the first
+                    activeItems.slice(1).forEach(itemId => {
+                        this.editorState[itemId].active = false;
+                    });
+                    this.updateGrid();
+                    this.saveState();
+                }
+            }
+            this.updateToggleButtons();
+        }
+
+        return this.isMobileView;
+    }
+
+    /**
+     * Handle mobile dropdown editor change
+     */
+    handleMobileEditorChange(newItemId) {
+        this.log(`handleMobileEditorChange to: ${newItemId}`);
+
+        const currentActiveItem = Object.keys(this.editorState).find(
+            id => this.editorState[id].active
+        );
+
+        // If selecting the same item, do nothing
+        if (newItemId === currentActiveItem) {
+            return;
+        }
+
+        // Deactivate all editors
+        Object.keys(this.editorState).forEach(itemId => {
+            this.editorState[itemId].active = false;
+        });
+
+        // Activate selected editor
+        this.editorState[newItemId].active = true;
+
+        this.updateGrid();
+        this.saveState();
+
+        // Update option text to reflect current status icons
+        const mobileSelect = document.getElementById('mobile-editor-select');
+        if (mobileSelect) {
+            this.updateToggleButtons();
+        }
+    }
+
+    // ============================================================================
     // Grid & Layout Utilities
     // ============================================================================
 
