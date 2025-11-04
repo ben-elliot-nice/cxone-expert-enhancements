@@ -129,17 +129,16 @@ console.log('[HTML Editor App] Loading...');
             });
 
             try {
-                // Start loading Prettier in background (non-blocking)
-                context.Formatter.init()
-                    .then(() => {
-                        console.log('[HTML Editor] Code formatter loaded successfully');
-                        // Inject format buttons into all rendered panes
-                        this.injectFormatButtons();
-                    })
-                    .catch((error) => {
-                        console.warn('[HTML Editor] Code formatter unavailable:', error);
-                        // Silent failure - editor already loaded without formatting
-                    });
+                // Load Prettier (blocking to prevent AMD race condition)
+                try {
+                    await context.Formatter.init();
+                    console.log('[HTML Editor] Code formatter loaded successfully');
+                    // Inject format buttons into all rendered panes
+                    this.injectFormatButtons();
+                } catch (formatterError) {
+                    console.warn('[HTML Editor] Code formatter unavailable:', formatterError);
+                    // Graceful degradation - editor works without formatting
+                }
 
                 // Restore state if available
                 const savedState = context.Storage.getAppState(this.id);
