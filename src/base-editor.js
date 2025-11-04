@@ -40,6 +40,7 @@ export class BaseEditor {
         this.onSaveAll = null;  // Save all editors callback
         this.onSaveOpenTabs = null;  // Save open tabs callback
         this.onFormatAllActive = null;  // Format all active editors callback
+        this.onSaveItem = null;  // Save single item callback
     }
 
     /**
@@ -1238,5 +1239,183 @@ export class BaseEditor {
         }
 
         this.updateToggleButtons();
+    }
+
+    /**
+     * Create editor pane for an item with header, save dropdown, actions menu, and Monaco editor
+     */
+    createEditorPane(itemId) {
+        const item = this.editorState[itemId];
+        const dataAttr = this.config.dataAttribute;
+
+        const pane = this.context.DOM.create('div', { className: 'editor-pane' });
+        const header = this.context.DOM.create('div', { className: 'editor-pane-header' });
+
+        // Left side: Title + Status only
+        const headerLeft = this.context.DOM.create('div', {
+            className: 'header-left',
+            style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }
+        });
+
+        const titleGroup = this.context.DOM.create('div', {
+            style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }
+        });
+        const title = this.context.DOM.create('span', {}, [item.label]);
+        const status = this.context.DOM.create('span', {
+            className: 'editor-status',
+            id: `status-${itemId}`,
+            style: { fontSize: '0.9rem' }
+        }, [item.isDirty ? '●' : '✓']);
+
+        titleGroup.appendChild(status);
+        titleGroup.appendChild(title);
+        headerLeft.appendChild(titleGroup);
+
+        // Right side: Save dropdown + Actions dropdown
+        const headerRight = this.context.DOM.create('div', {
+            className: 'header-right',
+            style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }
+        });
+
+        // Save dropdown group
+        const saveDropdown = this.context.DOM.create('div', {
+            className: 'editor-save-dropdown'
+        });
+
+        const saveBtn = this.context.DOM.create('button', {
+            className: 'editor-pane-save',
+            [`data-save-${dataAttr}`]: itemId
+        }, ['Save']);
+        saveBtn.addEventListener('click', () => {
+            if (this.onSaveItem) {
+                this.onSaveItem(itemId);
+            }
+        });
+
+        const dropdownToggle = this.context.DOM.create('button', {
+            className: 'editor-save-dropdown-toggle',
+            [`data-dropdown-${dataAttr}`]: itemId
+        }, ['▼']);
+        dropdownToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleEditorDropdown(itemId);
+        });
+
+        const dropdownMenu = this.context.DOM.create('div', {
+            className: 'editor-save-dropdown-menu',
+            [`data-menu-${dataAttr}`]: itemId
+        });
+
+        const revertBtn = this.context.DOM.create('button', {
+            className: 'editor-dropdown-item',
+            [`data-revert-${dataAttr}`]: itemId
+        }, ['Revert this']);
+        revertBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.revertItem(itemId);
+        });
+
+        dropdownMenu.appendChild(revertBtn);
+        saveDropdown.appendChild(saveBtn);
+        saveDropdown.appendChild(dropdownToggle);
+        saveDropdown.appendChild(dropdownMenu);
+
+        // Actions dropdown
+        const actionsDropdown = this.context.DOM.create('div', {
+            className: 'editor-actions-dropdown',
+            style: { position: 'relative' }
+        });
+
+        const actionsBtn = this.context.DOM.create('button', {
+            className: 'editor-actions-btn',
+            [`data-actions-${dataAttr}`]: itemId
+        }, ['Actions ▼']);
+        actionsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleActionsDropdown(itemId);
+        });
+
+        const actionsMenu = this.context.DOM.create('div', {
+            className: 'editor-actions-menu',
+            [`data-actions-menu-${dataAttr}`]: itemId
+        });
+
+        // Format option (only if Prettier available)
+        if (this.context.Formatter.isReady()) {
+            const formatOption = this.context.DOM.create('button', {
+                className: 'editor-actions-item',
+                [`data-format-${dataAttr}`]: itemId
+            }, ['Format']);
+            formatOption.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.formatItem(itemId);
+                this.toggleActionsDropdown(itemId); // Close menu
+            });
+            actionsMenu.appendChild(formatOption);
+        }
+
+        // Import option with hidden file input
+        const fileInput = this.context.DOM.create('input', {
+            type: 'file',
+            accept: this.config.fileExtension,
+            style: 'display: none;',
+            id: `file-input-${itemId}`
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                this.importItem(itemId, e.target.files[0]);
+                e.target.value = ''; // Reset input to allow re-importing same file
+            }
+        });
+
+        const importOption = this.context.DOM.create('button', {
+            className: 'editor-actions-item',
+            [`data-import-${dataAttr}`]: itemId
+        }, ['Import']);
+        importOption.addEventListener('click', (e) => {
+            e.stopPropagation();
+            fileInput.click();
+            this.toggleActionsDropdown(itemId); // Close menu
+        });
+
+        // Export option
+        const exportOption = this.context.DOM.create('button', {
+            className: 'editor-actions-item',
+            [`data-export-${dataAttr}`]: itemId
+        }, ['Export']);
+        exportOption.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.exportItem(itemId);
+            this.toggleActionsDropdown(itemId); // Close menu
+        });
+
+        actionsMenu.appendChild(importOption);
+        actionsMenu.appendChild(exportOption);
+        actionsDropdown.appendChild(actionsBtn);
+        actionsDropdown.appendChild(actionsMenu);
+
+        // Add both dropdowns to right side
+        headerRight.appendChild(saveDropdown);
+        headerRight.appendChild(actionsDropdown);
+
+        // Assemble header
+        header.appendChild(headerLeft);
+        header.appendChild(headerRight);
+        pane.appendChild(header);
+        pane.appendChild(fileInput);
+
+        const editorContainer = this.context.DOM.create('div', {
+            className: 'editor-instance',
+            id: `editor-${itemId}`
+        });
+        pane.appendChild(editorContainer);
+
+        // Create Monaco editor
+        if (this.context.Monaco.isReady()) {
+            this.createMonacoEditor(itemId, editorContainer);
+        }
+
+        return pane;
     }
 }

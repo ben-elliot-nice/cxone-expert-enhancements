@@ -97,6 +97,7 @@ console.log('[HTML Editor App] Loading...');
             this._baseEditor.onSaveAll = () => this.saveAll();
             this._baseEditor.onSaveOpenTabs = () => this.saveOpenTabs();
             this._baseEditor.onFormatAllActive = () => this.formatAllActive();
+            this._baseEditor.onSaveItem = (itemId) => this.saveField(itemId);
 
             // Wait for Monaco to be ready
             await context.Monaco.init();
@@ -370,176 +371,10 @@ console.log('[HTML Editor App] Loading...');
         },
 
         /**
-         * Create editor pane for a field
+         * Create editor pane for a field (delegated to BaseEditor)
          */
         createEditorPane(fieldId) {
-            const field = editorState[fieldId];
-
-            const pane = context.DOM.create('div', { className: 'editor-pane' });
-            const header = context.DOM.create('div', { className: 'editor-pane-header' });
-
-            // Left side: Title + Status only
-            const headerLeft = context.DOM.create('div', {
-                className: 'header-left',
-                style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }
-            });
-
-            const titleGroup = context.DOM.create('div', {
-                style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }
-            });
-            const title = context.DOM.create('span', {}, [field.label]);
-            const status = context.DOM.create('span', {
-                className: 'editor-status',
-                id: `status-${fieldId}`,
-                style: { fontSize: '0.9rem' }
-            }, [field.isDirty ? '●' : '✓']);
-
-            titleGroup.appendChild(status);
-            titleGroup.appendChild(title);
-            headerLeft.appendChild(titleGroup);
-
-            // Right side: Save dropdown + Actions dropdown
-            const headerRight = context.DOM.create('div', {
-                className: 'header-right',
-                style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }
-            });
-
-            // Save dropdown group
-            const saveDropdown = context.DOM.create('div', {
-                className: 'editor-save-dropdown'
-            });
-
-            const saveBtn = context.DOM.create('button', {
-                className: 'editor-pane-save',
-                'data-save-field': fieldId
-            }, ['Save']);
-            saveBtn.addEventListener('click', () => this.saveField(fieldId));
-
-            const dropdownToggle = context.DOM.create('button', {
-                className: 'editor-save-dropdown-toggle',
-                'data-dropdown-field': fieldId
-            }, ['▼']);
-            dropdownToggle.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.toggleEditorDropdown(fieldId);
-            });
-
-            const dropdownMenu = context.DOM.create('div', {
-                className: 'editor-save-dropdown-menu',
-                'data-menu-field': fieldId
-            });
-
-            const revertBtn = context.DOM.create('button', {
-                className: 'editor-dropdown-item',
-                'data-revert-field': fieldId
-            }, ['Revert this']);
-            revertBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.revertField(fieldId);
-            });
-
-            dropdownMenu.appendChild(revertBtn);
-            saveDropdown.appendChild(saveBtn);
-            saveDropdown.appendChild(dropdownToggle);
-            saveDropdown.appendChild(dropdownMenu);
-
-            const actionsDropdown = context.DOM.create('div', {
-                className: 'editor-actions-dropdown',
-                style: { position: 'relative' }
-            });
-
-            const actionsBtn = context.DOM.create('button', {
-                className: 'editor-actions-btn',
-                'data-actions-field': fieldId
-            }, ['Actions ▼']);
-            actionsBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.toggleActionsDropdown(fieldId);
-            });
-
-            const actionsMenu = context.DOM.create('div', {
-                className: 'editor-actions-menu',
-                'data-actions-menu-field': fieldId
-            });
-
-            // Format option (if Prettier available)
-            if (context.Formatter.isReady()) {
-                const formatItem = context.DOM.create('button', {
-                    className: 'editor-actions-item',
-                    'data-format-field': fieldId
-                }, ['Format']);
-                formatItem.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    this.formatField(fieldId);
-                    actionsMenu.classList.remove('show');
-                });
-                actionsMenu.appendChild(formatItem);
-            }
-
-            // Import option with hidden file input
-            const fileInput = context.DOM.create('input', {
-                type: 'file',
-                accept: '.html',
-                style: 'display: none;',
-                id: `file-input-${fieldId}`
-            });
-
-            fileInput.addEventListener('change', (e) => {
-                if (e.target.files && e.target.files[0]) {
-                    this.importField(fieldId, e.target.files[0]);
-                    e.target.value = ''; // Reset input to allow re-importing same file
-                }
-            });
-
-            const importItem = context.DOM.create('button', {
-                className: 'editor-actions-item',
-                'data-import-field': fieldId
-            }, ['Import']);
-            importItem.addEventListener('click', (e) => {
-                e.stopPropagation();
-                fileInput.click();
-                actionsMenu.classList.remove('show');
-            });
-
-            // Export option
-            const exportItem = context.DOM.create('button', {
-                className: 'editor-actions-item',
-                'data-export-field': fieldId
-            }, ['Export']);
-            exportItem.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.exportField(fieldId);
-                actionsMenu.classList.remove('show');
-            });
-
-            actionsMenu.appendChild(importItem);
-            actionsMenu.appendChild(exportItem);
-
-            actionsDropdown.appendChild(actionsBtn);
-            actionsDropdown.appendChild(actionsMenu);
-
-            // Add both dropdowns to right side
-            headerRight.appendChild(saveDropdown);
-            headerRight.appendChild(actionsDropdown);
-
-            pane.appendChild(fileInput);
-
-            header.appendChild(headerLeft);
-            header.appendChild(headerRight);
-            pane.appendChild(header);
-
-            const editorContainer = context.DOM.create('div', {
-                className: 'editor-instance',
-                id: `editor-${fieldId}`
-            });
-            pane.appendChild(editorContainer);
-
-            // Create Monaco editor (CSS now properly sizes containers)
-            if (context.Monaco.isReady()) {
-                this.createMonacoEditor(fieldId, editorContainer);
-            }
-
-            return pane;
+            return this._baseEditor.createEditorPane(fieldId);
         },
 
         /**

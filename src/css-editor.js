@@ -110,6 +110,7 @@ console.log('[CSS Editor App] Loading...');
             this._baseEditor.onSaveAll = () => this.saveAll();
             this._baseEditor.onSaveOpenTabs = () => this.saveOpenTabs();
             this._baseEditor.onFormatAllActive = () => this.formatAllActive();
+            this._baseEditor.onSaveItem = (itemId) => this.saveRole(itemId);
 
             // Wait for Monaco to be ready
             await context.Monaco.init();
@@ -385,176 +386,10 @@ console.log('[CSS Editor App] Loading...');
         },
 
         /**
-         * Create editor pane for a role
+         * Create editor pane for a role (delegated to BaseEditor)
          */
         createEditorPane(roleId) {
-            const role = editorState[roleId];
-
-            const pane = context.DOM.create('div', { className: 'editor-pane' });
-            const header = context.DOM.create('div', { className: 'editor-pane-header' });
-
-            // Left side: Title + Status only
-            const headerLeft = context.DOM.create('div', {
-                className: 'header-left',
-                style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }
-            });
-
-            const titleGroup = context.DOM.create('div', {
-                style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }
-            });
-            const title = context.DOM.create('span', {}, [role.label]);
-            const status = context.DOM.create('span', {
-                className: 'editor-status',
-                id: `status-${roleId}`,
-                style: { fontSize: '0.9rem' }
-            }, [role.isDirty ? '●' : '✓']);
-
-            titleGroup.appendChild(status);
-            titleGroup.appendChild(title);
-            headerLeft.appendChild(titleGroup);
-
-            // Right side: Save dropdown + Actions dropdown
-            const headerRight = context.DOM.create('div', {
-                className: 'header-right',
-                style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }
-            });
-
-            // Save dropdown group
-            const saveDropdown = context.DOM.create('div', {
-                className: 'editor-save-dropdown'
-            });
-
-            const saveBtn = context.DOM.create('button', {
-                className: 'editor-pane-save',
-                'data-save-role': roleId
-            }, ['Save']);
-            saveBtn.addEventListener('click', () => this.saveRole(roleId));
-
-            const dropdownToggle = context.DOM.create('button', {
-                className: 'editor-save-dropdown-toggle',
-                'data-dropdown-role': roleId
-            }, ['▼']);
-            dropdownToggle.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.toggleEditorDropdown(roleId);
-            });
-
-            const dropdownMenu = context.DOM.create('div', {
-                className: 'editor-save-dropdown-menu',
-                'data-menu-role': roleId
-            });
-
-            const revertBtn = context.DOM.create('button', {
-                className: 'editor-dropdown-item',
-                'data-revert-role': roleId
-            }, ['Revert this']);
-            revertBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.revertRole(roleId);
-            });
-
-            dropdownMenu.appendChild(revertBtn);
-            saveDropdown.appendChild(saveBtn);
-            saveDropdown.appendChild(dropdownToggle);
-            saveDropdown.appendChild(dropdownMenu);
-
-            // Actions dropdown
-            const actionsDropdown = context.DOM.create('div', {
-                className: 'editor-actions-dropdown',
-                style: { position: 'relative' }
-            });
-
-            const actionsBtn = context.DOM.create('button', {
-                className: 'editor-actions-btn',
-                'data-actions-role': roleId
-            }, ['Actions ▼']);
-            actionsBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.toggleActionsDropdown(roleId);
-            });
-
-            const actionsMenu = context.DOM.create('div', {
-                className: 'editor-actions-menu',
-                'data-actions-menu-role': roleId
-            });
-
-            // Format option (only if Prettier available)
-            if (context.Formatter.isReady()) {
-                const formatOption = context.DOM.create('button', {
-                    className: 'editor-actions-item',
-                    'data-format-role': roleId
-                }, ['Format']);
-                formatOption.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    this.formatRole(roleId);
-                    this.toggleActionsDropdown(roleId); // Close menu
-                });
-                actionsMenu.appendChild(formatOption);
-            }
-
-            // Import option with hidden file input
-            const fileInput = context.DOM.create('input', {
-                type: 'file',
-                accept: '.css',
-                style: 'display: none;',
-                id: `file-input-${roleId}`
-            });
-
-            fileInput.addEventListener('change', (e) => {
-                if (e.target.files && e.target.files[0]) {
-                    this.importRole(roleId, e.target.files[0]);
-                    e.target.value = ''; // Reset input to allow re-importing same file
-                }
-            });
-
-            const importOption = context.DOM.create('button', {
-                className: 'editor-actions-item',
-                'data-import-role': roleId
-            }, ['Import']);
-            importOption.addEventListener('click', (e) => {
-                e.stopPropagation();
-                fileInput.click();
-                this.toggleActionsDropdown(roleId); // Close menu
-            });
-
-            // Export option
-            const exportOption = context.DOM.create('button', {
-                className: 'editor-actions-item',
-                'data-export-role': roleId
-            }, ['Export']);
-            exportOption.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.exportRole(roleId);
-                this.toggleActionsDropdown(roleId); // Close menu
-            });
-
-            actionsMenu.appendChild(importOption);
-            actionsMenu.appendChild(exportOption);
-            actionsDropdown.appendChild(actionsBtn);
-            actionsDropdown.appendChild(actionsMenu);
-
-            // Add both dropdowns to right side
-            headerRight.appendChild(saveDropdown);
-            headerRight.appendChild(actionsDropdown);
-
-            // Assemble header
-            header.appendChild(headerLeft);
-            header.appendChild(headerRight);
-            pane.appendChild(header);
-            pane.appendChild(fileInput);
-
-            const editorContainer = context.DOM.create('div', {
-                className: 'editor-instance',
-                id: `editor-${roleId}`
-            });
-            pane.appendChild(editorContainer);
-
-            // Create Monaco editor (CSS now properly sizes containers)
-            if (context.Monaco.isReady()) {
-                this.createMonacoEditor(roleId, editorContainer);
-            }
-
-            return pane;
+            return this._baseEditor.createEditorPane(roleId);
         },
 
         /**
