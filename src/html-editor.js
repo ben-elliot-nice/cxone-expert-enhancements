@@ -20,7 +20,7 @@ console.log('[HTML Editor App] Loading...');
         { id: 'tail', label: 'Page HTML Tail' }
     ];
 
-    const MAX_ACTIVE_EDITORS = 2;
+    // Max active editors will be fetched from config
 
     let context = null;
     let editorState = {};
@@ -283,7 +283,8 @@ console.log('[HTML Editor App] Loading...');
             const overlay = document.getElementById('expert-enhancements-overlay');
             if (overlay) {
                 const containerWidth = overlay.offsetWidth;
-                isMobileView = containerWidth < 920;
+                const desktopBreakpoint = context.Config.get('advanced.breakpoints.desktop');
+                isMobileView = containerWidth < desktopBreakpoint;
             }
 
             // If view mode changed, rebuild the toggle bar
@@ -559,8 +560,9 @@ console.log('[HTML Editor App] Loading...');
                 if (field.active) {
                     field.active = false;
                 } else {
-                    if (activeCount >= MAX_ACTIVE_EDITORS) {
-                        context.UI.showToast(`Maximum ${MAX_ACTIVE_EDITORS} editors can be open at once`, 'warning');
+                    const maxEditors = context.Config.get('editor.maxActiveTabs');
+                    if (activeCount >= maxEditors) {
+                        context.UI.showToast(`Maximum ${maxEditors} editors can be open at once`, 'warning');
                         return;
                     }
                     field.active = true;
@@ -842,12 +844,13 @@ console.log('[HTML Editor App] Loading...');
             const editor = monaco.editor.create(container, {
                 value: field.content || '',
                 language: 'html',
-                theme: 'vs-dark',
+                theme: context.Config.get('editor.theme'),
                 automaticLayout: false,
-                minimap: { enabled: true },
-                fontSize: 14,
-                wordWrap: 'on',
-                scrollBeyondLastLine: false
+                minimap: { enabled: context.Config.get('editor.minimapEnabled') },
+                fontSize: context.Config.get('editor.fontSize'),
+                wordWrap: context.Config.get('editor.wordWrap'),
+                scrollBeyondLastLine: context.Config.get('editor.scrollBeyondLastLine'),
+                tabSize: context.Config.get('editor.tabSize')
             });
 
             monacoEditors[fieldId] = editor;
@@ -969,9 +972,10 @@ console.log('[HTML Editor App] Loading...');
             }
 
             // Validate file size (max 5MB)
-            const maxSize = 5 * 1024 * 1024;
+            const maxSizeMB = context.Config.get('files.maxSizeMB');
+            const maxSize = maxSizeMB * 1024 * 1024;
             if (file.size > maxSize) {
-                context.UI.showToast(`File too large. Maximum size is 5MB (file is ${(file.size / 1024 / 1024).toFixed(2)}MB)`, 'error');
+                context.UI.showToast(`File too large. Maximum size is ${maxSizeMB}MB (file is ${(file.size / 1024 / 1024).toFixed(2)}MB)`, 'error');
                 return;
             }
 

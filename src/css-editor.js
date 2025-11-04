@@ -24,7 +24,7 @@ console.log('[CSS Editor App] Loading...');
         { id: 'grape', label: 'Legacy Browser' }
     ];
 
-    const MAX_ACTIVE_EDITORS = 3;
+    // Max active editors will be fetched from config
 
     let context = null; // Will receive Monaco, API, Storage, UI, DOM
     let editorState = {};
@@ -234,8 +234,9 @@ console.log('[CSS Editor App] Loading...');
             const roleSelector = document.querySelector('.live-preview-role-selector');
 
             if (roleSelector) {
-                // Hide role selector if overlay is narrower than 480px
-                if (overlayWidth < 480) {
+                // Hide role selector if overlay is narrower than mobile breakpoint
+                const mobileBreakpoint = context.Config.get('advanced.breakpoints.mobile');
+                if (overlayWidth < mobileBreakpoint) {
                     roleSelector.style.display = 'none';
                 } else {
                     roleSelector.style.display = '';
@@ -382,7 +383,8 @@ console.log('[CSS Editor App] Loading...');
             const overlay = document.getElementById('expert-enhancements-overlay');
             if (overlay) {
                 const containerWidth = overlay.offsetWidth;
-                isMobileView = containerWidth < 920;
+                const desktopBreakpoint = context.Config.get('advanced.breakpoints.desktop');
+                isMobileView = containerWidth < desktopBreakpoint;
             }
 
             // If view mode changed, rebuild the toggle bar
@@ -583,8 +585,9 @@ console.log('[CSS Editor App] Loading...');
                 if (role.active) {
                     role.active = false;
                 } else {
-                    if (activeCount >= MAX_ACTIVE_EDITORS) {
-                        context.UI.showToast(`Maximum ${MAX_ACTIVE_EDITORS} editors can be open at once`, 'warning');
+                    const maxEditors = context.Config.get('editor.maxActiveTabs');
+                    if (activeCount >= maxEditors) {
+                        context.UI.showToast(`Maximum ${maxEditors} editors can be open at once`, 'warning');
                         return;
                     }
                     role.active = true;
@@ -866,12 +869,13 @@ console.log('[CSS Editor App] Loading...');
             const editor = monaco.editor.create(container, {
                 value: role.content || '',
                 language: 'css',
-                theme: 'vs-dark',
+                theme: context.Config.get('editor.theme'),
                 automaticLayout: false,
-                minimap: { enabled: true },
-                fontSize: 14,
-                wordWrap: 'on',
-                scrollBeyondLastLine: false
+                minimap: { enabled: context.Config.get('editor.minimapEnabled') },
+                fontSize: context.Config.get('editor.fontSize'),
+                wordWrap: context.Config.get('editor.wordWrap'),
+                scrollBeyondLastLine: context.Config.get('editor.scrollBeyondLastLine'),
+                tabSize: context.Config.get('editor.tabSize')
             });
 
             monacoEditors[roleId] = editor;
@@ -1000,7 +1004,8 @@ console.log('[CSS Editor App] Loading...');
             }
 
             // Validate file size (max 5MB)
-            const maxSize = 5 * 1024 * 1024;
+            const maxSizeMB = context.Config.get('files.maxSizeMB');
+            const maxSize = maxSizeMB * 1024 * 1024;
             if (file.size > maxSize) {
                 context.UI.showToast(`File too large. Maximum size is 5MB (file is ${(file.size / 1024 / 1024).toFixed(2)}MB)`, 'error');
                 return;
@@ -2034,11 +2039,12 @@ console.log('[CSS Editor App] Loading...');
                 clearTimeout(livePreviewDebounceTimer);
             }
 
-            // Debounce 300ms
+            // Debounce using config value
+            const debounceDelay = context.Config.get('performance.livePreviewDebounce');
             livePreviewDebounceTimer = setTimeout(() => {
                 this.performLivePreviewUpdate();
                 livePreviewDebounceTimer = null;
-            }, 300);
+            }, debounceDelay);
         },
 
         /**

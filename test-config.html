@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration System Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #667eea;
+            margin-top: 0;
+        }
+        pre {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: 500;
+            margin-left: 10px;
+        }
+        .status.success { background: #22c55e; color: white; }
+        .status.pending { background: #f59e0b; color: white; }
+        .button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        .button:hover {
+            background: #5568d3;
+        }
+        .button.secondary {
+            background: #6b7280;
+        }
+        .button.secondary:hover {
+            background: #4b5563;
+        }
+        #test-results {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .test-item {
+            padding: 8px;
+            margin: 4px 0;
+            border-radius: 4px;
+        }
+        .test-item.pass {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .test-item.fail {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+        .badge.locked {
+            background: rgba(255, 152, 0, 0.2);
+            color: #ff9800;
+            border: 1px solid rgba(255, 152, 0, 0.3);
+        }
+        .badge.modified {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        .badge.default {
+            background: rgba(107, 114, 128, 0.2);
+            color: #6b7280;
+            border: 1px solid rgba(107, 114, 128, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Configuration System Test</h1>
+
+    <div class="test-section">
+        <h2>Configuration Status</h2>
+        <p>
+            Configuration System:
+            <span class="status success" id="config-status">Loading...</span>
+        </p>
+        <p>
+            Embed Config:
+            <span class="status pending" id="embed-status">None</span>
+        </p>
+        <p>
+            User Settings:
+            <span id="user-settings-count">0</span> modified settings
+        </p>
+    </div>
+
+    <div class="test-section">
+        <h2>Current Configuration</h2>
+        <button class="button" onclick="showAllConfig()">Show All Config</button>
+        <button class="button secondary" onclick="showEmbedConfig()">Show Embed Config Only</button>
+        <button class="button secondary" onclick="showUserSettings()">Show User Settings</button>
+        <pre id="config-display">Click a button above to view configuration</pre>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Configuration Values</h2>
+        <div id="config-tests">
+            <p>Running tests...</p>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Interactive Tests</h2>
+        <button class="button" onclick="testSetUserSetting()">Set User Setting</button>
+        <button class="button" onclick="testResetSetting()">Reset Setting</button>
+        <button class="button" onclick="testResetAll()">Reset All Settings</button>
+        <button class="button secondary" onclick="openSettingsApp()">Open Settings App</button>
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Configuration Hierarchy Test</h2>
+        <p>Test the priority: <code>Defaults → User Settings → Embed Config</code></p>
+        <ol id="hierarchy-test">
+            <li>Loading...</li>
+        </ol>
+    </div>
+
+    <!-- Load the enhancements with custom config -->
+    <script type="module" src="/src/main.js"></script>
+    <script
+        id="expert-enhancements-config"
+        type="application/json"
+        data-config='{
+            "editor": {
+                "theme": "vs-light",
+                "fontSize": 16
+            },
+            "appearance": {
+                "primaryColor": "#e74c3c"
+            }
+        }'
+    ></script>
+
+    <script>
+        // Wait for configuration to be ready
+        setTimeout(() => {
+            const config = window.ExpertEnhancements?.Config;
+
+            if (!config) {
+                document.getElementById('config-status').textContent = 'Failed to load';
+                document.getElementById('config-status').className = 'status fail';
+                return;
+            }
+
+            document.getElementById('config-status').textContent = 'Loaded ✓';
+
+            // Check embed config
+            const embedConfig = config.embedConfig;
+            if (Object.keys(embedConfig).length > 0) {
+                document.getElementById('embed-status').textContent = `${Object.keys(config.flattenObject(embedConfig)).length} settings overridden`;
+                document.getElementById('embed-status').className = 'status success';
+            }
+
+            // Count user settings
+            const userSettings = config.userSettings;
+            const userCount = Object.keys(config.flattenObject(userSettings)).length;
+            document.getElementById('user-settings-count').textContent = userCount;
+
+            // Run configuration tests
+            runConfigTests(config);
+
+            // Test hierarchy
+            testHierarchy(config);
+
+        }, 1000);
+
+        function runConfigTests(config) {
+            const tests = [
+                {
+                    name: 'Get editor theme',
+                    test: () => config.get('editor.theme') === 'vs-light',
+                    expected: 'vs-light (from embed config)'
+                },
+                {
+                    name: 'Get editor fontSize',
+                    test: () => config.get('editor.fontSize') === 16,
+                    expected: '16 (from embed config)'
+                },
+                {
+                    name: 'Get primary color',
+                    test: () => config.get('appearance.primaryColor') === '#e74c3c',
+                    expected: '#e74c3c (from embed config)'
+                },
+                {
+                    name: 'Get default tab size',
+                    test: () => config.get('editor.tabSize') === 2,
+                    expected: '2 (from defaults)'
+                },
+                {
+                    name: 'Check embed override',
+                    test: () => config.isEmbedOverridden('editor.theme') === true,
+                    expected: 'true (theme is locked)'
+                },
+                {
+                    name: 'Check non-override',
+                    test: () => config.isEmbedOverridden('editor.tabSize') === false,
+                    expected: 'false (tabSize is not locked)'
+                },
+                {
+                    name: 'Get source - embed',
+                    test: () => config.getSource('editor.theme') === 'embed',
+                    expected: 'embed'
+                },
+                {
+                    name: 'Get source - default',
+                    test: () => config.getSource('editor.tabSize') === 'default',
+                    expected: 'default'
+                }
+            ];
+
+            const resultsDiv = document.getElementById('config-tests');
+            resultsDiv.innerHTML = '';
+
+            tests.forEach(test => {
+                const passed = test.test();
+                const div = document.createElement('div');
+                div.className = `test-item ${passed ? 'pass' : 'fail'}`;
+                div.textContent = `${passed ? '✓' : '✗'} ${test.name}: ${test.expected}`;
+                resultsDiv.appendChild(div);
+            });
+        }
+
+        function testHierarchy(config) {
+            const hierarchyDiv = document.getElementById('hierarchy-test');
+            hierarchyDiv.innerHTML = '';
+
+            // Test: editor.theme (embed overrides everything)
+            const themeSource = config.getSource('editor.theme');
+            const themeBadge = themeSource === 'embed' ? 'locked' : themeSource === 'user' ? 'modified' : 'default';
+            const li1 = document.createElement('li');
+            li1.innerHTML = `<strong>editor.theme</strong>: <span class="badge ${themeBadge}">${themeSource}</span> = ${config.get('editor.theme')} ${themeSource === 'embed' ? '🔒' : ''}`;
+            hierarchyDiv.appendChild(li1);
+
+            // Test: editor.fontSize (embed overrides)
+            const fontSizeSource = config.getSource('editor.fontSize');
+            const fontSizeBadge = fontSizeSource === 'embed' ? 'locked' : fontSizeSource === 'user' ? 'modified' : 'default';
+            const li2 = document.createElement('li');
+            li2.innerHTML = `<strong>editor.fontSize</strong>: <span class="badge ${fontSizeBadge}">${fontSizeSource}</span> = ${config.get('editor.fontSize')} ${fontSizeSource === 'embed' ? '🔒' : ''}`;
+            hierarchyDiv.appendChild(li2);
+
+            // Test: editor.tabSize (default)
+            const tabSizeSource = config.getSource('editor.tabSize');
+            const tabSizeBadge = tabSizeSource === 'embed' ? 'locked' : tabSizeSource === 'user' ? 'modified' : 'default';
+            const li3 = document.createElement('li');
+            li3.innerHTML = `<strong>editor.tabSize</strong>: <span class="badge ${tabSizeBadge}">${tabSizeSource}</span> = ${config.get('editor.tabSize')}`;
+            hierarchyDiv.appendChild(li3);
+
+            // Test: appearance.primaryColor (embed overrides)
+            const colorSource = config.getSource('appearance.primaryColor');
+            const colorBadge = colorSource === 'embed' ? 'locked' : colorSource === 'user' ? 'modified' : 'default';
+            const li4 = document.createElement('li');
+            li4.innerHTML = `<strong>appearance.primaryColor</strong>: <span class="badge ${colorBadge}">${colorSource}</span> = ${config.get('appearance.primaryColor')} ${colorSource === 'embed' ? '🔒' : ''}`;
+            hierarchyDiv.appendChild(li4);
+        }
+
+        function showAllConfig() {
+            const config = window.ExpertEnhancements.Config;
+            const display = document.getElementById('config-display');
+            display.textContent = JSON.stringify(config.getAll(), null, 2);
+        }
+
+        function showEmbedConfig() {
+            const config = window.ExpertEnhancements.Config;
+            const display = document.getElementById('config-display');
+            display.textContent = JSON.stringify(config.embedConfig, null, 2);
+        }
+
+        function showUserSettings() {
+            const config = window.ExpertEnhancements.Config;
+            const display = document.getElementById('config-display');
+            display.textContent = JSON.stringify(config.userSettings, null, 2);
+        }
+
+        function testSetUserSetting() {
+            const config = window.ExpertEnhancements.Config;
+            const resultsDiv = document.getElementById('test-results');
+
+            // Try to set a non-locked setting
+            const success = config.setUserSetting('editor.tabSize', 4);
+
+            const div = document.createElement('div');
+            div.className = `test-item ${success ? 'pass' : 'fail'}`;
+            div.textContent = success
+                ? '✓ Successfully set editor.tabSize to 4 (not locked)'
+                : '✗ Failed to set editor.tabSize';
+            resultsDiv.appendChild(div);
+
+            // Try to set a locked setting
+            const failedSet = config.setUserSetting('editor.theme', 'vs-dark');
+
+            const div2 = document.createElement('div');
+            div2.className = `test-item ${!failedSet ? 'pass' : 'fail'}`;
+            div2.textContent = !failedSet
+                ? '✓ Correctly prevented setting locked editor.theme'
+                : '✗ Incorrectly allowed setting locked editor.theme';
+            resultsDiv.appendChild(div2);
+        }
+
+        function testResetSetting() {
+            const config = window.ExpertEnhancements.Config;
+            const resultsDiv = document.getElementById('test-results');
+
+            config.resetUserSetting('editor.tabSize');
+
+            const div = document.createElement('div');
+            div.className = 'test-item pass';
+            div.textContent = '✓ Reset editor.tabSize to default (2)';
+            resultsDiv.appendChild(div);
+        }
+
+        function testResetAll() {
+            const config = window.ExpertEnhancements.Config;
+            const resultsDiv = document.getElementById('test-results');
+
+            config.resetAllUserSettings();
+
+            const div = document.createElement('div');
+            div.className = 'test-item pass';
+            div.textContent = '✓ Reset all user settings to defaults';
+            resultsDiv.appendChild(div);
+        }
+
+        function openSettingsApp() {
+            const Overlay = window.ExpertEnhancements.Overlay;
+            const AppManager = window.ExpertEnhancements.AppManager;
+
+            // Open overlay if closed
+            const overlay = document.getElementById('expert-enhancements-overlay');
+            if (overlay && overlay.classList.contains('hidden')) {
+                Overlay.toggle();
+            }
+
+            // Switch to settings app
+            setTimeout(() => {
+                AppManager.switchTo('settings');
+            }, 100);
+        }
+    </script>
+</body>
+</html>
