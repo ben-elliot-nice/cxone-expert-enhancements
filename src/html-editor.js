@@ -283,7 +283,8 @@ console.log('[HTML Editor App] Loading...');
             const overlay = document.getElementById('expert-enhancements-overlay');
             if (overlay) {
                 const containerWidth = overlay.offsetWidth;
-                isMobileView = containerWidth < 920;
+                const desktopBreakpoint = context.Config.get('advanced.breakpoints.desktop');
+                isMobileView = containerWidth < desktopBreakpoint;
             }
 
             // If view mode changed, rebuild the toggle bar

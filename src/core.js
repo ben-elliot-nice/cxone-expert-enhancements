@@ -1889,6 +1889,10 @@ console.log('[Enhancements Core] Configuration system initialized');
             // Header
             overlayHeader = DOM.create('div', { id: 'expert-enhancements-overlay-header' });
 
+            // Apply header color from config
+            const headerColor = Config.get('appearance.headerColor');
+            overlayHeader.style.background = headerColor;
+
             const headerLeft = DOM.create('div', { className: 'header-left' });
             const headerTitle = DOM.create('span', { className: 'header-title' }, ['CXone Expert Enhancements']);
 

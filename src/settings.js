@@ -235,83 +235,111 @@ const SettingsApp = {
                 padding: 1.5rem 1.25rem;
             }
 
-            /* Setting Option */
+            /* Setting Option - Compact Design */
             .setting-option {
-                margin-bottom: 1.5rem;
-                padding-bottom: 1.5rem;
-                border-bottom: 1px solid #333;
+                display: grid;
+                grid-template-columns: minmax(180px, auto) 1fr auto;
+                grid-template-rows: auto auto;
+                gap: 0.5rem 1rem;
+                align-items: center;
+                margin-bottom: 0.85rem;
+                padding: 0.6rem 0;
+                border-bottom: 1px solid #2a2a2a;
+                transition: opacity 0.2s;
             }
 
             .setting-option:last-child {
                 border-bottom: none;
                 margin-bottom: 0;
-                padding-bottom: 0;
             }
 
+            /* Grey out locked settings */
+            .setting-option:has(input:disabled),
+            .setting-option:has(select:disabled) {
+                opacity: 0.45;
+                pointer-events: none;
+            }
+
+            /* Grid layout: [header] [control] [status] */
             .setting-header {
+                grid-column: 1;
+                grid-row: 1;
                 display: flex;
                 align-items: center;
-                margin-bottom: 0.5rem;
+                gap: 0.4rem;
             }
 
-            .setting-label {
-                flex: 1;
-                font-weight: 500;
-                color: #e9ecef;
-                font-size: 0.95rem;
+            .setting-control {
+                grid-column: 2;
+                grid-row: 1;
+                display: flex;
+                align-items: center;
             }
 
             .setting-status {
+                grid-column: 3;
+                grid-row: 1;
                 display: flex;
                 align-items: center;
-                gap: 0.5rem;
-                font-size: 0.85rem;
+                justify-content: flex-end;
             }
 
-            .status-badge {
-                padding: 0.2rem 0.5rem;
-                border-radius: 3px;
-                font-size: 0.75rem;
+            .setting-description {
+                grid-column: 2 / 4;
+                grid-row: 2;
+                font-size: 0.8rem;
+                color: #888;
+                line-height: 1.3;
+                margin-top: -0.2rem;
+            }
+
+            .setting-label {
                 font-weight: 500;
+                color: #e9ecef;
+                font-size: 0.9rem;
+            }
+
+            /* Inline lock badge */
+            .status-badge {
+                font-size: 0.75rem;
+                padding: 0.1rem 0.35rem;
+                border-radius: 3px;
+                font-weight: 500;
+                line-height: 1;
             }
 
             .status-locked {
-                background: rgba(255, 152, 0, 0.2);
+                background: rgba(255, 152, 0, 0.15);
                 color: #ff9800;
-                border: 1px solid rgba(255, 152, 0, 0.3);
+                border: 1px solid rgba(255, 152, 0, 0.25);
             }
 
             .status-modified {
-                background: rgba(59, 130, 246, 0.2);
+                background: rgba(59, 130, 246, 0.15);
                 color: #3b82f6;
-                border: 1px solid rgba(59, 130, 246, 0.3);
+                border: 1px solid rgba(59, 130, 246, 0.25);
             }
 
             .reset-button {
                 background: none;
-                border: 1px solid #555;
+                border: 1px solid #444;
                 color: #adb5bd;
                 padding: 0.2rem 0.5rem;
                 border-radius: 3px;
                 font-size: 0.75rem;
                 cursor: pointer;
                 transition: all 0.2s;
+                white-space: nowrap;
             }
 
             .reset-button:hover {
                 background: #3a3a3a;
                 color: #e9ecef;
+                border-color: #555;
             }
 
-            .setting-control {
-                margin: 0.5rem 0;
-            }
-
-            .setting-description {
-                font-size: 0.875rem;
-                color: #adb5bd;
-                margin: 0.5rem 0 0 0;
-                line-height: 1.4;
+            .setting-control > * {
+                margin: 0 !important;
             }
 
             /* Input Controls */
@@ -491,27 +519,28 @@ function createSetting(path, label, controlHtml, description = '') {
     option.className = 'setting-option';
     option.dataset.path = path;
 
-    let statusHtml = '';
+    let statusBadge = '';
     if (isLocked) {
-        statusHtml = '<span class="status-badge status-locked" title="Controlled by embed configuration">🔒 Locked</span>';
+        statusBadge = '<span class="status-badge status-locked" title="This setting is locked because it has been set in the embed configuration (data-config attribute)">🔒</span>';
     } else if (isModified) {
-        statusHtml = `
-            <span class="status-badge status-modified" title="Modified from default">Modified</span>
-            <button class="reset-button" data-reset="${path}">Reset</button>
-        `;
+        statusBadge = '<span class="status-badge status-modified" title="Modified from default">Modified</span>';
+    }
+
+    let resetButton = '';
+    if (isModified && !isLocked) {
+        resetButton = `<button class="reset-button" data-reset="${path}" title="Reset to default">Reset</button>`;
     }
 
     option.innerHTML = `
         <div class="setting-header">
             <label class="setting-label">${label}</label>
-            <div class="setting-status">
-                ${statusHtml}
-            </div>
+            ${statusBadge}
         </div>
         <div class="setting-control">
             ${controlHtml}
         </div>
-        ${description ? `<p class="setting-description">${description}</p>` : ''}
+        ${resetButton ? `<div class="setting-status">${resetButton}</div>` : ''}
+        ${description ? `<div class="setting-description" title="${description}">${description}</div>` : ''}
     `;
 
     // Disable controls if locked
@@ -676,6 +705,14 @@ function createEditorSection() {
         'How to wrap long lines in the editor.'
     ));
 
+    const maxActiveTabs = config.get('editor.maxActiveTabs');
+    content.appendChild(createSetting(
+        'editor.maxActiveTabs',
+        'Maximum Active Tabs',
+        `<input type="number" id="editor-max-tabs" value="${maxActiveTabs}" min="1" max="10" step="1">`,
+        'Maximum number of editor tabs that can be open simultaneously (1-10).'
+    ));
+
     const section = createSection('editor', '✏️', 'Editor Appearance', '');
     const sectionContent = section.querySelector('.section-content');
     sectionContent.innerHTML = '';
@@ -689,6 +726,7 @@ function createEditorSection() {
     attachInputListener(content, 'input[name="quote-style"]', 'change', 'editor.quoteStyle', (e) => e.target.value);
     attachInputListener(content, '#editor-minimap', 'change', 'editor.minimapEnabled', (e) => e.target.checked);
     attachInputListener(content, '#editor-wordwrap', 'change', 'editor.wordWrap', (e) => e.target.value);
+    attachInputListener(content, '#editor-max-tabs', 'input', 'editor.maxActiveTabs', (e) => parseInt(e.target.value, 10));
 
     return section;
 }
@@ -763,6 +801,30 @@ function createOverlaySection() {
         'Saves the overlay dimensions when you resize it.'
     ));
 
+    const openOnLoad = config.get('overlay.openOnLoad');
+    content.appendChild(createSetting(
+        'overlay.openOnLoad',
+        'Auto-Open on Page Load',
+        `<label style="display: flex; align-items: center;">
+            <input type="checkbox" id="overlay-open-on-load" ${openOnLoad ? 'checked' : ''}>
+            <span>Automatically open overlay when page loads</span>
+        </label>`,
+        'Opens the enhancements overlay automatically when you visit the page.'
+    ));
+
+    const toggleButtonPosition = config.get('appearance.toggleButtonPosition');
+    content.appendChild(createSetting(
+        'appearance.toggleButtonPosition',
+        'Toggle Button Position',
+        `<select id="toggle-button-position">
+            <option value="top-right" ${toggleButtonPosition === 'top-right' ? 'selected' : ''}>Top Right</option>
+            <option value="top-left" ${toggleButtonPosition === 'top-left' ? 'selected' : ''}>Top Left</option>
+            <option value="bottom-right" ${toggleButtonPosition === 'bottom-right' ? 'selected' : ''}>Bottom Right</option>
+            <option value="bottom-left" ${toggleButtonPosition === 'bottom-left' ? 'selected' : ''}>Bottom Left</option>
+        </select>`,
+        'Position of the toggle button to open/close the overlay.'
+    ));
+
     const section = createSection('overlay', '🖼️', 'Overlay & Layout', '');
     const sectionContent = section.querySelector('.section-content');
     sectionContent.innerHTML = '';
@@ -772,6 +834,8 @@ function createOverlaySection() {
     attachInputListener(content, '#overlay-height', 'input', 'overlay.defaultHeight', (e) => parseInt(e.target.value, 10));
     attachInputListener(content, '#overlay-remember-pos', 'change', 'overlay.rememberPosition', (e) => e.target.checked);
     attachInputListener(content, '#overlay-remember-size', 'change', 'overlay.rememberSize', (e) => e.target.checked);
+    attachInputListener(content, '#overlay-open-on-load', 'change', 'overlay.openOnLoad', (e) => e.target.checked);
+    attachInputListener(content, '#toggle-button-position', 'change', 'appearance.toggleButtonPosition', (e) => e.target.value);
 
     return section;
 }
@@ -860,6 +924,13 @@ function createAppearanceSection() {
 
     attachInputListener(content, '#appearance-header', 'input', 'appearance.headerColor', (e) => {
         content.querySelectorAll('.color-input-group .color-text')[1].textContent = e.target.value;
+
+        // Apply header color to overlay header immediately
+        const overlayHeader = document.getElementById('expert-enhancements-overlay-header');
+        if (overlayHeader) {
+            overlayHeader.style.background = e.target.value;
+        }
+
         return e.target.value;
     });
 

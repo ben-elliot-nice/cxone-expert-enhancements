@@ -234,8 +234,9 @@ console.log('[CSS Editor App] Loading...');
             const roleSelector = document.querySelector('.live-preview-role-selector');
 
             if (roleSelector) {
-                // Hide role selector if overlay is narrower than 480px
-                if (overlayWidth < 480) {
+                // Hide role selector if overlay is narrower than mobile breakpoint
+                const mobileBreakpoint = context.Config.get('advanced.breakpoints.mobile');
+                if (overlayWidth < mobileBreakpoint) {
                     roleSelector.style.display = 'none';
                 } else {
                     roleSelector.style.display = '';
@@ -382,7 +383,8 @@ console.log('[CSS Editor App] Loading...');
             const overlay = document.getElementById('expert-enhancements-overlay');
             if (overlay) {
                 const containerWidth = overlay.offsetWidth;
-                isMobileView = containerWidth < 920;
+                const desktopBreakpoint = context.Config.get('advanced.breakpoints.desktop');
+                isMobileView = containerWidth < desktopBreakpoint;
             }
 
             // If view mode changed, rebuild the toggle bar

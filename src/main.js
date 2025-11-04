@@ -78,7 +78,7 @@ function loadMonacoLoader() {
 
         // Load Monaco loader script
         const loaderScript = document.createElement('script');
-        loaderScript.src = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js';
+        loaderScript.src = `${Config.get('advanced.cdnUrls.monaco')}/loader.js`;
 
         loaderScript.onload = () => {
             console.log('[Expert Enhancements] Monaco loader loaded, restoring page AMD');
