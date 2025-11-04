@@ -98,4 +98,139 @@ export class BaseEditor {
     logError(...args) {
         console.error(`[${this.getEditorTypeUpper()} Editor]`, ...args);
     }
+
+    // ============================================================================
+    // Grid & Layout Utilities
+    // ============================================================================
+
+    /**
+     * Update editors grid
+     */
+    updateGrid() {
+        const grid = document.getElementById('editors-grid');
+        if (!grid) return;
+
+        const activeItems = Object.keys(this.editorState).filter(
+            id => this.editorState[id].active
+        );
+
+        grid.innerHTML = '';
+        grid.className = 'editors-grid cols-' + activeItems.length;
+
+        activeItems.forEach(itemId => {
+            // Note: createEditorPane() will be extracted in Phase 9
+            // For now, it must be implemented by the child class
+            const pane = this.createEditorPane(itemId);
+            grid.appendChild(pane);
+        });
+
+        // Calculate and set explicit heights
+        setTimeout(() => {
+            this.updateHeights();
+        }, 50);
+    }
+
+    /**
+     * Calculate and set explicit pixel heights for editors
+     */
+    updateHeights() {
+        const containerId = `${this.config.editorType}-editor-container`;
+        const container = document.getElementById(containerId);
+        const toggleBar = document.querySelector('.toggle-bar');
+        const grid = document.getElementById('editors-grid');
+
+        if (!container || !toggleBar || !grid) return;
+
+        // Calculate available height
+        const containerHeight = container.offsetHeight;
+        const toggleBarHeight = toggleBar.offsetHeight;
+        const availableHeight = containerHeight - toggleBarHeight;
+
+        // Set grid height explicitly
+        grid.style.height = availableHeight + 'px';
+
+        // Set each pane height explicitly
+        const panes = grid.querySelectorAll('.editor-pane');
+        panes.forEach(pane => {
+            pane.style.height = availableHeight + 'px';
+
+            const paneHeader = pane.querySelector('.editor-pane-header');
+            const editorInstance = pane.querySelector('.editor-instance');
+
+            if (paneHeader && editorInstance) {
+                const paneHeaderHeight = paneHeader.offsetHeight;
+                const editorHeight = availableHeight - paneHeaderHeight;
+                editorInstance.style.height = editorHeight + 'px';
+            }
+        });
+
+        // Force layout on all Monaco editors
+        Object.values(this.monacoEditors).forEach(editor => {
+            if (editor) {
+                editor.layout();
+            }
+        });
+    }
+
+    /**
+     * Update toggle button states and pane status indicators
+     */
+    updateToggleButtons() {
+        const dataAttr = this.config.dataAttribute;
+
+        // Update desktop buttons (if they exist)
+        const buttons = document.querySelectorAll('.toggle-btn');
+
+        buttons.forEach(btn => {
+            const itemId = btn.getAttribute(`data-${dataAttr}`);
+            const item = this.editorState[itemId];
+
+            if (item && item.active) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+
+            // Show dirty indicator
+            if (item && item.isDirty) {
+                btn.style.fontWeight = 'bold';
+                btn.style.color = '#ff9800';
+            } else {
+                btn.style.fontWeight = '';
+                btn.style.color = '';
+            }
+        });
+
+        // Update mobile dropdown (if it exists)
+        const mobileSelect = document.getElementById('mobile-editor-select');
+        if (mobileSelect) {
+            const options = mobileSelect.querySelectorAll(`option[data-${dataAttr}]`);
+            options.forEach(option => {
+                const itemId = option.getAttribute(`data-${dataAttr}`);
+                if (itemId && this.editorState[itemId]) {
+                    const item = this.editorState[itemId];
+                    const statusIcon = item.isDirty ? '● ' : '✓ ';
+                    option.textContent = statusIcon + item.label;
+                }
+            });
+
+            // Set selected value to active item
+            const activeItem = Object.keys(this.editorState).find(
+                id => this.editorState[id].active
+            );
+            if (activeItem) {
+                mobileSelect.value = activeItem;
+            }
+        }
+
+        // Update editor pane status indicators
+        Object.keys(this.editorState).forEach(itemId => {
+            const status = document.getElementById(`status-${itemId}`);
+            if (status) {
+                const item = this.editorState[itemId];
+                status.textContent = item.isDirty ? '●' : '✓';
+                status.style.color = item.isDirty ? '#ff9800' : '#4caf50';
+            }
+        });
+    }
 }

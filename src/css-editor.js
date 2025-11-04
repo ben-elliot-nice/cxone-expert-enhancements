@@ -8,6 +8,7 @@
 
 // ES Module - import dependencies from core
 import { AppManager } from './core.js';
+import { BaseEditor } from './base-editor.js';
 
 console.log('[CSS Editor App] Loading...');
 
@@ -57,6 +58,9 @@ console.log('[CSS Editor App] Loading...');
             minHeight: 300
         },
 
+        // BaseEditor instance for shared functionality
+        _baseEditor: null,
+
         /**
          * Initialize the app with context
          */
@@ -74,6 +78,28 @@ console.log('[CSS Editor App] Loading...');
                     isDirty: false
                 };
             });
+
+            // Create BaseEditor instance with CSS-specific configuration
+            this._baseEditor = new BaseEditor({
+                editorType: 'css',
+                itemsConfig: ROLE_CONFIG,
+                maxActiveEditors: 3,
+                apiEndpoint: '/deki/cp/custom_css.php?params=%2F',
+                formFieldPrefix: 'css_template_',
+                monacoLanguage: 'css',
+                fileExtension: '.css',
+                mimeType: 'text/css',
+                commentStyle: '/* */',
+                formatterMethod: 'formatCSS',
+                dataAttribute: 'role',
+                itemLabel: 'role'
+            });
+
+            // Share state with BaseEditor
+            this._baseEditor.context = ctx;
+            this._baseEditor.editorState = editorState;
+            this._baseEditor.originalContent = originalContent;
+            this._baseEditor.monacoEditors = monacoEditors;
 
             // Wait for Monaco to be ready
             await context.Monaco.init();
@@ -622,67 +648,17 @@ console.log('[CSS Editor App] Loading...');
         },
 
         /**
-         * Update editors grid
+         * Update editors grid (delegated to BaseEditor)
          */
         updateGrid() {
-            const grid = document.getElementById('editors-grid');
-            if (!grid) return;
-
-            const activeRoles = Object.keys(editorState).filter(role => editorState[role].active);
-
-            grid.innerHTML = '';
-            grid.className = 'editors-grid cols-' + activeRoles.length;
-
-            activeRoles.forEach(roleId => {
-                const pane = this.createEditorPane(roleId);
-                grid.appendChild(pane);
-            });
-
-            // Calculate and set explicit heights
-            setTimeout(() => {
-                this.updateHeights();
-            }, 50);
+            return this._baseEditor.updateGrid.call(this);
         },
 
         /**
-         * Calculate and set explicit pixel heights for editors
+         * Calculate and set explicit pixel heights for editors (delegated to BaseEditor)
          */
         updateHeights() {
-            const container = document.getElementById('css-editor-container');
-            const toggleBar = document.querySelector('.toggle-bar');
-            const grid = document.getElementById('editors-grid');
-
-            if (!container || !toggleBar || !grid) return;
-
-            // Calculate available height
-            const containerHeight = container.offsetHeight;
-            const toggleBarHeight = toggleBar.offsetHeight;
-            const availableHeight = containerHeight - toggleBarHeight;
-
-            // Set grid height explicitly
-            grid.style.height = availableHeight + 'px';
-
-            // Set each pane height explicitly
-            const panes = grid.querySelectorAll('.editor-pane');
-            panes.forEach(pane => {
-                pane.style.height = availableHeight + 'px';
-
-                const paneHeader = pane.querySelector('.editor-pane-header');
-                const editorInstance = pane.querySelector('.editor-instance');
-
-                if (paneHeader && editorInstance) {
-                    const paneHeaderHeight = paneHeader.offsetHeight;
-                    const editorHeight = availableHeight - paneHeaderHeight;
-                    editorInstance.style.height = editorHeight + 'px';
-                }
-            });
-
-            // Force layout on all Monaco editors
-            Object.values(monacoEditors).forEach(editor => {
-                if (editor) {
-                    editor.layout();
-                }
-            });
+            return this._baseEditor.updateHeights();
         },
 
         /**
@@ -910,61 +886,10 @@ console.log('[CSS Editor App] Loading...');
         },
 
         /**
-         * Update toggle button states and pane status indicators
+         * Update toggle button states and pane status indicators (delegated to BaseEditor)
          */
         updateToggleButtons() {
-            // Update desktop buttons (if they exist)
-            const buttons = document.querySelectorAll('.toggle-btn');
-
-            buttons.forEach(btn => {
-                const roleId = btn.getAttribute('data-role');
-                const role = editorState[roleId];
-
-                if (role && role.active) {
-                    btn.classList.add('active');
-                } else {
-                    btn.classList.remove('active');
-                }
-
-                // Show dirty indicator
-                if (role && role.isDirty) {
-                    btn.style.fontWeight = 'bold';
-                    btn.style.color = '#ff9800';
-                } else {
-                    btn.style.fontWeight = '';
-                    btn.style.color = '';
-                }
-            });
-
-            // Update mobile dropdown (if it exists)
-            const mobileSelect = document.getElementById('mobile-editor-select');
-            if (mobileSelect) {
-                const options = mobileSelect.querySelectorAll('option[data-role]');
-                options.forEach(option => {
-                    const roleId = option.getAttribute('data-role');
-                    if (roleId && editorState[roleId]) {
-                        const role = editorState[roleId];
-                        const statusIcon = role.isDirty ? '● ' : '✓ ';
-                        option.textContent = statusIcon + role.label;
-                    }
-                });
-
-                // Set selected value to active role
-                const activeRole = Object.keys(editorState).find(role => editorState[role].active);
-                if (activeRole) {
-                    mobileSelect.value = activeRole;
-                }
-            }
-
-            // Update editor pane status indicators
-            Object.keys(editorState).forEach(roleId => {
-                const status = document.getElementById(`status-${roleId}`);
-                if (status) {
-                    const role = editorState[roleId];
-                    status.textContent = role.isDirty ? '●' : '✓';
-                    status.style.color = role.isDirty ? '#ff9800' : '#4caf50';
-                }
-            });
+            return this._baseEditor.updateToggleButtons();
         },
 
         /**
