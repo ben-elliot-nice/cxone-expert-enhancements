@@ -7,8 +7,7 @@
         "chrome-devtools-mcp@latest",
         "--browserUrl=http://localhost:9222",
         "--logFile=/tmp/chrome-devtools-mcp.log"
-      ],
-      "env": {}
+      ]
     }
   }
 }
