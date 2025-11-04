@@ -10,5 +10,8 @@ yarn-error.log*
 .vite/
 dist/
 
+# Local documentation (working notes, not for commit)
+docs/local/
+
 # Optional: uncomment if you want to protect your configured server.js
 # server.js
