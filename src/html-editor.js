@@ -6,10 +6,10 @@
  * @version 1.0.0
  */
 
-(function() {
-    'use strict';
+// ES Module - import dependencies from core
+import { AppManager } from './core.js';
 
-    console.log('[HTML Editor App] Loading...');
+console.log('[HTML Editor App] Loading...');
 
     // ============================================================================
     // State & Configuration
@@ -37,6 +37,9 @@
     const HTMLEditorApp = {
         id: 'html-editor',
         name: 'HTML Editor',
+
+        // Dependencies: Apps that must be loaded before this app can initialize
+        dependencies: ['settings'],
 
         // App-specific constraints for overlay sizing
         constraints: {
@@ -1061,6 +1064,15 @@
                     return;
                 }
 
+                // Ensure target editor is active and created before import
+                // This is critical for preserving undo history when importing across apps
+                if (!field.active) {
+                    field.active = true;
+                    this.updateGrid(); // Creates the Monaco editor
+                    // Give the editor time to fully initialize
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+
                 // Create separator comment
                 const separator = `\n\n<!-- ========================================\n     Imported from: ${fileName}\n     Date: ${new Date().toLocaleString()}\n     ======================================== -->\n`;
 
@@ -1439,6 +1451,9 @@
                     return;
                 }
 
+                // Capture content being saved (to detect edits during save)
+                const contentBeingSaved = field.content;
+
                 // Build form data - send the edited field + original content for others
                 // This ensures only the specific field is saved, not all edited fields
                 const formData = {
@@ -1466,9 +1481,17 @@
                 if (response.ok || response.redirected) {
                     context.UI.showToast(`${field.label} saved successfully!`, 'success');
 
-                    // Update original content for this field only
-                    originalContent[fieldId] = field.content;
-                    field.isDirty = false;
+                    // Update original content to what was actually saved
+                    originalContent[fieldId] = contentBeingSaved;
+
+                    // Only mark clean if content hasn't changed during save
+                    const currentContent = editor ? editor.getValue() : field.content;
+                    if (currentContent === contentBeingSaved) {
+                        field.isDirty = false;
+                    } else {
+                        field.isDirty = true;
+                        console.log(`[HTML Editor] ${fieldId} content changed during save, keeping dirty state`);
+                    }
 
                     this.updateToggleButtons();
 
@@ -1531,6 +1554,12 @@
                     return;
                 }
 
+                // Capture content being saved for all fields (to detect edits during save)
+                const contentBeingSaved = {};
+                Object.keys(editorState).forEach(fieldId => {
+                    contentBeingSaved[fieldId] = editorState[fieldId].content;
+                });
+
                 // Build form data
                 const formData = {
                     csrf_token: csrfToken,
@@ -1557,10 +1586,20 @@
                 if (response.ok || response.redirected) {
                     context.UI.showToast('HTML saved successfully!', 'success');
 
-                    // Update original content
+                    // Update original content and dirty flags
                     Object.keys(editorState).forEach(fieldId => {
-                        originalContent[fieldId] = editorState[fieldId].content;
-                        editorState[fieldId].isDirty = false;
+                        // Update original content to what was actually saved
+                        originalContent[fieldId] = contentBeingSaved[fieldId];
+
+                        // Only mark clean if content hasn't changed during save
+                        const editor = monacoEditors[fieldId];
+                        const currentContent = editor ? editor.getValue() : editorState[fieldId].content;
+                        if (currentContent === contentBeingSaved[fieldId]) {
+                            editorState[fieldId].isDirty = false;
+                        } else {
+                            editorState[fieldId].isDirty = true;
+                            console.log(`[HTML Editor] ${fieldId} content changed during save, keeping dirty state`);
+                        }
                     });
 
                     this.updateToggleButtons();
@@ -1632,6 +1671,12 @@
                     return;
                 }
 
+                // Capture content being saved for open tabs (to detect edits during save)
+                const contentBeingSaved = {};
+                openFields.forEach(fieldId => {
+                    contentBeingSaved[fieldId] = editorState[fieldId].content;
+                });
+
                 // Build form data - send edited content for open tabs, original for closed tabs
                 const formData = {
                     csrf_token: csrfToken,
@@ -1659,10 +1704,20 @@
                     const tabLabel = openFields.length === 1 ? editorState[openFields[0]].label : `${openFields.length} tabs`;
                     context.UI.showToast(`${tabLabel} saved successfully!`, 'success');
 
-                    // Update original content for saved tabs
+                    // Update original content and dirty flags for saved tabs
                     openFields.forEach(fieldId => {
-                        originalContent[fieldId] = editorState[fieldId].content;
-                        editorState[fieldId].isDirty = false;
+                        // Update original content to what was actually saved
+                        originalContent[fieldId] = contentBeingSaved[fieldId];
+
+                        // Only mark clean if content hasn't changed during save
+                        const editor = monacoEditors[fieldId];
+                        const currentContent = editor ? editor.getValue() : editorState[fieldId].content;
+                        if (currentContent === contentBeingSaved[fieldId]) {
+                            editorState[fieldId].isDirty = false;
+                        } else {
+                            editorState[fieldId].isDirty = true;
+                            console.log(`[HTML Editor] ${fieldId} content changed during save, keeping dirty state`);
+                        }
                     });
 
                     this.updateToggleButtons();
@@ -1708,16 +1763,29 @@
     };
 
     // ============================================================================
-    // Register App
-    // ============================================================================
+// Register App & Export
+// ============================================================================
 
-    // Wait for core to be ready
-    const waitForCore = setInterval(() => {
-        if (window.ExpertEnhancements && window.ExpertEnhancements.AppManager) {
-            clearInterval(waitForCore);
-            window.ExpertEnhancements.AppManager.register(HTMLEditorApp);
-            console.log('[HTML Editor App] Registered');
-        }
-    }, 100);
+// Register with AppManager (gracefully handles registration failures)
+try {
+    // Debug/Test: Allow URL parameter to force registration failure
+    const urlParams = new URLSearchParams(window.location.search);
+    const failApps = urlParams.getAll('failApp');
 
-})();
+    if (failApps.includes('html-editor')) {
+        console.warn('[HTML Editor App] ⚠ Simulating registration failure (failApp URL param)');
+        throw new Error('Simulated failure for testing (URL param: failApp=html-editor)');
+    }
+
+    const registered = AppManager.register(HTMLEditorApp);
+    if (registered) {
+        console.log('[HTML Editor App] Successfully registered');
+    } else {
+        console.error('[HTML Editor App] Registration failed - check AppManager logs');
+    }
+} catch (error) {
+    console.error('[HTML Editor App] Unexpected error during registration:', error);
+}
+
+// Export for potential external use
+export { HTMLEditorApp };

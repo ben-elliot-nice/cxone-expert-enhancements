@@ -9,7 +9,7 @@ Add this single line to the `<head>` of your CXone Expert site:
 ### Latest Version (Recommended)
 
 ```html
-<script src="https://releases.benelliot-nice.com/cxone-expert-enhancements/latest/expert-enhancements-embed.js"></script>
+<script src="https://releases.benelliot-nice.com/cxone-expert-enhancements/latest/embed.js"></script>
 ```
 
 ✅ Auto-updates to newest releases
@@ -19,12 +19,12 @@ Add this single line to the `<head>` of your CXone Expert site:
 ### Pinned Version (Stable)
 
 ```html
-<script src="https://releases.benelliot-nice.com/cxone-expert-enhancements/releases/v1.3.0/expert-enhancements-embed.js"></script>
+<script src="https://releases.benelliot-nice.com/cxone-expert-enhancements/releases/v1.3.0/embed.js"></script>
 ```
 
 ✅ Stays on specific version forever
 ✅ Perfect for production stability
-✅ Replace `v1.2.0` with your desired version
+✅ Replace `v1.3.0` with your desired version
 
 ### That's it!
 

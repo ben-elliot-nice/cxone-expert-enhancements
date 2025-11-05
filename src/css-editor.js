@@ -6,10 +6,10 @@
  * @version 1.0.0
  */
 
-(function() {
-    'use strict';
+// ES Module - import dependencies from core
+import { AppManager } from './core.js';
 
-    console.log('[CSS Editor App] Loading...');
+console.log('[CSS Editor App] Loading...');
 
     // ============================================================================
     // State & Configuration
@@ -47,6 +47,9 @@
     const CSSEditorApp = {
         id: 'css-editor',
         name: 'CSS Editor',
+
+        // Dependencies: Apps that must be loaded before this app can initialize
+        dependencies: ['settings'],
 
         // App-specific constraints for overlay sizing
         constraints: {
@@ -1092,6 +1095,15 @@
                     return;
                 }
 
+                // Ensure target editor is active and created before import
+                // This is critical for preserving undo history when importing across apps
+                if (!role.active) {
+                    role.active = true;
+                    this.updateGrid(); // Creates the Monaco editor
+                    // Give the editor time to fully initialize
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+
                 // Create separator comment
                 const separator = `\n\n/* ========================================\n   Imported from: ${fileName}\n   Date: ${new Date().toLocaleString()}\n   ======================================== */\n`;
 
@@ -1515,6 +1527,9 @@
                     return;
                 }
 
+                // Capture content being saved (to detect edits during save)
+                const contentBeingSaved = role.content;
+
                 // Build form data - send the edited field + original content for others
                 // This ensures only the specific field is saved, not all edited fields
                 const formData = {
@@ -1546,9 +1561,17 @@
                 if (response.ok || response.redirected) {
                     context.UI.showToast(`${role.label} saved successfully!`, 'success');
 
-                    // Update original content for this role only
-                    originalContent[roleId] = role.content;
-                    role.isDirty = false;
+                    // Update original content to what was actually saved
+                    originalContent[roleId] = contentBeingSaved;
+
+                    // Only mark clean if content hasn't changed during save
+                    const currentContent = editor ? editor.getValue() : role.content;
+                    if (currentContent === contentBeingSaved) {
+                        role.isDirty = false;
+                    } else {
+                        role.isDirty = true;
+                        console.log(`[CSS Editor] ${roleId} content changed during save, keeping dirty state`);
+                    }
 
                     this.updateToggleButtons();
 
@@ -1636,6 +1659,12 @@
                     return;
                 }
 
+                // Capture content being saved for all roles (to detect edits during save)
+                const contentBeingSaved = {};
+                Object.keys(editorState).forEach(roleId => {
+                    contentBeingSaved[roleId] = editorState[roleId].content;
+                });
+
                 // Build form data
                 const formData = {
                     csrf_token: csrfToken,
@@ -1666,10 +1695,20 @@
                 if (response.ok || response.redirected) {
                     context.UI.showToast('CSS saved successfully!', 'success');
 
-                    // Update original content
+                    // Update original content and dirty flags
                     Object.keys(editorState).forEach(roleId => {
-                        originalContent[roleId] = editorState[roleId].content;
-                        editorState[roleId].isDirty = false;
+                        // Update original content to what was actually saved
+                        originalContent[roleId] = contentBeingSaved[roleId];
+
+                        // Only mark clean if content hasn't changed during save
+                        const editor = monacoEditors[roleId];
+                        const currentContent = editor ? editor.getValue() : editorState[roleId].content;
+                        if (currentContent === contentBeingSaved[roleId]) {
+                            editorState[roleId].isDirty = false;
+                        } else {
+                            editorState[roleId].isDirty = true;
+                            console.log(`[CSS Editor] ${roleId} content changed during save, keeping dirty state`);
+                        }
                     });
 
                     this.updateToggleButtons();
@@ -1786,6 +1825,12 @@
                     return;
                 }
 
+                // Capture content being saved for open tabs (to detect edits during save)
+                const contentBeingSaved = {};
+                openRoles.forEach(roleId => {
+                    contentBeingSaved[roleId] = editorState[roleId].content;
+                });
+
                 // Build form data - send edited content for open tabs, original for closed tabs
                 const formData = {
                     csrf_token: csrfToken,
@@ -1817,10 +1862,20 @@
                     const tabLabel = openRoles.length === 1 ? editorState[openRoles[0]].label : `${openRoles.length} tabs`;
                     context.UI.showToast(`${tabLabel} saved successfully!`, 'success');
 
-                    // Update original content for saved tabs
+                    // Update original content and dirty flags for saved tabs
                     openRoles.forEach(roleId => {
-                        originalContent[roleId] = editorState[roleId].content;
-                        editorState[roleId].isDirty = false;
+                        // Update original content to what was actually saved
+                        originalContent[roleId] = contentBeingSaved[roleId];
+
+                        // Only mark clean if content hasn't changed during save
+                        const editor = monacoEditors[roleId];
+                        const currentContent = editor ? editor.getValue() : editorState[roleId].content;
+                        if (currentContent === contentBeingSaved[roleId]) {
+                            editorState[roleId].isDirty = false;
+                        } else {
+                            editorState[roleId].isDirty = true;
+                            console.log(`[CSS Editor] ${roleId} content changed during save, keeping dirty state`);
+                        }
                     });
 
                     this.updateToggleButtons();
@@ -2048,17 +2103,30 @@
         }
     };
 
-    // ============================================================================
-    // Register App
-    // ============================================================================
+// ============================================================================
+// Register App & Export
+// ============================================================================
 
-    // Wait for core to be ready
-    const waitForCore = setInterval(() => {
-        if (window.ExpertEnhancements && window.ExpertEnhancements.AppManager) {
-            clearInterval(waitForCore);
-            window.ExpertEnhancements.AppManager.register(CSSEditorApp);
-            console.log('[CSS Editor App] Registered');
-        }
-    }, 100);
+// Register with AppManager (gracefully handles registration failures)
+try {
+    // Debug/Test: Allow URL parameter to force registration failure
+    const urlParams = new URLSearchParams(window.location.search);
+    const failApps = urlParams.getAll('failApp');
 
-})();
+    if (failApps.includes('css-editor')) {
+        console.warn('[CSS Editor App] ⚠ Simulating registration failure (failApp URL param)');
+        throw new Error('Simulated failure for testing (URL param: failApp=css-editor)');
+    }
+
+    const registered = AppManager.register(CSSEditorApp);
+    if (registered) {
+        console.log('[CSS Editor App] Successfully registered');
+    } else {
+        console.error('[CSS Editor App] Registration failed - check AppManager logs');
+    }
+} catch (error) {
+    console.error('[CSS Editor App] Unexpected error during registration:', error);
+}
+
+// Export for potential external use
+export { CSSEditorApp };

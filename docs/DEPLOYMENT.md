@@ -23,16 +23,26 @@ Each branch automatically deploys to its own path:
 
 ```
 https://releases.benelliot-nice.com/cxone-expert-enhancements/
-├── main/expert-enhancements-embed.js                    (main branch)
-├── latest/expert-enhancements-embed.js                  (latest release - auto-updates)
+├── main/
+│   ├── embed.js                                         (bundled JS)
+│   └── core.css                                         (bundled CSS)
+├── latest/
+│   ├── embed.js                                         (latest release - auto-updates)
+│   └── core.css
 ├── releases/
-│   ├── v1.2.0/expert-enhancements-embed.js              (pinned version - immutable)
-│   ├── v1.1.0/expert-enhancements-embed.js
-│   └── v1.0.0/expert-enhancements-embed.js
-├── develop/expert-enhancements-embed.js                 (develop branch)
-├── feature-auto-load-css/expert-enhancements-embed.js   (feature branch)
-├── hotfix-bug-123/expert-enhancements-embed.js          (hotfix branch)
-└── bugfix-issue-456/expert-enhancements-embed.js        (bugfix branch)
+│   ├── v1.2.0/
+│   │   ├── embed.js                                     (pinned version - immutable)
+│   │   └── core.css
+│   ├── v1.1.0/
+│   └── v1.0.0/
+├── develop/
+│   ├── embed.js                                         (develop branch)
+│   └── core.css
+├── feature-auto-load-css/
+│   ├── embed.js                                         (feature branch)
+│   └── core.css
+├── hotfix-bug-123/
+└── bugfix-issue-456/
 ```
 
 ## GitHub Actions Workflows
