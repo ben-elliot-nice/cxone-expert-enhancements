@@ -10,6 +10,9 @@ yarn-error.log*
 .vite/
 dist/
 
+# Git worktrees
+.worktrees/
+
 # Local documentation (working notes, not for commit)
 docs/local/
 
