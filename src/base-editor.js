@@ -1565,11 +1565,14 @@ export class BaseEditor {
                 item.content = editor.getValue();
             }
 
+            // Capture dirty state BEFORE formatting (formatting triggers change listener)
+            const hadChanges = item.isDirty || item.content !== this.originalContent[itemId];
+
             // Format on save if enabled
             await this.formatItemIfNeeded(itemId, item, editor);
 
-            // Check for changes
-            if (!item.isDirty && item.content === this.originalContent[itemId]) {
+            // Check for changes using captured state
+            if (!hadChanges) {
                 this.context.UI.showToast(`${item.label} has no changes to save`, 'warning');
                 return;
             }
@@ -1636,6 +1639,17 @@ export class BaseEditor {
                 }
             }
 
+            // Check for any changes BEFORE formatting (formatting triggers change listener)
+            const hasChanges = this.config.itemsConfig.some(config => {
+                const item = this.editorState[config.id];
+                return item && (item.isDirty || item.content !== this.originalContent[config.id]);
+            });
+
+            if (!hasChanges) {
+                this.context.UI.showToast('No changes to save', 'warning');
+                return;
+            }
+
             // Format all items if needed
             for (const config of this.config.itemsConfig) {
                 const itemId = config.id;
@@ -1645,17 +1659,6 @@ export class BaseEditor {
                 if (item) {
                     await this.formatItemIfNeeded(itemId, item, editor);
                 }
-            }
-
-            // Check for any changes
-            const hasChanges = this.config.itemsConfig.some(config => {
-                const item = this.editorState[config.id];
-                return item && (item.isDirty || item.content !== this.originalContent[config.id]);
-            });
-
-            if (!hasChanges) {
-                this.context.UI.showToast('No changes to save', 'warning');
-                return;
             }
 
             // Capture all content being saved
