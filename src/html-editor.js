@@ -94,10 +94,28 @@ console.log('[HTML Editor App] Loading...');
             this._baseEditor.isMobileView = isMobileView;
 
             // Set hooks for HTML-specific behavior
-            this._baseEditor.onSaveAll = () => this.saveAll();
+            this._baseEditor.onSaveAll = (btn) => this._baseEditor.saveAll(btn);
             this._baseEditor.onSaveOpenTabs = () => this.saveOpenTabs();
             this._baseEditor.onFormatAllActive = () => this.formatAllActive();
-            this._baseEditor.onSaveItem = (itemId) => this.saveField(itemId);
+            this._baseEditor.onSaveItem = (fieldId, btn) => this._baseEditor.saveItem(fieldId, btn);
+            this._baseEditor.onFormatItem = (fieldId) => this.formatField(fieldId);
+
+            // Form data construction hooks
+            this._baseEditor.buildFormDataForSave = (fieldId) => {
+                return {
+                    csrf_token: csrfToken,
+                    html_template_head: fieldId === 'head' ? editorState.head.content : originalContent.head,
+                    html_template_tail: fieldId === 'tail' ? editorState.tail.content : originalContent.tail
+                };
+            };
+
+            this._baseEditor.buildFormDataForSaveAll = () => {
+                return {
+                    csrf_token: csrfToken,
+                    html_template_head: editorState.head.content,
+                    html_template_tail: editorState.tail.content
+                };
+            };
 
             // Wait for Monaco to be ready
             await context.Monaco.init();
@@ -134,7 +152,7 @@ console.log('[HTML Editor App] Loading...');
                     await context.Formatter.init();
                     console.log('[HTML Editor] Code formatter loaded successfully');
                     // Inject format buttons into all rendered panes
-                    this.injectFormatButtons();
+                    this._baseEditor.injectFormatButtons();
                 } catch (formatterError) {
                     console.warn('[HTML Editor] Code formatter unavailable:', formatterError);
                     // Graceful degradation - editor works without formatting
@@ -419,44 +437,6 @@ console.log('[HTML Editor App] Loading...');
         },
 
         /**
-         * Inject format buttons into all rendered editor panes
-         * Called when Prettier becomes available after editor is already mounted
-         */
-        injectFormatButtons() {
-            console.log('[HTML Editor] Injecting format buttons into rendered panes');
-
-            // Find all editor pane actions containers
-            const panes = document.querySelectorAll('.editor-pane');
-
-            panes.forEach(pane => {
-                const actions = pane.querySelector('.editor-pane-actions');
-                const exportBtn = pane.querySelector('.editor-pane-export');
-
-                if (!actions || !exportBtn) return;
-
-                // Check if format button already exists
-                if (pane.querySelector('.editor-pane-format')) return;
-
-                // Get fieldId from export button
-                const fieldId = exportBtn.getAttribute('data-export-field');
-                if (!fieldId) return;
-
-                // Create and insert format button before export button
-                const formatBtn = context.DOM.create('button', {
-                    className: 'editor-pane-format',
-                    'data-format-field': fieldId,
-                    title: 'Format HTML (Ctrl+Shift+F)'
-                }, ['Format']);
-                formatBtn.addEventListener('click', () => this.formatField(fieldId));
-
-                // Insert before export button
-                actions.insertBefore(formatBtn, exportBtn);
-
-                console.log(`[HTML Editor] Format button injected for: ${fieldId}`);
-            });
-        },
-
-        /**
          * Format HTML for a specific field
          * @param {string} fieldId - Field identifier
          * @param {boolean} silent - If true, suppress success toast
@@ -513,327 +493,6 @@ console.log('[HTML Editor App] Loading...');
          */
         toggleActionsDropdown(fieldId) {
             return this._baseEditor.toggleActionsDropdown(fieldId);
-        },
-
-        /**
-         * Save a single HTML field
-         */
-        async saveField(fieldId) {
-            try {
-                console.log(`[HTML Editor] Saving ${fieldId}...`);
-
-                const field = editorState[fieldId];
-                if (!field) {
-                    throw new Error(`Field ${fieldId} not found`);
-                }
-
-                // Sync this editor's value to state
-                const editor = monacoEditors[fieldId];
-                if (editor) {
-                    field.content = editor.getValue();
-                }
-
-                // Format on save if enabled and formatter available
-                const settings = context.Storage.getFormatterSettings();
-                if (settings.formatOnSave && context.Formatter.isReady() && field.content && field.content.trim() !== '') {
-                    try {
-                        console.log(`[HTML Editor] Auto-formatting ${fieldId} before save...`);
-                        const formatted = await context.Formatter.formatHTML(field.content);
-                        field.content = formatted;
-                        if (editor) {
-                            editor.setValue(formatted);
-                        }
-                    } catch (formatError) {
-                        console.warn(`[HTML Editor] Auto-format failed for ${fieldId}:`, formatError);
-                        // Continue with save even if formatting fails
-                    }
-                }
-
-                // Check if this field has changes
-                if (!field.isDirty && field.content === originalContent[fieldId]) {
-                    context.UI.showToast(`${field.label} has no changes to save`, 'warning');
-                    return;
-                }
-
-                // Capture content being saved (to detect edits during save)
-                const contentBeingSaved = field.content;
-
-                // Build form data - send the edited field + original content for others
-                // This ensures only the specific field is saved, not all edited fields
-                const formData = {
-                    csrf_token: csrfToken,
-                    html_template_head: fieldId === 'head' ? editorState.head.content : originalContent.head,
-                    html_template_tail: fieldId === 'tail' ? editorState.tail.content : originalContent.tail
-                };
-
-                const { body, boundary } = context.API.buildMultipartBody(formData);
-
-                const url = '/deki/cp/custom_html.php?params=%2F';
-                const response = await context.API.fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                        'Accept-Language': 'en-US,en;q=0.9',
-                        'Cache-Control': 'max-age=0',
-                        'Content-Type': `multipart/form-data; boundary=${boundary}`
-                    },
-                    credentials: 'include',
-                    body: body,
-                    redirect: 'follow'
-                });
-
-                if (response.ok || response.redirected) {
-                    context.UI.showToast(`${field.label} saved successfully!`, 'success');
-
-                    // Update original content to what was actually saved
-                    originalContent[fieldId] = contentBeingSaved;
-
-                    // Only mark clean if content hasn't changed during save
-                    const currentContent = editor ? editor.getValue() : field.content;
-                    if (currentContent === contentBeingSaved) {
-                        field.isDirty = false;
-                    } else {
-                        field.isDirty = true;
-                        console.log(`[HTML Editor] ${fieldId} content changed during save, keeping dirty state`);
-                    }
-
-                    this.updateToggleButtons();
-
-                    // Persist updated state to localStorage
-                    this.saveState();
-                } else {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
-            } catch (error) {
-                console.error(`[HTML Editor] Save ${fieldId} failed:`, error);
-                context.UI.showToast(`Failed to save: ${error.message}`, 'error');
-            }
-        },
-
-        /**
-         * Save all HTML
-         */
-        async saveAll() {
-            try {
-                console.log('[HTML Editor] Saving all HTML...');
-
-                // Sync editor values to state
-                Object.keys(monacoEditors).forEach(fieldId => {
-                    const editor = monacoEditors[fieldId];
-                    if (editor) {
-                        editorState[fieldId].content = editor.getValue();
-                    }
-                });
-
-                // Format on save if enabled and formatter available
-                const settings = context.Storage.getFormatterSettings();
-                if (settings.formatOnSave && context.Formatter.isReady()) {
-                    for (const fieldId of Object.keys(editorState)) {
-                        const field = editorState[fieldId];
-                        if (field.content && field.content.trim() !== '') {
-                            try {
-                                console.log(`[HTML Editor] Auto-formatting ${fieldId} before save...`);
-                                const formatted = await context.Formatter.formatHTML(field.content);
-                                field.content = formatted;
-                                const editor = monacoEditors[fieldId];
-                                if (editor) {
-                                    editor.setValue(formatted);
-                                }
-                            } catch (formatError) {
-                                console.warn(`[HTML Editor] Auto-format failed for ${fieldId}:`, formatError);
-                                // Continue with save even if formatting fails
-                            }
-                        }
-                    }
-                }
-
-                // Check if any field has changes
-                const hasChanges = Object.keys(editorState).some(fieldId => {
-                    return editorState[fieldId].isDirty || editorState[fieldId].content !== originalContent[fieldId];
-                });
-
-                if (!hasChanges) {
-                    context.UI.showToast('No changes to save', 'warning');
-                    return;
-                }
-
-                // Capture content being saved for all fields (to detect edits during save)
-                const contentBeingSaved = {};
-                Object.keys(editorState).forEach(fieldId => {
-                    contentBeingSaved[fieldId] = editorState[fieldId].content;
-                });
-
-                // Build form data
-                const formData = {
-                    csrf_token: csrfToken,
-                    html_template_head: editorState.head.content,
-                    html_template_tail: editorState.tail.content
-                };
-
-                const { body, boundary } = context.API.buildMultipartBody(formData);
-
-                const url = '/deki/cp/custom_html.php?params=%2F';
-                const response = await context.API.fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                        'Accept-Language': 'en-US,en;q=0.9',
-                        'Cache-Control': 'max-age=0',
-                        'Content-Type': `multipart/form-data; boundary=${boundary}`
-                    },
-                    credentials: 'include',
-                    body: body,
-                    redirect: 'follow'
-                });
-
-                if (response.ok || response.redirected) {
-                    context.UI.showToast('HTML saved successfully!', 'success');
-
-                    // Update original content and dirty flags
-                    Object.keys(editorState).forEach(fieldId => {
-                        // Update original content to what was actually saved
-                        originalContent[fieldId] = contentBeingSaved[fieldId];
-
-                        // Only mark clean if content hasn't changed during save
-                        const editor = monacoEditors[fieldId];
-                        const currentContent = editor ? editor.getValue() : editorState[fieldId].content;
-                        if (currentContent === contentBeingSaved[fieldId]) {
-                            editorState[fieldId].isDirty = false;
-                        } else {
-                            editorState[fieldId].isDirty = true;
-                            console.log(`[HTML Editor] ${fieldId} content changed during save, keeping dirty state`);
-                        }
-                    });
-
-                    this.updateToggleButtons();
-
-                    // Persist updated state to localStorage
-                    this.saveState();
-                } else {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
-            } catch (error) {
-                console.error('[HTML Editor] Save failed:', error);
-                context.UI.showToast('Failed to save HTML: ' + error.message, 'error');
-            }
-        },
-
-        /**
-         * Save only the currently open tabs
-         */
-        async saveOpenTabs() {
-            try {
-                const openFields = Object.keys(editorState).filter(field => editorState[field].active);
-
-                if (openFields.length === 0) {
-                    context.UI.showToast('No tabs open to save', 'warning');
-                    return;
-                }
-
-                console.log(`[HTML Editor] Saving ${openFields.length} open tab(s):`, openFields);
-
-                // Sync editor values to state for open tabs
-                openFields.forEach(fieldId => {
-                    const editor = monacoEditors[fieldId];
-                    if (editor) {
-                        editorState[fieldId].content = editor.getValue();
-                    }
-                });
-
-                // Format on save if enabled and formatter available
-                const settings = context.Storage.getFormatterSettings();
-                if (settings.formatOnSave && context.Formatter.isReady()) {
-                    for (const fieldId of openFields) {
-                        const field = editorState[fieldId];
-                        if (field.content && field.content.trim() !== '') {
-                            try {
-                                console.log(`[HTML Editor] Auto-formatting ${fieldId} before save...`);
-                                const formatted = await context.Formatter.formatHTML(field.content);
-                                field.content = formatted;
-                                const editor = monacoEditors[fieldId];
-                                if (editor) {
-                                    editor.setValue(formatted);
-                                }
-                            } catch (formatError) {
-                                console.warn(`[HTML Editor] Auto-format failed for ${fieldId}:`, formatError);
-                                // Continue with save even if formatting fails
-                            }
-                        }
-                    }
-                }
-
-                // Check if any open tab has changes
-                const hasChanges = openFields.some(fieldId => {
-                    return editorState[fieldId].isDirty || editorState[fieldId].content !== originalContent[fieldId];
-                });
-
-                if (!hasChanges) {
-                    const tabLabel = openFields.length === 1 ? editorState[openFields[0]].label : `${openFields.length} tabs`;
-                    context.UI.showToast(`${tabLabel} have no changes to save`, 'warning');
-                    return;
-                }
-
-                // Capture content being saved for open tabs (to detect edits during save)
-                const contentBeingSaved = {};
-                openFields.forEach(fieldId => {
-                    contentBeingSaved[fieldId] = editorState[fieldId].content;
-                });
-
-                // Build form data - send edited content for open tabs, original for closed tabs
-                const formData = {
-                    csrf_token: csrfToken,
-                    html_template_head: openFields.includes('head') ? editorState.head.content : originalContent.head,
-                    html_template_tail: openFields.includes('tail') ? editorState.tail.content : originalContent.tail
-                };
-
-                const { body, boundary } = context.API.buildMultipartBody(formData);
-
-                const url = '/deki/cp/custom_html.php?params=%2F';
-                const response = await context.API.fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                        'Accept-Language': 'en-US,en;q=0.9',
-                        'Cache-Control': 'max-age=0',
-                        'Content-Type': `multipart/form-data; boundary=${boundary}`
-                    },
-                    credentials: 'include',
-                    body: body,
-                    redirect: 'follow'
-                });
-
-                if (response.ok || response.redirected) {
-                    const tabLabel = openFields.length === 1 ? editorState[openFields[0]].label : `${openFields.length} tabs`;
-                    context.UI.showToast(`${tabLabel} saved successfully!`, 'success');
-
-                    // Update original content and dirty flags for saved tabs
-                    openFields.forEach(fieldId => {
-                        // Update original content to what was actually saved
-                        originalContent[fieldId] = contentBeingSaved[fieldId];
-
-                        // Only mark clean if content hasn't changed during save
-                        const editor = monacoEditors[fieldId];
-                        const currentContent = editor ? editor.getValue() : editorState[fieldId].content;
-                        if (currentContent === contentBeingSaved[fieldId]) {
-                            editorState[fieldId].isDirty = false;
-                        } else {
-                            editorState[fieldId].isDirty = true;
-                            console.log(`[HTML Editor] ${fieldId} content changed during save, keeping dirty state`);
-                        }
-                    });
-
-                    this.updateToggleButtons();
-                    this.saveState();
-                } else {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
-            } catch (error) {
-                console.error('[HTML Editor] Save open tabs failed:', error);
-                context.UI.showToast('Failed to save: ' + error.message, 'error');
-            }
         },
 
         /**
