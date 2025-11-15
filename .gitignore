@@ -17,5 +17,14 @@ dist/
 docs/local/
 docs/plans/
 
+# Tests (working files, not for commit)
+tests/
+
+# Scripts (local utility scripts, not for commit)
+scripts/
+
+# Local Claude settings
+.claude/settings.local.mcp.json
+
 # Optional: uncomment if you want to protect your configured server.js
 # server.js
