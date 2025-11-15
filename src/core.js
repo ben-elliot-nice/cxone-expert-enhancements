@@ -12,6 +12,7 @@
 
 // Import Configuration System
 import { ConfigManager } from './config.js';
+import { getConfigManager } from './config-manager.js';
 
 console.log('[Enhancements Core] Initializing...');
 
@@ -146,7 +147,7 @@ console.log('[Enhancements Core] Configuration system initialized');
                             if (depApp && !initializedApps.has(depId)) {
                                 console.log(`[App Manager] Initializing dependency: ${depApp.name}`);
                                 const context = {
-                                    Config,
+                                    Config: getConfigManager(),
                                     Monaco,
                                     API,
                                     Storage,
@@ -168,7 +169,7 @@ console.log('[Enhancements Core] Configuration system initialized');
                 if (!initializedApps.has(appId)) {
                     console.log(`[App Manager] Initializing: ${app.name}`);
                     const context = {
-                        Config,
+                        Config: getConfigManager(),
                         Monaco,
                         API,
                         Storage,

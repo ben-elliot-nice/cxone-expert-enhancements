@@ -160,7 +160,7 @@ async function initializeUI() {
 
         // Log effective configuration
         const configManager = getConfigManager();
-        console.log('[Expert Enhancements] Using configuration:', configManager.exportConfig().effective);
+        console.log('[Expert Enhancements] Configuration system ready');
 
         // 1. Check registered apps (static imports have already run)
         const registeredApps = AppManager.getApps();
