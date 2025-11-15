@@ -96,4 +96,76 @@ export class ConfigManager {
 
     return flattened;
   }
+
+  /**
+   * Save a setting to localStorage
+   */
+  saveToLocalStorage(key, value) {
+    try {
+      const storageKey = `expertEnhancements:config:${key}`;
+      localStorage.setItem(storageKey, JSON.stringify(value));
+    } catch (error) {
+      console.error(`Failed to save ${key} to localStorage:`, error);
+      // Non-fatal - might be quota exceeded or disabled
+    }
+  }
+
+  /**
+   * Load a setting from localStorage
+   */
+  loadFromLocalStorage(key) {
+    try {
+      const storageKey = `expertEnhancements:config:${key}`;
+      const value = localStorage.getItem(storageKey);
+      return value ? JSON.parse(value) : null;
+    } catch (error) {
+      console.error(`Failed to load ${key} from localStorage:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Load all settings from localStorage
+   */
+  loadAllFromLocalStorage() {
+    const config = {};
+    const prefix = 'expertEnhancements:config:';
+
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const storageKey = localStorage.key(i);
+
+        if (storageKey && storageKey.startsWith(prefix)) {
+          const key = storageKey.substring(prefix.length);
+          const value = JSON.parse(localStorage.getItem(storageKey));
+          config[key] = value;
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load settings from localStorage:', error);
+    }
+
+    return config;
+  }
+
+  /**
+   * Remove a setting from localStorage
+   */
+  removeFromLocalStorage(key) {
+    try {
+      const storageKey = `expertEnhancements:config:${key}`;
+      localStorage.removeItem(storageKey);
+    } catch (error) {
+      console.error(`Failed to remove ${key} from localStorage:`, error);
+    }
+  }
+
+  /**
+   * Cache entire config object to localStorage
+   */
+  cacheToLocalStorage(config) {
+    for (const [key, value] of Object.entries(config)) {
+      this.saveToLocalStorage(key, value);
+    }
+  }
 }
