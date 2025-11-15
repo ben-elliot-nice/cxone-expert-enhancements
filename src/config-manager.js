@@ -541,4 +541,106 @@ export class ConfigManager {
     // Reload effective value
     this.config[key] = this.getEffectiveValue(key).value;
   }
+
+  /**
+   * Initialize the configuration system
+   */
+  async initialize() {
+    console.log('Initializing ConfigManager...');
+
+    // 1. Parse embed config from script tag
+    const embedConfigNested = this.parseEmbedConfig();
+    this.embedConfig = this.flattenConfig(embedConfigNested);
+
+    // 2. Detect current user
+    this.currentUser = this.detectUser();
+    console.log('User:', this.currentUser.isAnonymous ? 'anonymous' : this.currentUser.username);
+
+    // 3. Start with defaults
+    this.config = getDefaults();
+
+    // 4. Load based on user state
+    if (this.currentUser.isAnonymous) {
+      await this.loadAnonymousConfig();
+    } else {
+      await this.loadLoggedInConfig();
+    }
+
+    console.log('ConfigManager initialized');
+  }
+
+  /**
+   * Load configuration for anonymous user
+   */
+  async loadAnonymousConfig() {
+    // 1. Load site properties (anonymous can READ)
+    try {
+      this.siteProperties = await this.loadSiteProperties();
+      this.mergeConfig(this.siteProperties, 'site');
+    } catch (error) {
+      console.warn('Could not load site properties', error);
+    }
+
+    // 2. Load localStorage (anonymous preferences)
+    const localConfig = this.loadAllFromLocalStorage();
+    this.mergeConfig(localConfig, 'localStorage');
+
+    // 3. Apply embed config overrides (highest priority)
+    this.mergeConfig(this.embedConfig, 'embed');
+  }
+
+  /**
+   * Load configuration for logged-in user
+   */
+  async loadLoggedInConfig() {
+    // 1. Load site properties (admin defaults)
+    try {
+      this.siteProperties = await this.loadSiteProperties();
+      this.mergeConfig(this.siteProperties, 'site');
+    } catch (error) {
+      console.warn('Could not load site properties', error);
+    }
+
+    // 2. Load User Properties from server
+    try {
+      this.userProperties = await this.loadUserProperties(this.currentUser.systemName);
+      this.mergeConfig(this.userProperties, 'user');
+    } catch (error) {
+      console.warn('Could not load user properties', error);
+    }
+
+    // 3. Load localStorage (cache + fallback)
+    const localConfig = this.loadAllFromLocalStorage();
+    // Note: Don't merge localStorage for logged-in users - it's just cache
+    // User properties and site properties take precedence
+
+    // 4. Cache current config to localStorage
+    this.cacheToLocalStorage(this.config);
+
+    // 5. Apply embed config overrides (highest priority)
+    this.mergeConfig(this.embedConfig, 'embed');
+  }
+}
+
+// Create global instance
+let globalConfigManager = null;
+
+/**
+ * Get or create the global ConfigManager instance
+ */
+export function getConfigManager() {
+  if (!globalConfigManager) {
+    globalConfigManager = new ConfigManager();
+  }
+  return globalConfigManager;
+}
+
+/**
+ * Initialize configuration system
+ * Call this once during app startup
+ */
+export async function initializeConfig() {
+  const manager = getConfigManager();
+  await manager.initialize();
+  return manager;
 }
