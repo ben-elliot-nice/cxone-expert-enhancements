@@ -621,6 +621,81 @@ export class ConfigManager {
     // 5. Override with embed config (highest priority)
     this.mergeConfig(this.embedConfig, 'embed');
   }
+
+  /**
+   * Export full configuration for debugging
+   * Returns object with all config sources for inspection
+   */
+  exportConfig() {
+    return {
+      defaults: getDefaults(),
+      embedConfig: this.embedConfig,
+      siteProperties: this.siteProperties,
+      userProperties: this.userProperties,
+      localStorage: this.loadAllFromLocalStorage(),
+      effectiveConfig: this.config,
+      currentUser: {
+        ...this.currentUser,
+        // Don't export sensitive data
+        permissions: this.currentUser?.permissions?.length || 0
+      },
+      cache: {
+        lastSiteSync: new Date(this.cache.lastSiteSync).toISOString(),
+        lastUserSync: new Date(this.cache.lastUserSync).toISOString(),
+        syncInterval: this.cache.syncInterval
+      }
+    };
+  }
+
+  /**
+   * Get the source of a specific setting's value
+   * @param {string} key - Setting key (e.g., 'editor.theme')
+   * @returns {Object} Object with value, source, and locked status
+   */
+  getConfigSource(key) {
+    return this.getEffectiveValue(key);
+  }
+
+  /**
+   * Log detailed resolution path for a setting
+   * @param {string} key - Setting key (e.g., 'editor.theme')
+   */
+  debugConfig(key) {
+    const schema = settingsSchema[key];
+    const effective = this.getEffectiveValue(key);
+
+    console.group(`ConfigManager Debug: ${key}`);
+
+    // Show resolution hierarchy
+    console.log('Resolution Hierarchy (highest to lowest priority):');
+    console.log('  1. Embed Config:', this.embedConfig[key] !== undefined ? this.embedConfig[key] : '(not set)');
+    console.log('  2. User Properties:', this.userProperties[key] !== undefined ? this.userProperties[key] : '(not set)');
+    console.log('  3. Site Properties:', this.siteProperties[key] !== undefined ? this.siteProperties[key] : '(not set)');
+    console.log('  4. localStorage:', this.loadFromLocalStorage(key) !== null ? this.loadFromLocalStorage(key) : '(not set)');
+    console.log('  5. Default:', schema?.default !== undefined ? schema.default : '(not defined)');
+
+    console.log('');
+    console.log('Effective Value:', effective.value);
+    console.log('Source:', effective.source);
+    console.log('Locked:', effective.locked);
+
+    if (schema) {
+      console.log('');
+      console.log('Schema:');
+      console.log('  Type:', schema.type);
+      console.log('  Default:', schema.default);
+      console.log('  Server Safe:', schema.serverSafe);
+      if (schema.category) console.log('  Category:', schema.category);
+      if (schema.options) console.log('  Options:', schema.options);
+      if (schema.min !== undefined) console.log('  Min:', schema.min);
+      if (schema.max !== undefined) console.log('  Max:', schema.max);
+    } else {
+      console.log('');
+      console.warn('No schema found for this setting');
+    }
+
+    console.groupEnd();
+  }
 }
 
 // Create global instance
@@ -644,4 +719,37 @@ export async function initializeConfig() {
   const manager = getConfigManager();
   await manager.initialize();
   return manager;
+}
+
+// Expose for debugging in browser console
+if (typeof window !== 'undefined') {
+  window.ExpertEnhancements = window.ExpertEnhancements || {};
+  window.ExpertEnhancements.Config = {
+    get instance() {
+      return getConfigManager();
+    },
+    export() {
+      return getConfigManager().exportConfig();
+    },
+    getSource(key) {
+      return getConfigManager().getConfigSource(key);
+    },
+    debug(key) {
+      if (key) {
+        return getConfigManager().debugConfig(key);
+      } else {
+        // If no key provided, show all current config
+        const config = getConfigManager().exportConfig();
+        console.group('ConfigManager Debug - Full Export');
+        console.log('Current User:', config.currentUser);
+        console.log('Embed Config:', config.embedConfig);
+        console.log('Site Properties:', config.siteProperties);
+        console.log('User Properties:', config.userProperties);
+        console.log('Effective Config:', config.effectiveConfig);
+        console.log('Cache Info:', config.cache);
+        console.groupEnd();
+        return config;
+      }
+    }
+  };
 }
