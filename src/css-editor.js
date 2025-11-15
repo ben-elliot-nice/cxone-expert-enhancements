@@ -107,10 +107,36 @@ console.log('[CSS Editor App] Loading...');
             this._baseEditor.onEditorContentChange = () => {
                 this.updateLivePreview();
             };
-            this._baseEditor.onSaveAll = () => this.saveAll();
+            this._baseEditor.onSaveAll = (btn) => this._baseEditor.saveAll(btn);
             this._baseEditor.onSaveOpenTabs = () => this.saveOpenTabs();
             this._baseEditor.onFormatAllActive = () => this.formatAllActive();
-            this._baseEditor.onSaveItem = (itemId) => this.saveRole(itemId);
+            this._baseEditor.onSaveItem = (roleId, btn) => this._baseEditor.saveItem(roleId, btn);
+            this._baseEditor.onFormatItem = (roleId) => this.formatRole(roleId);
+
+            // Form data construction hooks
+            this._baseEditor.buildFormDataForSave = (roleId) => {
+                return {
+                    csrf_token: csrfToken,
+                    css_template_all: roleId === 'all' ? editorState.all.content : originalContent.all,
+                    css_template_anonymous: roleId === 'anonymous' ? editorState.anonymous.content : originalContent.anonymous,
+                    css_template_viewer: roleId === 'viewer' ? editorState.viewer.content : originalContent.viewer,
+                    css_template_seated: roleId === 'seated' ? editorState.seated.content : originalContent.seated,
+                    css_template_admin: roleId === 'admin' ? editorState.admin.content : originalContent.admin,
+                    css_template_grape: roleId === 'grape' ? editorState.grape.content : originalContent.grape
+                };
+            };
+
+            this._baseEditor.buildFormDataForSaveAll = () => {
+                return {
+                    csrf_token: csrfToken,
+                    css_template_all: editorState.all.content,
+                    css_template_anonymous: editorState.anonymous.content,
+                    css_template_viewer: editorState.viewer.content,
+                    css_template_seated: editorState.seated.content,
+                    css_template_admin: editorState.admin.content,
+                    css_template_grape: editorState.grape.content
+                };
+            };
 
             // Wait for Monaco to be ready
             await context.Monaco.init();
@@ -155,7 +181,7 @@ console.log('[CSS Editor App] Loading...');
                     await context.Formatter.init();
                     console.log('[CSS Editor] Code formatter loaded successfully');
                     // Inject format buttons into all rendered panes
-                    this.injectFormatButtons();
+                    this._baseEditor.injectFormatButtons();
                 } catch (formatterError) {
                     console.warn('[CSS Editor] Code formatter unavailable:', formatterError);
                     // Graceful degradation - editor works without formatting
@@ -434,43 +460,6 @@ console.log('[CSS Editor App] Loading...');
         },
 
         /**
-         * Inject format buttons into all rendered editor panes
-         * Called when Prettier becomes available after editor is already mounted
-         */
-        injectFormatButtons() {
-            console.log('[CSS Editor] Injecting format buttons into rendered panes');
-
-            // Find all editor pane actions containers
-            const panes = document.querySelectorAll('.editor-pane');
-
-            panes.forEach(pane => {
-                const actions = pane.querySelector('.editor-pane-actions');
-                const exportBtn = pane.querySelector('.editor-pane-export');
-
-                if (!actions || !exportBtn) return;
-
-                // Check if format button already exists
-                if (pane.querySelector('.editor-pane-format')) return;
-
-                // Get roleId from export button
-                const roleId = exportBtn.getAttribute('data-export-role');
-                if (!roleId) return;
-
-                // Create and insert format button before export button
-                const formatBtn = context.DOM.create('button', {
-                    className: 'editor-pane-format',
-                    'data-format-role': roleId,
-                    title: 'Format CSS (Ctrl+Shift+F)'
-                }, ['Format']);
-                formatBtn.addEventListener('click', () => this.formatRole(roleId));
-
-                // Insert before export button
-                actions.insertBefore(formatBtn, exportBtn);
-
-            });
-        },
-
-        /**
          * Format CSS for a specific role
          * @param {string} roleId - Role identifier
          * @param {boolean} silent - If true, suppress success toast
@@ -528,435 +517,6 @@ console.log('[CSS Editor App] Loading...');
          */
         toggleActionsDropdown(roleId) {
             return this._baseEditor.toggleActionsDropdown(roleId);
-        },
-
-        /**
-         * Save a single CSS role
-         */
-        async saveRole(roleId) {
-            const saveBtn = document.querySelector(`[data-save-role="${roleId}"]`);
-            if (!saveBtn) return;
-
-            // Get all save buttons to disable them
-            const saveAllBtn = document.getElementById('save-btn');
-            const allSaveBtns = document.querySelectorAll('[data-save-role]');
-
-            // Store original button state
-            const originalText = saveBtn.textContent;
-            const wasDisabled = saveBtn.disabled;
-
-            try {
-                console.log(`[CSS Editor] Saving ${roleId}...`);
-
-                const role = editorState[roleId];
-                if (!role) {
-                    throw new Error(`Role ${roleId} not found`);
-                }
-
-                // Disable ALL save buttons
-                if (saveAllBtn) saveAllBtn.disabled = true;
-                allSaveBtns.forEach(btn => btn.disabled = true);
-
-                // Show loading state on this button
-                saveBtn.classList.add('saving');
-                saveBtn.innerHTML = '<span class="spinner"></span> Saving...';
-
-                // Sync this editor's value to state
-                const editor = monacoEditors[roleId];
-                if (editor) {
-                    role.content = editor.getValue();
-                }
-
-                // Format on save if enabled and formatter available
-                const settings = context.Storage.getFormatterSettings();
-                if (settings.formatOnSave && context.Formatter.isReady() && role.content && role.content.trim() !== '') {
-                    try {
-                        console.log(`[CSS Editor] Auto-formatting ${roleId} before save...`);
-                        const formatted = await context.Formatter.formatCSS(role.content);
-                        role.content = formatted;
-                        if (editor) {
-                            editor.setValue(formatted);
-                        }
-                    } catch (formatError) {
-                        console.warn(`[CSS Editor] Auto-format failed for ${roleId}:`, formatError);
-                        // Continue with save even if formatting fails
-                    }
-                }
-
-                // Check if this role has changes
-                if (!role.isDirty && role.content === originalContent[roleId]) {
-                    context.UI.showToast(`${role.label} has no changes to save`, 'warning');
-                    return;
-                }
-
-                // Capture content being saved (to detect edits during save)
-                const contentBeingSaved = role.content;
-
-                // Build form data - send the edited field + original content for others
-                // This ensures only the specific field is saved, not all edited fields
-                const formData = {
-                    csrf_token: csrfToken,
-                    css_template_all: roleId === 'all' ? editorState.all.content : originalContent.all,
-                    css_template_anonymous: roleId === 'anonymous' ? editorState.anonymous.content : originalContent.anonymous,
-                    css_template_viewer: roleId === 'viewer' ? editorState.viewer.content : originalContent.viewer,
-                    css_template_seated: roleId === 'seated' ? editorState.seated.content : originalContent.seated,
-                    css_template_admin: roleId === 'admin' ? editorState.admin.content : originalContent.admin,
-                    css_template_grape: roleId === 'grape' ? editorState.grape.content : originalContent.grape
-                };
-
-                const { body, boundary } = context.API.buildMultipartBody(formData);
-
-                const url = '/deki/cp/custom_css.php?params=%2F';
-                const response = await context.API.fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                        'Accept-Language': 'en-US,en;q=0.9',
-                        'Cache-Control': 'max-age=0',
-                        'Content-Type': `multipart/form-data; boundary=${boundary}`
-                    },
-                    credentials: 'include',
-                    body: body,
-                    redirect: 'follow'
-                });
-
-                if (response.ok || response.redirected) {
-                    context.UI.showToast(`${role.label} saved successfully!`, 'success');
-
-                    // Update original content to what was actually saved
-                    originalContent[roleId] = contentBeingSaved;
-
-                    // Only mark clean if content hasn't changed during save
-                    const currentContent = editor ? editor.getValue() : role.content;
-                    if (currentContent === contentBeingSaved) {
-                        role.isDirty = false;
-                    } else {
-                        role.isDirty = true;
-                        console.log(`[CSS Editor] ${roleId} content changed during save, keeping dirty state`);
-                    }
-
-                    this.updateToggleButtons();
-
-                    // Persist updated state to localStorage
-                    this.saveState();
-                } else {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
-            } catch (error) {
-                console.error(`[CSS Editor] Save ${roleId} failed:`, error);
-                context.UI.showToast(`Failed to save: ${error.message}`, 'error');
-            } finally {
-                // Restore all button states
-                saveBtn.disabled = wasDisabled;
-                saveBtn.classList.remove('saving');
-                saveBtn.textContent = originalText;
-                if (saveAllBtn) saveAllBtn.disabled = false;
-                allSaveBtns.forEach(btn => btn.disabled = false);
-            }
-        },
-
-        /**
-         * Save all CSS
-         */
-        async saveAll() {
-            const saveBtn = document.getElementById('save-btn');
-            if (!saveBtn) return;
-
-            // Get all save buttons to disable them
-            const allSaveBtns = document.querySelectorAll('[data-save-role]');
-
-            // Store original button state
-            const originalText = saveBtn.textContent;
-            const wasDisabled = saveBtn.disabled;
-
-            try {
-                console.log('[CSS Editor] Saving all CSS...');
-
-                // Disable ALL save buttons
-                saveBtn.disabled = true;
-                allSaveBtns.forEach(btn => btn.disabled = true);
-
-                // Show loading state on Save All button
-                saveBtn.classList.add('saving');
-                saveBtn.innerHTML = '<span class="spinner"></span> Saving...';
-
-                // Sync editor values to state
-                Object.keys(monacoEditors).forEach(roleId => {
-                    const editor = monacoEditors[roleId];
-                    if (editor) {
-                        editorState[roleId].content = editor.getValue();
-                    }
-                });
-
-                // Format on save if enabled and formatter available
-                const settings = context.Storage.getFormatterSettings();
-                if (settings.formatOnSave && context.Formatter.isReady()) {
-                    for (const roleId of Object.keys(editorState)) {
-                        const role = editorState[roleId];
-                        if (role.content && role.content.trim() !== '') {
-                            try {
-                                console.log(`[CSS Editor] Auto-formatting ${roleId} before save...`);
-                                const formatted = await context.Formatter.formatCSS(role.content);
-                                role.content = formatted;
-                                const editor = monacoEditors[roleId];
-                                if (editor) {
-                                    editor.setValue(formatted);
-                                }
-                            } catch (formatError) {
-                                console.warn(`[CSS Editor] Auto-format failed for ${roleId}:`, formatError);
-                                // Continue with save even if formatting fails
-                            }
-                        }
-                    }
-                }
-
-                // Check if any role has changes
-                const hasChanges = Object.keys(editorState).some(roleId => {
-                    return editorState[roleId].isDirty || editorState[roleId].content !== originalContent[roleId];
-                });
-
-                if (!hasChanges) {
-                    context.UI.showToast('No changes to save', 'warning');
-                    return;
-                }
-
-                // Capture content being saved for all roles (to detect edits during save)
-                const contentBeingSaved = {};
-                Object.keys(editorState).forEach(roleId => {
-                    contentBeingSaved[roleId] = editorState[roleId].content;
-                });
-
-                // Build form data
-                const formData = {
-                    csrf_token: csrfToken,
-                    css_template_all: editorState.all.content,
-                    css_template_anonymous: editorState.anonymous.content,
-                    css_template_viewer: editorState.viewer.content,
-                    css_template_seated: editorState.seated.content,
-                    css_template_admin: editorState.admin.content,
-                    css_template_grape: editorState.grape.content
-                };
-
-                const { body, boundary } = context.API.buildMultipartBody(formData);
-
-                const url = '/deki/cp/custom_css.php?params=%2F';
-                const response = await context.API.fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                        'Accept-Language': 'en-US,en;q=0.9',
-                        'Cache-Control': 'max-age=0',
-                        'Content-Type': `multipart/form-data; boundary=${boundary}`
-                    },
-                    credentials: 'include',
-                    body: body,
-                    redirect: 'follow'
-                });
-
-                if (response.ok || response.redirected) {
-                    context.UI.showToast('CSS saved successfully!', 'success');
-
-                    // Update original content and dirty flags
-                    Object.keys(editorState).forEach(roleId => {
-                        // Update original content to what was actually saved
-                        originalContent[roleId] = contentBeingSaved[roleId];
-
-                        // Only mark clean if content hasn't changed during save
-                        const editor = monacoEditors[roleId];
-                        const currentContent = editor ? editor.getValue() : editorState[roleId].content;
-                        if (currentContent === contentBeingSaved[roleId]) {
-                            editorState[roleId].isDirty = false;
-                        } else {
-                            editorState[roleId].isDirty = true;
-                            console.log(`[CSS Editor] ${roleId} content changed during save, keeping dirty state`);
-                        }
-                    });
-
-                    this.updateToggleButtons();
-
-                    // Persist updated state to localStorage
-                    this.saveState();
-                } else {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
-            } catch (error) {
-                console.error('[CSS Editor] Save failed:', error);
-                context.UI.showToast('Failed to save CSS: ' + error.message, 'error');
-            } finally {
-                // Restore all button states
-                saveBtn.disabled = wasDisabled;
-                saveBtn.classList.remove('saving');
-                saveBtn.textContent = originalText;
-                allSaveBtns.forEach(btn => btn.disabled = false);
-            }
-        },
-
-        /**
-         * Save only the currently open tabs
-         */
-        async saveOpenTabs() {
-            const openRoles = Object.keys(editorState).filter(role => editorState[role].active);
-
-            if (openRoles.length === 0) {
-                context.UI.showToast('No tabs open to save', 'warning');
-                return;
-            }
-
-            // Get all save buttons to disable them
-            const saveAllBtn = document.getElementById('save-btn');
-            const allSaveBtns = document.querySelectorAll('[data-save-role]');
-
-            // Store original button states
-            const buttonStates = new Map();
-
-            // Store Save All button state
-            if (saveAllBtn) {
-                buttonStates.set(saveAllBtn, {
-                    text: saveAllBtn.textContent,
-                    disabled: saveAllBtn.disabled
-                });
-            }
-
-            // Store individual editor save button states
-            openRoles.forEach(roleId => {
-                const btn = document.querySelector(`[data-save-role="${roleId}"]`);
-                if (btn) {
-                    buttonStates.set(btn, {
-                        text: btn.textContent,
-                        disabled: btn.disabled
-                    });
-                }
-            });
-
-            try {
-                console.log(`[CSS Editor] Saving ${openRoles.length} open tab(s):`, openRoles);
-
-                // Disable ALL save buttons
-                if (saveAllBtn) saveAllBtn.disabled = true;
-                allSaveBtns.forEach(btn => btn.disabled = true);
-
-                // Show loading state on open editor save buttons
-                openRoles.forEach(roleId => {
-                    const btn = document.querySelector(`[data-save-role="${roleId}"]`);
-                    if (btn) {
-                        btn.classList.add('saving');
-                        btn.innerHTML = '<span class="spinner"></span> Saving...';
-                    }
-                });
-
-                // Sync editor values to state for open tabs
-                openRoles.forEach(roleId => {
-                    const editor = monacoEditors[roleId];
-                    if (editor) {
-                        editorState[roleId].content = editor.getValue();
-                    }
-                });
-
-                // Format on save if enabled and formatter available
-                const settings = context.Storage.getFormatterSettings();
-                if (settings.formatOnSave && context.Formatter.isReady()) {
-                    for (const roleId of openRoles) {
-                        const role = editorState[roleId];
-                        if (role.content && role.content.trim() !== '') {
-                            try {
-                                console.log(`[CSS Editor] Auto-formatting ${roleId} before save...`);
-                                const formatted = await context.Formatter.formatCSS(role.content);
-                                role.content = formatted;
-                                const editor = monacoEditors[roleId];
-                                if (editor) {
-                                    editor.setValue(formatted);
-                                }
-                            } catch (formatError) {
-                                console.warn(`[CSS Editor] Auto-format failed for ${roleId}:`, formatError);
-                                // Continue with save even if formatting fails
-                            }
-                        }
-                    }
-                }
-
-                // Check if any open tab has changes
-                const hasChanges = openRoles.some(roleId => {
-                    return editorState[roleId].isDirty || editorState[roleId].content !== originalContent[roleId];
-                });
-
-                if (!hasChanges) {
-                    const tabLabel = openRoles.length === 1 ? editorState[openRoles[0]].label : `${openRoles.length} tabs`;
-                    context.UI.showToast(`${tabLabel} have no changes to save`, 'warning');
-                    return;
-                }
-
-                // Capture content being saved for open tabs (to detect edits during save)
-                const contentBeingSaved = {};
-                openRoles.forEach(roleId => {
-                    contentBeingSaved[roleId] = editorState[roleId].content;
-                });
-
-                // Build form data - send edited content for open tabs, original for closed tabs
-                const formData = {
-                    csrf_token: csrfToken,
-                    css_template_all: openRoles.includes('all') ? editorState.all.content : originalContent.all,
-                    css_template_anonymous: openRoles.includes('anonymous') ? editorState.anonymous.content : originalContent.anonymous,
-                    css_template_viewer: openRoles.includes('viewer') ? editorState.viewer.content : originalContent.viewer,
-                    css_template_seated: openRoles.includes('seated') ? editorState.seated.content : originalContent.seated,
-                    css_template_admin: openRoles.includes('admin') ? editorState.admin.content : originalContent.admin,
-                    css_template_grape: openRoles.includes('grape') ? editorState.grape.content : originalContent.grape
-                };
-
-                const { body, boundary } = context.API.buildMultipartBody(formData);
-
-                const url = '/deki/cp/custom_css.php?params=%2F';
-                const response = await context.API.fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                        'Accept-Language': 'en-US,en;q=0.9',
-                        'Cache-Control': 'max-age=0',
-                        'Content-Type': `multipart/form-data; boundary=${boundary}`
-                    },
-                    credentials: 'include',
-                    body: body,
-                    redirect: 'follow'
-                });
-
-                if (response.ok || response.redirected) {
-                    const tabLabel = openRoles.length === 1 ? editorState[openRoles[0]].label : `${openRoles.length} tabs`;
-                    context.UI.showToast(`${tabLabel} saved successfully!`, 'success');
-
-                    // Update original content and dirty flags for saved tabs
-                    openRoles.forEach(roleId => {
-                        // Update original content to what was actually saved
-                        originalContent[roleId] = contentBeingSaved[roleId];
-
-                        // Only mark clean if content hasn't changed during save
-                        const editor = monacoEditors[roleId];
-                        const currentContent = editor ? editor.getValue() : editorState[roleId].content;
-                        if (currentContent === contentBeingSaved[roleId]) {
-                            editorState[roleId].isDirty = false;
-                        } else {
-                            editorState[roleId].isDirty = true;
-                            console.log(`[CSS Editor] ${roleId} content changed during save, keeping dirty state`);
-                        }
-                    });
-
-                    this.updateToggleButtons();
-                    this.saveState();
-                } else {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
-            } catch (error) {
-                console.error('[CSS Editor] Save open tabs failed:', error);
-                context.UI.showToast('Failed to save: ' + error.message, 'error');
-            } finally {
-                // Restore all button states
-                buttonStates.forEach((state, btn) => {
-                    btn.disabled = state.disabled;
-                    btn.classList.remove('saving');
-                    btn.textContent = state.text;
-                });
-            }
         },
 
         /**
