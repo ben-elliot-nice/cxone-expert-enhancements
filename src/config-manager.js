@@ -9,7 +9,7 @@
  * 5. Hard-coded defaults (from schema)
  */
 
-import { settingsSchema, getDefaults } from './config-schema.js';
+import { settingsSchema, getDefaults, validateSetting } from './config-schema.js';
 
 export class ConfigManager {
   constructor() {
@@ -409,5 +409,136 @@ export class ConfigManager {
     // Invalidate cache
     this.cache.userProperties = null;
     this.cache.lastUserSync = 0;
+  }
+
+  /**
+   * Merge config from a source into current config
+   * Lower priority sources don't override higher priority
+   */
+  mergeConfig(sourceConfig, sourceName) {
+    for (const [key, value] of Object.entries(sourceConfig)) {
+      if (this.config[key] === undefined) {
+        this.config[key] = value;
+        console.log(`Config ${key} = ${value} (from ${sourceName})`);
+      }
+    }
+  }
+
+  /**
+   * Get effective value for a setting with source tracking
+   */
+  getEffectiveValue(key) {
+    // 1. Check embed config (highest priority, locked)
+    if (this.embedConfig[key] !== undefined) {
+      return {
+        value: this.embedConfig[key],
+        source: 'embed',
+        locked: true
+      };
+    }
+
+    // 2. Check user properties (personal preference)
+    if (this.userProperties[key] !== undefined) {
+      return {
+        value: this.userProperties[key],
+        source: 'user',
+        locked: false
+      };
+    }
+
+    // 3. Check site properties (admin default)
+    if (this.siteProperties[key] !== undefined) {
+      return {
+        value: this.siteProperties[key],
+        source: 'site',
+        locked: false
+      };
+    }
+
+    // 4. Check localStorage cache/fallback
+    const localValue = this.loadFromLocalStorage(key);
+    if (localValue !== null) {
+      return {
+        value: localValue,
+        source: 'localStorage',
+        locked: false
+      };
+    }
+
+    // 5. Fall back to default from schema
+    const schema = settingsSchema[key];
+    if (schema) {
+      return {
+        value: schema.default,
+        source: 'default',
+        locked: false
+      };
+    }
+
+    // Unknown setting
+    return {
+      value: undefined,
+      source: 'unknown',
+      locked: false
+    };
+  }
+
+  /**
+   * Get a setting value (simple interface)
+   */
+  get(key) {
+    return this.getEffectiveValue(key).value;
+  }
+
+  /**
+   * Set a user setting (personal preference)
+   */
+  async set(key, value) {
+    const schema = settingsSchema[key];
+
+    if (!schema) {
+      throw new Error(`Unknown setting: ${key}`);
+    }
+
+    // Validate value
+    validateSetting(key, value);
+
+    // Always save to localStorage first
+    this.saveToLocalStorage(key, value);
+
+    // Update in-memory config
+    this.config[key] = value;
+
+    // Sync to server if logged in AND serverSafe
+    if (!this.currentUser.isAnonymous && schema.serverSafe) {
+      try {
+        await this.saveUserProperty(this.currentUser.systemName, key, value);
+        console.log(`Synced ${key} to server`);
+      } catch (error) {
+        console.warn(`Server sync failed for ${key}, saved locally only`, error);
+      }
+    }
+  }
+
+  /**
+   * Reset a setting to default
+   */
+  async reset(key) {
+    const user = this.currentUser;
+
+    // Remove from localStorage
+    this.removeFromLocalStorage(key);
+
+    // Delete from User Properties (if logged in and serverSafe)
+    if (!user.isAnonymous && settingsSchema[key]?.serverSafe) {
+      try {
+        await this.deleteUserProperty(user.systemName, key);
+      } catch (error) {
+        console.warn('Failed to delete from server', error);
+      }
+    }
+
+    // Reload effective value
+    this.config[key] = this.getEffectiveValue(key).value;
   }
 }
