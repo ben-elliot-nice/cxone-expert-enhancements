@@ -15,6 +15,7 @@ dist/
 
 # Local documentation (working notes, not for commit)
 docs/local/
+docs/plans/
 
 # Optional: uncomment if you want to protect your configured server.js
 # server.js
