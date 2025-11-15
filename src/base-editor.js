@@ -34,6 +34,7 @@ export class BaseEditor {
         this.monacoEditors = {};
         this.isMobileView = false;
         this.keyboardHandler = null;
+        this.activeEditorId = null;  // Track which Monaco editor has focus
 
         // Hooks for app-specific behavior
         this.onEditorContentChange = null;  // e.g., CSS live preview
@@ -41,6 +42,9 @@ export class BaseEditor {
         this.onSaveOpenTabs = null;  // Save open tabs callback
         this.onFormatAllActive = null;  // Format all active editors callback
         this.onSaveItem = null;  // Save single item callback
+        this.onFormatItem = null;  // Format single item callback
+        this.buildFormDataForSave = null;  // Build form data for single item save
+        this.buildFormDataForSaveAll = null;  // Build form data for save all
     }
 
     /**
@@ -347,6 +351,9 @@ export class BaseEditor {
 
         this.monacoEditors[itemId] = editor;
 
+        // Setup focus tracking
+        this.setupEditorFocusTracking(itemId, editor);
+
         // Track changes
         editor.onDidChangeModelContent(() => {
             item.content = editor.getValue();
@@ -360,6 +367,23 @@ export class BaseEditor {
         });
 
         this.log(`Created Monaco editor for: ${itemId}`);
+    }
+
+    /**
+     * Setup focus tracking for a Monaco editor
+     * Tracks which editor has focus for improved Ctrl+S behavior
+     */
+    setupEditorFocusTracking(itemId, editor) {
+        editor.onDidFocusEditorWidget(() => {
+            this.activeEditorId = itemId;
+            this.log(`Editor focus: ${itemId}`);
+        });
+
+        editor.onDidBlurEditorWidget(() => {
+            if (this.activeEditorId === itemId) {
+                this.activeEditorId = null;
+            }
+        });
     }
 
     /**
@@ -1126,22 +1150,28 @@ export class BaseEditor {
      */
     setupKeyboardShortcuts() {
         this.keyboardHandler = (e) => {
-            // Ctrl+S or Cmd+S - Save open tabs
-            if ((e.ctrlKey || e.metaKey) && e.key === 's' && !e.shiftKey) {
+            // Ctrl+S or Cmd+S - Save active editor
+            if ((e.ctrlKey || e.metaKey) && e.code === 'KeyS' && !e.shiftKey) {
                 e.preventDefault();
-                if (this.onSaveOpenTabs) {
-                    this.onSaveOpenTabs();
+                const activeId = this.activeEditorId;
+                if (activeId && this.onSaveItem) {
+                    const dataAttr = this.config.dataAttribute;
+                    const saveBtn = document.querySelector(`[data-save-${dataAttr}="${activeId}"]`);
+                    this.onSaveItem(activeId, saveBtn);
+                } else {
+                    this.context.UI.showToast('No editor focused', 'info');
                 }
             }
             // Ctrl+Shift+S or Cmd+Shift+S - Save all
-            else if ((e.ctrlKey || e.metaKey) && e.key === 'S' && e.shiftKey) {
+            else if ((e.ctrlKey || e.metaKey) && e.code === 'KeyS' && e.shiftKey) {
                 e.preventDefault();
                 if (this.onSaveAll) {
-                    this.onSaveAll();
+                    const saveAllBtn = document.getElementById('save-btn');
+                    this.onSaveAll(saveAllBtn);
                 }
             }
             // Ctrl+Shift+F or Cmd+Shift+F - Format active editors (only if available)
-            else if ((e.ctrlKey || e.metaKey) && e.key === 'F' && e.shiftKey) {
+            else if ((e.ctrlKey || e.metaKey) && e.code === 'KeyF' && e.shiftKey) {
                 e.preventDefault();
                 if (this.context.Formatter.isReady() && this.onFormatAllActive) {
                     this.onFormatAllActive();
@@ -1152,7 +1182,7 @@ export class BaseEditor {
 
         document.addEventListener('keydown', this.keyboardHandler);
         const editorTypeUpper = this.config.editorType.toUpperCase();
-        console.log(`[${editorTypeUpper} Editor] Keyboard shortcuts registered: Ctrl+S (save open), Ctrl+Shift+S (save all), Ctrl+Shift+F (format)`);
+        console.log(`[${editorTypeUpper} Editor] Keyboard shortcuts registered: Ctrl+S (save active), Ctrl+Shift+S (save all), Ctrl+Shift+F (format)`);
     }
 
     /**
@@ -1417,5 +1447,341 @@ export class BaseEditor {
         }
 
         return pane;
+    }
+
+    /**
+     * Inject format buttons into rendered editor panes
+     * Called after panes are created to add format buttons dynamically
+     */
+    injectFormatButtons() {
+        const dataAttr = this.config.dataAttribute; // 'role' or 'field'
+        const editorTypeUpper = this.getEditorTypeUpper();
+
+        this.log('Injecting format buttons into rendered panes');
+
+        const panes = document.querySelectorAll('.editor-pane');
+
+        panes.forEach(pane => {
+            const actions = pane.querySelector('.editor-pane-actions');
+            const exportBtn = pane.querySelector('.editor-pane-export');
+
+            if (!actions || !exportBtn) return;
+            if (pane.querySelector('.editor-pane-format')) return;
+
+            const itemId = exportBtn.getAttribute(`data-export-${dataAttr}`);
+            if (!itemId) return;
+
+            const formatBtn = this.context.DOM.create('button', {
+                className: 'editor-pane-format',
+                [`data-format-${dataAttr}`]: itemId,
+                title: `Format ${editorTypeUpper} (Ctrl+Shift+F)`
+            }, ['Format']);
+
+            formatBtn.addEventListener('click', () => {
+                if (this.onFormatItem) {
+                    this.onFormatItem(itemId);
+                }
+            });
+
+            actions.insertBefore(formatBtn, exportBtn);
+        });
+    }
+
+    /**
+     * Format item if format-on-save is enabled
+     * @param {string} itemId - Item identifier
+     * @param {Object} item - Item state object
+     * @param {Object} editor - Monaco editor instance
+     */
+    async formatItemIfNeeded(itemId, item, editor) {
+        const settings = this.context.Storage.getFormatterSettings();
+
+        if (!settings.formatOnSave || !this.context.Formatter.isReady()) {
+            return;
+        }
+
+        if (!item.content || item.content.trim() === '') {
+            return;
+        }
+
+        try {
+            this.log(`Auto-formatting ${itemId} before save...`);
+
+            const formatterMethod = this.config.formatterMethod;
+            const formatted = await this.context.Formatter[formatterMethod](item.content);
+
+            item.content = formatted;
+            if (editor) {
+                editor.setValue(formatted);
+            }
+        } catch (formatError) {
+            console.warn(`[${this.getEditorTypeUpper()} Editor] Auto-format failed for ${itemId}:`, formatError);
+        }
+    }
+
+    /**
+     * POST form data to API endpoint
+     * @param {Object} formData - Form data object
+     * @returns {Promise<Response>} Fetch response
+     */
+    async postFormData(formData) {
+        const { body, boundary } = this.context.API.buildMultipartBody(formData);
+
+        const response = await this.context.API.fetch(this.config.apiEndpoint, {
+            method: 'POST',
+            headers: {
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Cache-Control': 'max-age=0',
+                'Content-Type': `multipart/form-data; boundary=${boundary}`
+            },
+            credentials: 'include',
+            body: body,
+            redirect: 'follow'
+        });
+
+        return response;
+    }
+
+    /**
+     * Save a single item
+     * @param {string} itemId - Item identifier
+     * @param {HTMLElement} triggerButton - Button that triggered the save
+     */
+    async saveItem(itemId, triggerButton) {
+        const restoreData = this.prepareSaveUI(triggerButton);
+
+        try {
+            this.log(`Saving ${itemId}...`);
+
+            const item = this.editorState[itemId];
+            if (!item) {
+                throw new Error(`${this.config.itemLabel} ${itemId} not found`);
+            }
+
+            // Sync editor value to state
+            const editor = this.monacoEditors[itemId];
+            if (editor) {
+                item.content = editor.getValue();
+            }
+
+            // Capture dirty state BEFORE formatting (formatting triggers change listener)
+            const hadChanges = item.isDirty || item.content !== this.originalContent[itemId];
+
+            // Format on save if enabled
+            await this.formatItemIfNeeded(itemId, item, editor);
+
+            // Check for changes using captured state
+            if (!hadChanges) {
+                this.context.UI.showToast(`${item.label} has no changes to save`, 'warning');
+                return;
+            }
+
+            // Capture content (concurrent edit detection)
+            const contentBeingSaved = item.content;
+
+            // Build form data via hook
+            if (!this.buildFormDataForSave) {
+                throw new Error('buildFormDataForSave hook not implemented');
+            }
+            const formData = this.buildFormDataForSave(itemId);
+
+            // POST
+            const response = await this.postFormData(formData);
+
+            if (response.ok || response.redirected) {
+                this.context.UI.showToast(`${item.label} saved successfully!`, 'success');
+
+                // Update state
+                this.originalContent[itemId] = contentBeingSaved;
+
+                // Only mark clean if content unchanged during save
+                const currentContent = editor ? editor.getValue() : item.content;
+                if (currentContent === contentBeingSaved) {
+                    item.isDirty = false;
+                } else {
+                    item.isDirty = true;
+                    this.log(`${itemId} changed during save, keeping dirty`);
+                }
+
+                this.updateToggleButtons();
+                this.saveState();
+            } else {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+        } catch (error) {
+            this.logError(`Save ${itemId} failed:`, error);
+            this.context.UI.showToast(`Failed to save: ${error.message}`, 'error');
+        } finally {
+            this.restoreSaveUI(restoreData);
+        }
+    }
+
+    /**
+     * Save all items
+     * @param {HTMLElement} triggerButton - Button that triggered the save
+     */
+    async saveAll(triggerButton) {
+        const restoreData = this.prepareSaveUI(triggerButton);
+
+        try {
+            this.log('Saving all...');
+
+            // Sync ALL editor values to state
+            for (const config of this.config.itemsConfig) {
+                const itemId = config.id;
+                const item = this.editorState[itemId];
+                const editor = this.monacoEditors[itemId];
+
+                if (editor && item) {
+                    item.content = editor.getValue();
+                }
+            }
+
+            // Check for any changes BEFORE formatting (formatting triggers change listener)
+            const hasChanges = this.config.itemsConfig.some(config => {
+                const item = this.editorState[config.id];
+                return item && (item.isDirty || item.content !== this.originalContent[config.id]);
+            });
+
+            if (!hasChanges) {
+                this.context.UI.showToast('No changes to save', 'warning');
+                return;
+            }
+
+            // Format all items if needed
+            for (const config of this.config.itemsConfig) {
+                const itemId = config.id;
+                const item = this.editorState[itemId];
+                const editor = this.monacoEditors[itemId];
+
+                if (item) {
+                    await this.formatItemIfNeeded(itemId, item, editor);
+                }
+            }
+
+            // Capture all content being saved
+            const contentBeingSaved = {};
+            this.config.itemsConfig.forEach(config => {
+                const item = this.editorState[config.id];
+                if (item) {
+                    contentBeingSaved[config.id] = item.content;
+                }
+            });
+
+            // Build form data via hook
+            if (!this.buildFormDataForSaveAll) {
+                throw new Error('buildFormDataForSaveAll hook not implemented');
+            }
+            const formData = this.buildFormDataForSaveAll();
+
+            // POST
+            const response = await this.postFormData(formData);
+
+            if (response.ok || response.redirected) {
+                this.context.UI.showToast('All saved successfully!', 'success');
+
+                // Update all state
+                this.config.itemsConfig.forEach(config => {
+                    const itemId = config.id;
+                    const item = this.editorState[itemId];
+                    const editor = this.monacoEditors[itemId];
+
+                    if (item) {
+                        this.originalContent[itemId] = contentBeingSaved[itemId];
+
+                        const currentContent = editor ? editor.getValue() : item.content;
+                        if (currentContent === contentBeingSaved[itemId]) {
+                            item.isDirty = false;
+                        } else {
+                            item.isDirty = true;
+                            this.log(`${itemId} changed during save, keeping dirty`);
+                        }
+                    }
+                });
+
+                this.updateToggleButtons();
+                this.saveState();
+            } else {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+        } catch (error) {
+            this.logError('Save all failed:', error);
+            this.context.UI.showToast(`Failed to save: ${error.message}`, 'error');
+        } finally {
+            this.restoreSaveUI(restoreData);
+        }
+    }
+
+    /**
+     * Prepare UI for save operation
+     * Disables all save/discard buttons and shows spinner on trigger button
+     * @param {HTMLElement} triggerButton - Button that triggered the save
+     * @returns {Object} Restore data for restoreSaveUI()
+     */
+    prepareSaveUI(triggerButton) {
+        const dataAttr = this.config.dataAttribute;
+
+        // Find all buttons
+        const saveAllBtn = document.getElementById('save-btn');
+        const saveItemBtns = document.querySelectorAll(`[data-save-${dataAttr}]`);
+        const discardBtns = document.querySelectorAll(`[data-discard-${dataAttr}], #discard-btn`);
+
+        const restoreData = {
+            triggerButton: null,
+            allButtons: []
+        };
+
+        // Show spinner on trigger button
+        if (triggerButton) {
+            restoreData.triggerButton = {
+                element: triggerButton,
+                text: triggerButton.textContent,
+                disabled: triggerButton.disabled
+            };
+
+            triggerButton.disabled = true;
+            triggerButton.classList.add('saving');
+            triggerButton.innerHTML = '<span class="spinner"></span> Saving...';
+        }
+
+        // Disable all buttons
+        const allButtons = [
+            saveAllBtn,
+            ...Array.from(saveItemBtns),
+            ...Array.from(discardBtns)
+        ].filter(btn => btn);
+
+        allButtons.forEach(btn => {
+            restoreData.allButtons.push({
+                element: btn,
+                disabled: btn.disabled
+            });
+            btn.disabled = true;
+        });
+
+        return restoreData;
+    }
+
+    /**
+     * Restore UI after save operation
+     * Restores button states to their pre-save state
+     * @param {Object} restoreData - Data from prepareSaveUI()
+     */
+    restoreSaveUI(restoreData) {
+        // Restore trigger button
+        if (restoreData.triggerButton) {
+            const { element, text, disabled } = restoreData.triggerButton;
+            element.disabled = disabled;
+            element.classList.remove('saving');
+            element.textContent = text;
+        }
+
+        // Restore all buttons
+        restoreData.allButtons.forEach(({ element, disabled }) => {
+            element.disabled = disabled;
+        });
     }
 }
