@@ -212,6 +212,11 @@ export function validateSetting(key, value) {
     throw new Error(`Unknown setting: ${key}`);
   }
 
+  // Allow null for optional settings
+  if (value === null && schema.default === null) {
+    return true;
+  }
+
   // Type validation
   const actualType = typeof value;
   if (actualType !== schema.type) {
@@ -241,6 +246,13 @@ export function validateSetting(key, value) {
  */
 export function isServerSafe(key) {
   return settingsSchema[key]?.serverSafe ?? false;
+}
+
+/**
+ * Check if a setting is sensitive (should be masked in UI)
+ */
+export function isSensitive(key) {
+  return settingsSchema[key]?.sensitive ?? false;
 }
 
 /**
