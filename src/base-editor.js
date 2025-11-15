@@ -1151,7 +1151,7 @@ export class BaseEditor {
     setupKeyboardShortcuts() {
         this.keyboardHandler = (e) => {
             // Ctrl+S or Cmd+S - Save active editor
-            if ((e.ctrlKey || e.metaKey) && e.key === 's' && !e.shiftKey) {
+            if ((e.ctrlKey || e.metaKey) && e.code === 'KeyS' && !e.shiftKey) {
                 e.preventDefault();
                 const activeId = this.activeEditorId;
                 if (activeId && this.onSaveItem) {
@@ -1163,7 +1163,7 @@ export class BaseEditor {
                 }
             }
             // Ctrl+Shift+S or Cmd+Shift+S - Save all
-            else if ((e.ctrlKey || e.metaKey) && e.key === 'S' && e.shiftKey) {
+            else if ((e.ctrlKey || e.metaKey) && e.code === 'KeyS' && e.shiftKey) {
                 e.preventDefault();
                 if (this.onSaveAll) {
                     const saveAllBtn = document.getElementById('save-btn');
@@ -1171,7 +1171,7 @@ export class BaseEditor {
                 }
             }
             // Ctrl+Shift+F or Cmd+Shift+F - Format active editors (only if available)
-            else if ((e.ctrlKey || e.metaKey) && e.key === 'F' && e.shiftKey) {
+            else if ((e.ctrlKey || e.metaKey) && e.code === 'KeyF' && e.shiftKey) {
                 e.preventDefault();
                 if (this.context.Formatter.isReady() && this.onFormatAllActive) {
                     this.onFormatAllActive();
