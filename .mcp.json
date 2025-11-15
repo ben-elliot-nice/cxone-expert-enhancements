@@ -5,6 +5,15 @@
       "args": [
         "-y",
         "chrome-devtools-mcp@latest",
+        "--browserUrl=http://172.17.176.1:9222",
+        "--logFile=/tmp/chrome-devtools-mcp.log"
+      ]
+    },
+    "chrome-devtools-remote": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "chrome-devtools-mcp@latest",
         "--browserUrl=http://localhost:9222",
         "--logFile=/tmp/chrome-devtools-mcp.log"
       ]

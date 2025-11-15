@@ -10,5 +10,21 @@ yarn-error.log*
 .vite/
 dist/
 
+# Git worktrees
+.worktrees/
+
+# Local documentation (working notes, not for commit)
+docs/local/
+docs/plans/
+
+# Tests (working files, not for commit)
+tests/
+
+# Scripts (local utility scripts, not for commit)
+scripts/
+
+# Local Claude settings
+.claude/settings.local.mcp.json
+
 # Optional: uncomment if you want to protect your configured server.js
 # server.js
