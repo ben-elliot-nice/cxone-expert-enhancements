@@ -169,4 +169,245 @@ export class ConfigManager {
       this.saveToLocalStorage(key, value);
     }
   }
+
+  /**
+   * Load site properties from Expert Properties API
+   */
+  async loadSiteProperties() {
+    const now = Date.now();
+
+    // Return cached if still fresh
+    if (this.cache.siteProperties &&
+        (now - this.cache.lastSiteSync) < this.cache.syncInterval) {
+      return this.cache.siteProperties;
+    }
+
+    // Fetch from server
+    try {
+      const response = await fetch('/@api/deki/site/properties?dream.out.format=json', {
+        credentials: 'include'  // Use session cookies
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const parsed = this.parseSiteProperties(data);
+
+        // Update cache
+        this.cache.siteProperties = parsed;
+        this.cache.lastSiteSync = now;
+
+        // Save to localStorage as fallback
+        this.saveToLocalStorage('cache.siteProperties', parsed);
+        this.saveToLocalStorage('cache.lastSitePropertiesSync', now);
+
+        return parsed;
+      }
+    } catch (error) {
+      console.warn('Failed to load site properties from server', error);
+    }
+
+    // Fall back to localStorage cache
+    const cached = this.loadFromLocalStorage('cache.siteProperties');
+    if (cached) {
+      return cached;
+    }
+
+    return {};
+  }
+
+  /**
+   * Load user properties from Expert Properties API
+   */
+  async loadUserProperties(username) {
+    const now = Date.now();
+
+    // Return cached if still fresh
+    if (this.cache.userProperties &&
+        (now - this.cache.lastUserSync) < this.cache.syncInterval) {
+      return this.cache.userProperties;
+    }
+
+    // Fetch from server
+    try {
+      const response = await fetch(
+        `/@api/deki/users/${encodeURIComponent(username)}/properties?dream.out.format=json`,
+        {
+          credentials: 'include'  // Use session cookies
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const parsed = this.parseUserProperties(data);
+
+        // Update cache
+        this.cache.userProperties = parsed;
+        this.cache.lastUserSync = now;
+
+        // Save to localStorage
+        this.saveToLocalStorage('cache.userProperties', parsed);
+        this.saveToLocalStorage('cache.lastUserPropertiesSync', now);
+
+        return parsed;
+      }
+    } catch (error) {
+      console.warn('Failed to load user properties from server', error);
+    }
+
+    // Fall back to localStorage cache
+    const cached = this.loadFromLocalStorage('cache.userProperties');
+    if (cached) {
+      return cached;
+    }
+
+    return {};
+  }
+
+  /**
+   * Parse site properties from API response
+   */
+  parseSiteProperties(apiResponse) {
+    const properties = {};
+    const props = apiResponse.property || apiResponse['@properties'] || [];
+    const propArray = Array.isArray(props) ? props : [props];
+
+    for (const prop of propArray) {
+      const name = prop['@name'] || prop.name;
+
+      // Only process our namespaced properties
+      if (name && name.startsWith('urn:expertEnhancements.site.')) {
+        const key = name.replace('urn:expertEnhancements.site.', '');
+        const value = prop['#text'] || prop.value;
+
+        // Parse JSON values
+        try {
+          properties[key] = JSON.parse(value);
+        } catch {
+          properties[key] = value;
+        }
+      }
+    }
+
+    return properties;
+  }
+
+  /**
+   * Parse user properties from API response
+   */
+  parseUserProperties(apiResponse) {
+    const properties = {};
+    const props = apiResponse.property || apiResponse['@properties'] || [];
+    const propArray = Array.isArray(props) ? props : [props];
+
+    for (const prop of propArray) {
+      const name = prop['@name'] || prop.name;
+
+      if (name && name.startsWith('urn:expertEnhancements.user.')) {
+        const key = name.replace('urn:expertEnhancements.user.', '');
+        const value = prop['#text'] || prop.value;
+
+        try {
+          properties[key] = JSON.parse(value);
+        } catch {
+          properties[key] = value;
+        }
+      }
+    }
+
+    return properties;
+  }
+
+  /**
+   * Save a site property (admin only)
+   */
+  async saveSiteProperty(key, value) {
+    const user = this.detectUser();
+
+    if (!user.isAdmin) {
+      throw new Error('Only administrators can modify site properties');
+    }
+
+    const schema = settingsSchema[key];
+    if (!schema || !schema.serverSafe) {
+      throw new Error(`Setting ${key} cannot be saved to server`);
+    }
+
+    const propertyName = `urn:expertEnhancements.site.${key}`;
+
+    const response = await fetch(
+      `/@api/deki/site/properties/${encodeURIComponent(propertyName)}?dream.out.format=json`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(value)
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to save site property: ${response.status}`);
+    }
+
+    // Invalidate cache
+    this.cache.siteProperties = null;
+    this.cache.lastSiteSync = 0;
+  }
+
+  /**
+   * Save a user property
+   */
+  async saveUserProperty(username, key, value) {
+    const schema = settingsSchema[key];
+    if (!schema || !schema.serverSafe) {
+      // Don't sync secrets to server
+      return;
+    }
+
+    const propertyName = `urn:expertEnhancements.user.${key}`;
+
+    const response = await fetch(
+      `/@api/deki/users/${encodeURIComponent(username)}/properties/${encodeURIComponent(propertyName)}?dream.out.format=json`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(value)
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to save user property: ${response.status}`);
+    }
+
+    // Invalidate cache
+    this.cache.userProperties = null;
+    this.cache.lastUserSync = 0;
+  }
+
+  /**
+   * Delete a user property
+   */
+  async deleteUserProperty(username, key) {
+    const propertyName = `urn:expertEnhancements.user.${key}`;
+
+    const response = await fetch(
+      `/@api/deki/users/${encodeURIComponent(username)}/properties/${encodeURIComponent(propertyName)}`,
+      {
+        method: 'DELETE',
+        credentials: 'include'
+      }
+    );
+
+    if (!response.ok && response.status !== 404) {
+      throw new Error(`Failed to delete user property: ${response.status}`);
+    }
+
+    // Invalidate cache
+    this.cache.userProperties = null;
+    this.cache.lastUserSync = 0;
+  }
 }
