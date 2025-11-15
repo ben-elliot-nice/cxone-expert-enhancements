@@ -131,8 +131,8 @@ export class ConfigManager {
     const config = {};
     const prefix = 'expertEnhancements:config:';
 
-    try {
-      for (let i = 0; i < localStorage.length; i++) {
+    for (let i = 0; i < localStorage.length; i++) {
+      try {
         const storageKey = localStorage.key(i);
 
         if (storageKey && storageKey.startsWith(prefix)) {
@@ -140,9 +140,10 @@ export class ConfigManager {
           const value = JSON.parse(localStorage.getItem(storageKey));
           config[key] = value;
         }
+      } catch (error) {
+        console.error(`Failed to load setting from localStorage (${localStorage.key(i)}):`, error);
+        // Continue loading other settings
       }
-    } catch (error) {
-      console.error('Failed to load settings from localStorage:', error);
     }
 
     return config;
