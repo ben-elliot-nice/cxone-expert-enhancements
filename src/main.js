@@ -35,6 +35,9 @@ import {
     version
 } from './core.js';
 
+// Import ConfigManager initialization functions
+import { initializeConfig, getConfigManager } from './config-manager.js';
+
 console.log(`[Expert Enhancements] Core loaded (v${version})`);
 
 // ============================================================================
@@ -78,7 +81,7 @@ function loadMonacoLoader() {
 
         // Load Monaco loader script
         const loaderScript = document.createElement('script');
-        loaderScript.src = `${Config.get('advanced.cdnUrls.monaco')}/loader.js`;
+        loaderScript.src = `${getConfigManager().get('advanced.cdnUrls.monaco')}/loader.js`;
 
         loaderScript.onload = () => {
             console.log('[Expert Enhancements] Monaco loader loaded, restoring page AMD');
@@ -146,8 +149,18 @@ async function initializeUI() {
     try {
         console.log('[Expert Enhancements] Initializing UI...');
 
-        // Configuration system is already initialized in core.js
-        console.log('[Expert Enhancements] Using configuration:', Config.exportConfig().effective);
+        // Initialize configuration system first (before creating editors)
+        try {
+            await initializeConfig();
+            console.log('[Expert Enhancements] Configuration system initialized');
+        } catch (error) {
+            console.error('[Expert Enhancements] Failed to initialize configuration:', error);
+            // Continue anyway - will use defaults
+        }
+
+        // Log effective configuration
+        const configManager = getConfigManager();
+        console.log('[Expert Enhancements] Using configuration:', configManager.exportConfig().effective);
 
         // 1. Check registered apps (static imports have already run)
         const registeredApps = AppManager.getApps();
@@ -196,7 +209,7 @@ async function initializeUI() {
         let loadingShown = false;
         if (commonState.overlayOpen) {
             LoadingOverlay.show('Initializing editor...', {
-                timeout: Config.get('performance.loadingTimeout'),
+                timeout: getConfigManager().get('performance.loadingTimeout'),
                 showProgress: true
             });
             loadingShown = true;
@@ -266,9 +279,10 @@ function createToggleButton() {
     toggleButton.title = 'CXone Expert Enhancements';
 
     // Get config values
-    const btnConfig = Config.get('advanced.toggleButton');
-    const primaryColor = Config.get('appearance.primaryColor');
-    const zIndex = Config.get('advanced.zIndex.toggleButton');
+    const configManager = getConfigManager();
+    const btnConfig = configManager.get('advanced.toggleButton');
+    const primaryColor = configManager.get('appearance.primaryColor');
+    const zIndex = configManager.get('advanced.zIndex.toggleButton');
 
     toggleButton.style.cssText = `
         position: fixed;
@@ -295,7 +309,7 @@ function createToggleButton() {
     `;
 
     toggleButton.addEventListener('mouseenter', () => {
-        const primaryColor = Config.get('appearance.primaryColor');
+        const primaryColor = getConfigManager().get('appearance.primaryColor');
         toggleButton.style.transform = 'scale(1.1)';
         // Create glow effect with primary color
         const rgb = primaryColor.match(/\w\w/g).map(x => parseInt(x, 16)).join(', ');
