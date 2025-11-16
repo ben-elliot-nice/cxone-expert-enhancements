@@ -15,7 +15,6 @@ dist/
 
 # Local documentation (working notes, not for commit)
 docs/local/
-docs/plans/
 
 # Tests (working files, not for commit)
 tests/

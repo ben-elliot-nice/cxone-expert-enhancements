@@ -71,7 +71,7 @@ const SettingsApp = {
                     <h2 class="settings-heading">Settings & Configuration</h2>
                     <p class="settings-intro">
                         Configure behavior, appearance, and performance.
-                        ${Object.keys(config.flattenObject(config.embedConfig)).length > 0
+                        ${Object.keys(config.flattenConfig(config.embedConfig)).length > 0
                             ? '<span class="lock-indicator">🔒</span> Locked settings are controlled by embed configuration.'
                             : ''}
                     </p>
