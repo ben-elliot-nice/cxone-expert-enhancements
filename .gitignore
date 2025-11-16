@@ -23,6 +23,9 @@ coverage/
 .nyc_output/
 html/
 
+# Monaco local copy for integration tests
+tests/integration/helpers/monaco/
+
 # Scripts (local utility scripts, not for commit)
 scripts/
 
