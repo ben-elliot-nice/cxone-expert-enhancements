@@ -76,6 +76,25 @@ export const settingsSchema = {
     max: 10
   },
 
+  // Editor Settings - Aliases for formatting settings (for backward compatibility)
+  'editor.indentStyle': {
+    type: 'string',
+    default: 'spaces',
+    serverSafe: true,
+    category: 'editor',
+    label: 'Indentation Style',
+    options: ['spaces', 'tabs']
+  },
+
+  'editor.quoteStyle': {
+    type: 'string',
+    default: 'single',
+    serverSafe: true,
+    category: 'editor',
+    label: 'Quote Style',
+    options: ['single', 'double']
+  },
+
   // Formatting Settings
   'formatting.indentSize': {
     type: 'number',
@@ -111,6 +130,32 @@ export const settingsSchema = {
     serverSafe: true,
     category: 'behavior',
     label: 'Format on Save'
+  },
+
+  'behavior.autoSaveEnabled': {
+    type: 'boolean',
+    default: false,
+    serverSafe: true,
+    category: 'behavior',
+    label: 'Auto Save Enabled'
+  },
+
+  'behavior.autoSaveInterval': {
+    type: 'number',
+    default: 30000,
+    serverSafe: true,
+    category: 'behavior',
+    label: 'Auto Save Interval (ms)',
+    min: 5000,
+    max: 120000
+  },
+
+  'behavior.livePreviewEnabled': {
+    type: 'boolean',
+    default: false,
+    serverSafe: true,
+    category: 'behavior',
+    label: 'Live Preview Enabled'
   },
 
   'behavior.confirmBeforeDiscard': {
@@ -221,6 +266,15 @@ export const settingsSchema = {
     serverSafe: true,
     category: 'appearance',
     label: 'Header Color'
+  },
+
+  'appearance.toggleButtonPosition': {
+    type: 'string',
+    default: 'top-right',
+    serverSafe: true,
+    category: 'appearance',
+    label: 'Toggle Button Position',
+    options: ['top-right', 'top-left', 'bottom-right', 'bottom-left']
   },
 
   // Advanced Settings - CDN URLs
