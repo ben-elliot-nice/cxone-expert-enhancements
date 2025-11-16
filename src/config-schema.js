@@ -32,20 +32,48 @@ export const settingsSchema = {
     max: 24
   },
 
+  'editor.tabSize': {
+    type: 'number',
+    default: 2,
+    serverSafe: true,
+    category: 'editor',
+    label: 'Tab Size',
+    options: [2, 4, 8]
+  },
+
   'editor.wordWrap': {
+    type: 'string',
+    default: 'on',
+    serverSafe: true,
+    category: 'editor',
+    label: 'Word Wrap',
+    options: ['on', 'off', 'wordWrapColumn', 'bounded']
+  },
+
+  'editor.minimapEnabled': {
     type: 'boolean',
     default: true,
     serverSafe: true,
     category: 'editor',
-    label: 'Word Wrap'
+    label: 'Show Minimap'
   },
 
-  'editor.minimap': {
+  'editor.scrollBeyondLastLine': {
     type: 'boolean',
     default: false,
     serverSafe: true,
     category: 'editor',
-    label: 'Show Minimap'
+    label: 'Scroll Beyond Last Line'
+  },
+
+  'editor.maxActiveTabs': {
+    type: 'number',
+    default: 3,
+    serverSafe: true,
+    category: 'editor',
+    label: 'Maximum Active Tabs',
+    min: 1,
+    max: 10
   },
 
   // Formatting Settings
@@ -139,12 +167,144 @@ export const settingsSchema = {
 
   'performance.toastDuration': {
     type: 'number',
-    default: 3000,
+    default: 4000,
     serverSafe: true,
     category: 'performance',
     label: 'Toast Duration (ms)',
     min: 1000,
     max: 10000
+  },
+
+  'performance.livePreviewDebounce': {
+    type: 'number',
+    default: 300,
+    serverSafe: true,
+    category: 'performance',
+    label: 'Live Preview Debounce (ms)',
+    min: 50,
+    max: 1000
+  },
+
+  'performance.formatterTimeout': {
+    type: 'number',
+    default: 60000,
+    serverSafe: true,
+    category: 'performance',
+    label: 'Formatter Timeout (ms)',
+    min: 10000,
+    max: 120000
+  },
+
+  // Files Settings
+  'files.maxSizeMB': {
+    type: 'number',
+    default: 5,
+    serverSafe: true,
+    category: 'files',
+    label: 'Maximum File Size (MB)',
+    min: 1,
+    max: 50
+  },
+
+  // Appearance Settings
+  'appearance.primaryColor': {
+    type: 'string',
+    default: '#667eea',
+    serverSafe: true,
+    category: 'appearance',
+    label: 'Primary Color'
+  },
+
+  'appearance.headerColor': {
+    type: 'string',
+    default: '#667eea',
+    serverSafe: true,
+    category: 'appearance',
+    label: 'Header Color'
+  },
+
+  // Advanced Settings - CDN URLs
+  'advanced.cdnUrls.monaco': {
+    type: 'string',
+    default: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs',
+    serverSafe: false,
+    category: 'advanced',
+    label: 'Monaco CDN URL',
+    hidden: true
+  },
+
+  'advanced.cdnUrls.prettier': {
+    type: 'string',
+    default: 'https://unpkg.com/prettier@3.6.2/standalone.js',
+    serverSafe: false,
+    category: 'advanced',
+    label: 'Prettier CDN URL',
+    hidden: true
+  },
+
+  'advanced.cdnUrls.prettierCSS': {
+    type: 'string',
+    default: 'https://unpkg.com/prettier@3.6.2/plugins/postcss.js',
+    serverSafe: false,
+    category: 'advanced',
+    label: 'Prettier CSS Plugin URL',
+    hidden: true
+  },
+
+  'advanced.cdnUrls.prettierHTML': {
+    type: 'string',
+    default: 'https://unpkg.com/prettier@3.6.2/plugins/html.js',
+    serverSafe: false,
+    category: 'advanced',
+    label: 'Prettier HTML Plugin URL',
+    hidden: true
+  },
+
+  // Advanced Settings - Breakpoints
+  'advanced.breakpoints.mobile': {
+    type: 'number',
+    default: 480,
+    serverSafe: true,
+    category: 'advanced',
+    label: 'Mobile Breakpoint (px)',
+    hidden: true
+  },
+
+  'advanced.breakpoints.tablet': {
+    type: 'number',
+    default: 768,
+    serverSafe: true,
+    category: 'advanced',
+    label: 'Tablet Breakpoint (px)',
+    hidden: true
+  },
+
+  'advanced.breakpoints.desktop': {
+    type: 'number',
+    default: 920,
+    serverSafe: true,
+    category: 'advanced',
+    label: 'Desktop Breakpoint (px)',
+    hidden: true
+  },
+
+  // Advanced Settings - Resize Handles
+  'advanced.resizeHandles.lineStyle': {
+    type: 'object',
+    default: {
+      defaultWidth: 2,
+      hoverWidth: 3,
+      activeWidth: 4,
+      defaultOpacity: 0.15,
+      hoverOpacity: 0.5,
+      activeOpacity: 0.8,
+      glowBlur: 8,
+      glowBlurActive: 12
+    },
+    serverSafe: false,
+    category: 'advanced',
+    label: 'Resize Handle Line Style',
+    hidden: true
   },
 
   // API Keys (LOCAL ONLY - for future integrations)
@@ -233,9 +393,14 @@ export function validateSetting(key, value) {
     }
   }
 
-  // Options validation
+  // Options validation (for strings and numbers)
   if (schema.options && !schema.options.includes(value)) {
     throw new Error(`Invalid value for ${key}: ${value}. Allowed: ${schema.options.join(', ')}`);
+  }
+
+  // Object type: basic validation (must be non-null object)
+  if (schema.type === 'object' && (value === null || Array.isArray(value))) {
+    throw new Error(`Invalid type for ${key}: expected object, got ${Array.isArray(value) ? 'array' : 'null'}`);
   }
 
   return true;
