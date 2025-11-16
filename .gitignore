@@ -21,6 +21,7 @@ test-results/
 playwright-report/
 coverage/
 .nyc_output/
+html/
 
 # Scripts (local utility scripts, not for commit)
 scripts/
