@@ -199,6 +199,40 @@ export const settingsSchema = {
     label: 'Remember Size'
   },
 
+  'overlay.maxWidth': {
+    type: 'string',
+    default: '95vw',
+    serverSafe: true,
+    category: 'overlay',
+    label: 'Maximum Width'
+  },
+
+  'overlay.maxHeight': {
+    type: 'string',
+    default: '95vh',
+    serverSafe: true,
+    category: 'overlay',
+    label: 'Maximum Height'
+  },
+
+  'overlay.openOnLoad': {
+    type: 'boolean',
+    default: false,
+    serverSafe: true,
+    category: 'overlay',
+    label: 'Open on Load'
+  },
+
+  'overlay.borderRadius': {
+    type: 'number',
+    default: 8,
+    serverSafe: true,
+    category: 'overlay',
+    label: 'Border Radius (px)',
+    min: 0,
+    max: 20
+  },
+
   // Performance Settings
   'performance.loadingTimeout': {
     type: 'number',
