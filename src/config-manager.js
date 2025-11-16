@@ -230,7 +230,7 @@ export class ConfigManager {
     // Fetch from server
     try {
       const response = await fetch(
-        `/@api/deki/users/${encodeURIComponent(username)}/properties?dream.out.format=json`,
+        `/@api/deki/users/=${encodeURIComponent(username)}/properties?dream.out.format=json`,
         {
           credentials: 'include'  // Use session cookies
         }
@@ -368,7 +368,7 @@ export class ConfigManager {
     const propertyName = `urn:expertEnhancements.user.${key}`;
 
     const response = await fetch(
-      `/@api/deki/users/${encodeURIComponent(username)}/properties/${encodeURIComponent(propertyName)}?dream.out.format=json`,
+      `/@api/deki/users/=${encodeURIComponent(username)}/properties/${encodeURIComponent(propertyName)}?dream.out.format=json`,
       {
         method: 'PUT',
         headers: {
@@ -395,7 +395,7 @@ export class ConfigManager {
     const propertyName = `urn:expertEnhancements.user.${key}`;
 
     const response = await fetch(
-      `/@api/deki/users/${encodeURIComponent(username)}/properties/${encodeURIComponent(propertyName)}`,
+      `/@api/deki/users/=${encodeURIComponent(username)}/properties/${encodeURIComponent(propertyName)}`,
       {
         method: 'DELETE',
         credentials: 'include'
