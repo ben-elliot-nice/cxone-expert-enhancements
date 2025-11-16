@@ -168,9 +168,97 @@ context = {
     DOM,         // DOM utilities
     API,         // Network requests
     Overlay,     // Overlay controls
-    Monaco       // Monaco Editor helpers
+    Monaco,      // Monaco Editor helpers
+    Config       // Configuration manager
 }
 ```
+
+## Configuration System
+
+### Four-Tier Hierarchy
+
+```
+Priority 1 (Highest): Embed Config (locked, deployment-level)
+    ↓
+Priority 2: User Properties (personal preferences, Expert API)
+    ↓
+Priority 3: Site Properties (admin defaults, Expert API)
+    ↓
+Priority 4 (Lowest): localStorage (cache + fallback)
+    ↓
+Hard-coded Defaults (from schema)
+```
+
+### ConfigManager
+
+**Purpose:** Manage hierarchical configuration with cross-device sync
+
+**Location:** `src/config-manager.js`
+
+**Key Methods:**
+- `get(key)` - Get effective value for a setting
+- `set(key, value)` - Set user preference (with auto-sync)
+- `reset(key)` - Reset to default
+- `getEffectiveValue(key)` - Get value with source tracking
+- `exportConfig()` - Export for debugging
+- `debugConfig(key)` - Log resolution path
+
+**Features:**
+- Multi-level caching (memory + localStorage)
+- Auto-sync to Properties API (logged-in users)
+- Security-aware (serverSafe flag)
+- Offline fallback
+- Source tracking
+
+### Settings Schema
+
+**Purpose:** Define all settings with metadata
+
+**Location:** `src/config-schema.js`
+
+**Schema Properties:**
+- `type` - Data type (string, number, boolean)
+- `default` - Default value
+- `serverSafe` - Can sync to server? (false for secrets)
+- `category` - UI grouping
+- `options` - Allowed values (for enums)
+- `min/max` - Numeric constraints
+
+### Properties API Integration
+
+**Site Properties:**
+- Endpoint: `/@api/deki/site/properties/urn:expertEnhancements.site.*`
+- Write access: Admin only
+- Read access: All users
+- Use case: Site-wide defaults
+
+**User Properties:**
+- Endpoint: `/@api/deki/users/{user}/properties/urn:expertEnhancements.user.*`
+- Access: Own user only
+- Use case: Personal cross-device sync
+
+**Authentication:** Uses existing CXone session (cookies/CSRF)
+
+### State Management
+
+**Anonymous User:**
+1. Load site properties (if available)
+2. Load localStorage preferences
+3. Apply embed config overrides
+
+**Logged-In User:**
+1. Load site properties
+2. Load user properties from server
+3. Cache to localStorage
+4. Apply embed config overrides
+
+**Login Transition:**
+- User properties loaded from server
+- Overrides localStorage cache
+
+**Logout Transition:**
+- Continue using localStorage cache
+- Settings preserved for next login
 
 ## Data Flow
 

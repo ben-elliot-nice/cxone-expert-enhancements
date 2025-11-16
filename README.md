@@ -61,6 +61,80 @@ Once loaded, a floating toggle button appears in the top-right corner. Click it 
 - **localStorage Backup** - Never lose your work
 - **Error Recovery** - Graceful handling of save failures
 
+## ⚙️ Configuration
+
+The toolkit uses a hierarchical configuration system with cross-device preference sync:
+
+### Configuration Hierarchy
+
+Settings are resolved in this order (highest to lowest priority):
+
+1. **Embed Config** (locked) - Set via `data-config` attribute
+2. **User Properties** (personal) - Synced across devices when logged in
+3. **Site Properties** (defaults) - Admin-managed defaults for all users
+4. **localStorage** (cache/fallback) - Works offline, anonymous users
+5. **Hard-coded defaults** - Sensible defaults built-in
+
+### Embed Configuration Example
+
+Lock settings for your organization:
+
+```html
+<script
+  src="https://releases.benelliot-nice.com/cxone-expert-enhancements/latest/embed.js"
+  data-config='{
+    "editor": {
+      "theme": "vs-dark",
+      "fontSize": 14
+    },
+    "formatting": {
+      "indentSize": 2,
+      "indentType": "spaces"
+    }
+  }'
+></script>
+```
+
+### Available Settings
+
+See full schema in `src/config-schema.js`. Key settings:
+
+**Editor:**
+- `editor.theme` - vs-dark | vs-light | hc-black
+- `editor.fontSize` - 10-24px
+- `editor.wordWrap` - true | false
+- `editor.minimap` - true | false
+
+**Formatting:**
+- `formatting.indentSize` - 2 | 4 | 8
+- `formatting.indentType` - spaces | tabs
+- `formatting.quoteStyle` - single | double
+
+**Behavior:**
+- `behavior.formatOnSave` - true | false
+- `behavior.confirmBeforeDiscard` - true | false
+
+### Browser Console
+
+Debug configuration in browser console:
+
+```javascript
+// View current config
+window.ExpertEnhancements.Config.debug()
+
+// Export full config state
+window.ExpertEnhancements.Config.export()
+
+// Get a specific value
+window.ExpertEnhancements.Config.instance.get('editor.theme')
+```
+
+### Cross-Device Sync
+
+When logged in, your preferences automatically sync across devices via Expert Properties API. When anonymous or offline, preferences are saved locally in your browser.
+
+For detailed configuration documentation, see [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
+
 ## 📸 Screenshots
 
 *Coming soon - screenshots of the editor in action*
@@ -183,8 +257,8 @@ A: No. The editor requires internet connection to load Monaco Editor from CDN.
 **Q: Which browsers are supported?**
 A: Chrome 90+, Firefox 88+, Safari 14+, Edge 90+. Modern browsers only.
 
-**Q: Can I customize the colors or position?**
-A: Not yet, but configurable options are planned (#48). For now, you can drag/resize the overlay.
+**Q: Can I customize the editor settings?**
+A: Yes! The toolkit has a comprehensive configuration system. See the Configuration section above or [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for details.
 
 **Q: Where is my CSS actually saved?**
 A: Two places: (1) CXone Expert's database when you click "Save All", (2) Your browser's localStorage as a backup.

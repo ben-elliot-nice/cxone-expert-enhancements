@@ -11,16 +11,9 @@
 // Modules are automatically in strict mode
 
 // Import Configuration System
-import { ConfigManager } from './config.js';
+import { getConfigManager } from './config-manager.js';
 
 console.log('[Enhancements Core] Initializing...');
-
-// ============================================================================
-// Configuration Instance (Singleton)
-// ============================================================================
-
-const Config = new ConfigManager();
-console.log('[Enhancements Core] Configuration system initialized');
 
     // ============================================================================
     // App Registry & Manager
@@ -146,7 +139,7 @@ console.log('[Enhancements Core] Configuration system initialized');
                             if (depApp && !initializedApps.has(depId)) {
                                 console.log(`[App Manager] Initializing dependency: ${depApp.name}`);
                                 const context = {
-                                    Config,
+                                    Config: getConfigManager(),
                                     Monaco,
                                     API,
                                     Storage,
@@ -168,7 +161,7 @@ console.log('[Enhancements Core] Configuration system initialized');
                 if (!initializedApps.has(appId)) {
                     console.log(`[App Manager] Initializing: ${app.name}`);
                     const context = {
-                        Config,
+                        Config: getConfigManager(),
                         Monaco,
                         API,
                         Storage,
@@ -310,7 +303,7 @@ console.log('[Enhancements Core] Configuration system initialized');
 
                 window.monacoRequire.config({
                     paths: {
-                        'vs': Config.get('advanced.cdnUrls.monaco')
+                        'vs': getConfigManager().get('advanced.cdnUrls.monaco')
                     }
                 });
 
@@ -422,7 +415,7 @@ console.log('[Enhancements Core] Configuration system initialized');
          */
         getCommonState() {
             try {
-                const prefix = Config.get('advanced.storagePrefix');
+                const prefix = getConfigManager().get('advanced.storagePrefix');
                 const saved = localStorage.getItem(`${prefix}:common`);
                 return saved ? JSON.parse(saved) : {};
             } catch (error) {
@@ -438,7 +431,7 @@ console.log('[Enhancements Core] Configuration system initialized');
             try {
                 const current = this.getCommonState();
                 const updated = { ...current, ...state };
-                const prefix = Config.get('advanced.storagePrefix');
+                const prefix = getConfigManager().get('advanced.storagePrefix');
                 localStorage.setItem(`${prefix}:common`, JSON.stringify(updated));
             } catch (error) {
                 console.warn('[Storage] Failed to set common state:', error);
@@ -450,7 +443,7 @@ console.log('[Enhancements Core] Configuration system initialized');
          */
         getAppState(appId) {
             try {
-                const prefix = Config.get('advanced.storagePrefix');
+                const prefix = getConfigManager().get('advanced.storagePrefix');
                 const saved = localStorage.getItem(`${prefix}:app:${appId}`);
                 return saved ? JSON.parse(saved) : null;
             } catch (error) {
@@ -464,7 +457,7 @@ console.log('[Enhancements Core] Configuration system initialized');
          */
         setAppState(appId, state) {
             try {
-                const prefix = Config.get('advanced.storagePrefix');
+                const prefix = getConfigManager().get('advanced.storagePrefix');
                 localStorage.setItem(`${prefix}:app:${appId}`, JSON.stringify(state));
             } catch (error) {
                 console.warn(`[Storage] Failed to set state for ${appId}:`, error);
@@ -476,7 +469,7 @@ console.log('[Enhancements Core] Configuration system initialized');
          */
         clearAppState(appId) {
             try {
-                const prefix = Config.get('advanced.storagePrefix');
+                const prefix = getConfigManager().get('advanced.storagePrefix');
                 localStorage.removeItem(`${prefix}:app:${appId}`);
             } catch (error) {
                 console.warn(`[Storage] Failed to clear state for ${appId}:`, error);
@@ -488,13 +481,13 @@ console.log('[Enhancements Core] Configuration system initialized');
          */
         getFormatterSettings() {
             try {
-                const prefix = Config.get('advanced.storagePrefix');
+                const prefix = getConfigManager().get('advanced.storagePrefix');
                 const saved = localStorage.getItem(`${prefix}:formatter`);
                 const defaults = {
-                    formatOnSave: Config.get('behavior.formatOnSave'),
-                    indentStyle: Config.get('editor.indentStyle'),
-                    indentSize: Config.get('editor.tabSize'),
-                    quoteStyle: Config.get('editor.quoteStyle'),
+                    formatOnSave: getConfigManager().get('behavior.formatOnSave'),
+                    indentStyle: getConfigManager().get('editor.indentStyle'),
+                    indentSize: getConfigManager().get('editor.tabSize'),
+                    quoteStyle: getConfigManager().get('editor.quoteStyle'),
                     cssSettings: {
                         parser: 'css'
                     },
@@ -506,10 +499,10 @@ console.log('[Enhancements Core] Configuration system initialized');
             } catch (error) {
                 console.warn('[Storage] Failed to get formatter settings:', error);
                 return {
-                    formatOnSave: Config.get('behavior.formatOnSave'),
-                    indentStyle: Config.get('editor.indentStyle'),
-                    indentSize: Config.get('editor.tabSize'),
-                    quoteStyle: Config.get('editor.quoteStyle'),
+                    formatOnSave: getConfigManager().get('behavior.formatOnSave'),
+                    indentStyle: getConfigManager().get('editor.indentStyle'),
+                    indentSize: getConfigManager().get('editor.tabSize'),
+                    quoteStyle: getConfigManager().get('editor.quoteStyle'),
                     cssSettings: { parser: 'css' },
                     htmlSettings: { parser: 'html' }
                 };
@@ -521,7 +514,7 @@ console.log('[Enhancements Core] Configuration system initialized');
          */
         setFormatterSettings(settings) {
             try {
-                const prefix = Config.get('advanced.storagePrefix');
+                const prefix = getConfigManager().get('advanced.storagePrefix');
                 localStorage.setItem(`${prefix}:formatter`, JSON.stringify(settings));
             } catch (error) {
                 console.warn('[Storage] Failed to set formatter settings:', error);
@@ -556,7 +549,7 @@ console.log('[Enhancements Core] Configuration system initialized');
         showToast(text, type = 'info', duration = null) {
             // Use config duration if not specified
             if (duration === null) {
-                duration = Config.get('performance.toastDuration');
+                duration = getConfigManager().get('performance.toastDuration');
             }
             // Find the overlay container
             const overlay = document.getElementById('expert-enhancements-overlay');
@@ -677,7 +670,7 @@ console.log('[Enhancements Core] Configuration system initialized');
             if (!overlay) return;
 
             // Color scheme based on type - get from config
-            const toastColors = Config.get('appearance.toastColors');
+            const toastColors = getConfigManager().get('appearance.toastColors');
             const backgroundColor = toastColors[toastData.type] || toastColors.info;
 
             // Create toast container
@@ -720,7 +713,7 @@ console.log('[Enhancements Core] Configuration system initialized');
             toast.appendChild(closeBtn);
 
             // Calculate z-index based on position in stack (bottom toast = lowest z-index)
-            const baseZIndex = Config.get('advanced.zIndex.toast');
+            const baseZIndex = getConfigManager().get('advanced.zIndex.toast');
             const zIndex = baseZIndex + this._toastState.activeToasts.length;
 
             toast.style.cssText = `
@@ -951,7 +944,7 @@ console.log('[Enhancements Core] Configuration system initialized');
                     right: 0;
                     bottom: 0;
                     background: rgba(0, 0, 0, 0.5);
-                    z-index: ${Config.get('advanced.zIndex.modal')};
+                    z-index: ${getConfigManager().get('advanced.zIndex.modal')};
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -1014,8 +1007,8 @@ console.log('[Enhancements Core] Configuration system initialized');
                 // Confirm button
                 const confirmBtn = document.createElement('button');
                 confirmBtn.textContent = confirmText;
-                const errorColor = Config.get('appearance.errorColor') || '#dc3545';
-                const infoColor = Config.get('appearance.infoColor') || '#0d6efd';
+                const errorColor = getConfigManager().get('appearance.errorColor') || '#dc3545';
+                const infoColor = getConfigManager().get('appearance.infoColor') || '#0d6efd';
                 const bgColor = type === 'danger' ? errorColor : infoColor;
                 const hoverColor = type === 'danger' ? '#bb2d3b' : '#0b5ed7';
                 confirmBtn.style.cssText = `
@@ -1361,7 +1354,7 @@ console.log('[Enhancements Core] Configuration system initialized');
          */
         show(message = 'Loading...', options = {}) {
             const {
-                timeout = Config.get('performance.loadingTimeout'), // Use config timeout
+                timeout = getConfigManager().get('performance.loadingTimeout'), // Use config timeout
                 showProgress = true, // Show progress after 2 seconds
                 onTimeout = null
             } = options;
@@ -1593,7 +1586,7 @@ console.log('[Enhancements Core] Configuration system initialized');
 
                 // Helper to wait for a global variable with exponential backoff
                 // Max timeout: use config value
-                const waitForGlobal = (checkFn, name, maxTimeout = Config.get('performance.formatterTimeout')) => {
+                const waitForGlobal = (checkFn, name, maxTimeout = getConfigManager().get('performance.formatterTimeout')) => {
                     return new Promise((resolve, reject) => {
                         const startTime = Date.now();
                         let currentInterval = 50; // Start with 50ms
@@ -1621,7 +1614,7 @@ console.log('[Enhancements Core] Configuration system initialized');
 
                 // Load Prettier standalone first
                 const prettierScript = document.createElement('script');
-                prettierScript.src = Config.get('advanced.cdnUrls.prettier');
+                prettierScript.src = getConfigManager().get('advanced.cdnUrls.prettier');
 
                 prettierScript.onload = async () => {
                     console.log('[Formatter] Prettier standalone script loaded');
@@ -1641,7 +1634,7 @@ console.log('[Enhancements Core] Configuration system initialized');
 
                         // Load CSS parser (postcss)
                         const cssParserScript = document.createElement('script');
-                        cssParserScript.src = Config.get('advanced.cdnUrls.prettierCSS');
+                        cssParserScript.src = getConfigManager().get('advanced.cdnUrls.prettierCSS');
 
                         const cssLoaded = new Promise((resolveCSS, rejectCSS) => {
                             cssParserScript.onload = () => {
@@ -1669,7 +1662,7 @@ console.log('[Enhancements Core] Configuration system initialized');
 
                         // Load HTML parser
                         const htmlParserScript = document.createElement('script');
-                        htmlParserScript.src = Config.get('advanced.cdnUrls.prettierHTML');
+                        htmlParserScript.src = getConfigManager().get('advanced.cdnUrls.prettierHTML');
 
                         const htmlLoaded = new Promise((resolveHTML, rejectHTML) => {
                             htmlParserScript.onload = () => {
@@ -1887,8 +1880,8 @@ console.log('[Enhancements Core] Configuration system initialized');
             overlay = DOM.create('div', { id: 'expert-enhancements-overlay' });
 
             // Apply CSS custom properties for resize handles from config
-            const headerColor = Config.get('appearance.headerColor');
-            const lineStyle = Config.get('advanced.resizeHandles.lineStyle');
+            const headerColor = getConfigManager().get('appearance.headerColor');
+            const lineStyle = getConfigManager().get('advanced.resizeHandles.lineStyle');
 
             // Convert hex color to RGB for use in rgba()
             const hexToRgb = (hex) => {
@@ -2886,8 +2879,6 @@ console.log('[Enhancements Core] Configuration system initialized');
 // ============================================================================
 
 export {
-    Config,
-    ConfigManager,
     AppManager,
     Monaco,
     API,
@@ -2906,9 +2897,8 @@ console.log('[Enhancements Core] Initialized successfully');
 
 // Also export on window for backwards compatibility during transition
 // This can be removed once all code uses ES imports
+// Note: Config is exported by config-manager.js with debugging tools
 window.ExpertEnhancements = {
-    Config,
-    ConfigManager,
     AppManager,
     Monaco,
     API,
