@@ -543,6 +543,82 @@ export class ConfigManager {
   }
 
   /**
+   * Get the default value for a setting from schema
+   * @param {string} key - Setting key
+   * @returns {*} Default value
+   */
+  getDefault(key) {
+    const schema = settingsSchema[key];
+    if (!schema) {
+      throw new Error(`Unknown setting: ${key}`);
+    }
+    return schema.default;
+  }
+
+  /**
+   * Alias for getConfigSource() - for backward compatibility with Settings app
+   * @param {string} key - Setting key
+   * @returns {object} Object with value, source, and locked status
+   */
+  getSource(key) {
+    return this.getConfigSource(key);
+  }
+
+  /**
+   * Alias for set() - for backward compatibility with Settings app
+   * @param {string} key - Setting key
+   * @param {*} value - Setting value
+   */
+  async setUserSetting(key, value) {
+    return await this.set(key, value);
+  }
+
+  /**
+   * Alias for reset() - for backward compatibility with Settings app
+   * @param {string} key - Setting key
+   */
+  async resetUserSetting(key) {
+    return await this.reset(key);
+  }
+
+  /**
+   * Reset all user settings to defaults
+   */
+  async resetAllUserSettings() {
+    const user = this.currentUser;
+
+    // Delete all from localStorage
+    const prefix = 'expertEnhancements:config:';
+    const keysToRemove = [];
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const storageKey = localStorage.key(i);
+      if (storageKey && storageKey.startsWith(prefix)) {
+        keysToRemove.push(storageKey);
+      }
+    }
+
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+
+    // Delete all user properties from server if logged in
+    if (!user.isAnonymous) {
+      for (const key of Object.keys(settingsSchema)) {
+        const schema = settingsSchema[key];
+        if (schema.serverSafe) {
+          try {
+            await this.deleteUserProperty(user.systemName, key);
+          } catch (error) {
+            console.warn(`Failed to delete ${key} from server`, error);
+          }
+        }
+      }
+    }
+
+    // Reload config from defaults
+    await this.initialize();
+  }
+
+  /**
    * Initialize the configuration system
    */
   async initialize() {
