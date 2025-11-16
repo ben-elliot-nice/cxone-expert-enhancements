@@ -307,6 +307,59 @@ export const settingsSchema = {
     hidden: true
   },
 
+  // Advanced Settings - Toggle Button
+  'advanced.toggleButton': {
+    type: 'object',
+    default: {
+      width: 100,
+      height: 50,
+      top: 15,
+      right: -45,
+      borderRadius: 25
+    },
+    serverSafe: false,
+    category: 'advanced',
+    label: 'Toggle Button Configuration',
+    hidden: true
+  },
+
+  // Advanced Settings - Z-Index
+  'advanced.zIndex.overlay': {
+    type: 'number',
+    default: 999999,
+    serverSafe: false,
+    category: 'advanced',
+    label: 'Overlay Z-Index',
+    hidden: true
+  },
+
+  'advanced.zIndex.toggleButton': {
+    type: 'number',
+    default: 999998,
+    serverSafe: false,
+    category: 'advanced',
+    label: 'Toggle Button Z-Index',
+    hidden: true
+  },
+
+  'advanced.zIndex.toast': {
+    type: 'number',
+    default: 10000,
+    serverSafe: false,
+    category: 'advanced',
+    label: 'Toast Z-Index',
+    hidden: true
+  },
+
+  'advanced.zIndex.modal': {
+    type: 'number',
+    default: 1000000,
+    serverSafe: false,
+    category: 'advanced',
+    label: 'Modal Z-Index',
+    hidden: true
+  },
+
   // API Keys (LOCAL ONLY - for future integrations)
   'apiKeys.s3AccessKey': {
     type: 'string',
