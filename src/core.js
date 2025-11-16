@@ -2897,9 +2897,8 @@ console.log('[Enhancements Core] Initialized successfully');
 
 // Also export on window for backwards compatibility during transition
 // This can be removed once all code uses ES imports
+// Note: Config is exported by config-manager.js with debugging tools
 window.ExpertEnhancements = {
-    Config,
-    ConfigManager,
     AppManager,
     Monaco,
     API,
