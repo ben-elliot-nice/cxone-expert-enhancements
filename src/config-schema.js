@@ -376,7 +376,69 @@ export const settingsSchema = {
     hidden: true
   },
 
+  // Advanced Settings - Storage
+  'advanced.storagePrefix': {
+    type: 'string',
+    default: 'expertEnhancements',
+    serverSafe: false,
+    category: 'advanced',
+    label: 'Storage Prefix',
+    hidden: true
+  },
+
+  // Advanced Settings - Timing
+  'advanced.timing': {
+    type: 'object',
+    default: {
+      animationFast: 200,
+      animationNormal: 300,
+      animationSlow: 500,
+      debounceShort: 50,
+      debounceLong: 300
+    },
+    serverSafe: false,
+    category: 'advanced',
+    label: 'Animation and Debounce Timing',
+    hidden: true
+  },
+
   // Advanced Settings - Resize Handles
+  'advanced.resizeHandles.width': {
+    type: 'number',
+    default: 12,
+    serverSafe: false,
+    category: 'advanced',
+    label: 'Resize Handle Width',
+    hidden: true
+  },
+
+  'advanced.resizeHandles.cornerSize': {
+    type: 'number',
+    default: 20,
+    serverSafe: false,
+    category: 'advanced',
+    label: 'Resize Handle Corner Size',
+    hidden: true
+  },
+
+  'advanced.resizeHandles.hoverOpacity': {
+    type: 'number',
+    default: 1,
+    serverSafe: false,
+    category: 'advanced',
+    label: 'Resize Handle Hover Opacity',
+    hidden: true
+  },
+
+  'advanced.resizeHandles.idleOpacity': {
+    type: 'number',
+    default: 0,
+    serverSafe: false,
+    category: 'advanced',
+    label: 'Resize Handle Idle Opacity',
+    hidden: true
+  },
+
   'advanced.resizeHandles.lineStyle': {
     type: 'object',
     default: {
@@ -445,6 +507,48 @@ export const settingsSchema = {
     serverSafe: false,
     category: 'advanced',
     label: 'Modal Z-Index',
+    hidden: true
+  },
+
+  'advanced.zIndex.messageArea': {
+    type: 'number',
+    default: 2000,
+    serverSafe: false,
+    category: 'advanced',
+    label: 'Message Area Z-Index',
+    hidden: true
+  },
+
+  'advanced.zIndex.fileDropZone': {
+    type: 'number',
+    default: 100000,
+    serverSafe: false,
+    category: 'advanced',
+    label: 'File Drop Zone Z-Index',
+    hidden: true
+  },
+
+  'advanced.zIndex.monacoWidgets': {
+    type: 'number',
+    default: 10000,
+    serverSafe: false,
+    category: 'advanced',
+    label: 'Monaco Widgets Z-Index',
+    hidden: true
+  },
+
+  // Advanced Settings - Toasts
+  'advanced.toasts': {
+    type: 'object',
+    default: {
+      maxVisible: 3,
+      stackGap: 10,
+      positionRight: 20,
+      positionBottom: 20
+    },
+    serverSafe: false,
+    category: 'advanced',
+    label: 'Toast Configuration',
     hidden: true
   },
 
