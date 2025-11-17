@@ -30,7 +30,24 @@
     <p>The CXone Expert Enhancements script will be injected here.</p>
   </div>
 
-  <!-- CXone Expert Enhancements will be loaded here -->
-  <script src="http://localhost:5173/dist/embed.js"></script>
+  <!-- Load the Expert Enhancements widget -->
+  <script>
+    // Load embed.js from URL parameter or fallback to local dev
+    const params = new URLSearchParams(window.location.search);
+    const embedUrl = params.get('embedUrl') || 'http://localhost:5173/dist/embed.js';
+
+    console.log('Loading Expert Enhancements from:', embedUrl);
+
+    const script = document.createElement('script');
+    script.src = embedUrl;
+    script.onerror = () => {
+      console.error('Failed to load Expert Enhancements:', embedUrl);
+      document.body.innerHTML += '<div style="position: fixed; top: 0; left: 0; right: 0; background: red; color: white; padding: 10px; z-index: 9999;">❌ Failed to load Expert Enhancements: ' + embedUrl + '</div>';
+    };
+    script.onload = () => {
+      console.log('✅ Expert Enhancements loaded successfully');
+    };
+    document.head.appendChild(script);
+  </script>
 </body>
 </html>
