@@ -121,6 +121,23 @@ export class CXoneAPIMock {
       });
     });
 
+    // Mock actual HTML editor endpoint
+    await this.page.route('**/deki/cp/custom_html.php**', async (route) => {
+      const postData = route.request().postData();
+
+      this.capturedRequests.push({
+        url: route.request().url(),
+        method: route.request().method(),
+        payload: postData
+      });
+
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(this.fixtures.html.saveSuccess)
+      });
+    });
+
     // Mock CSRF token
     await this.page.route('**/api/csrf-token', (route) => {
       this.capturedRequests.push({
