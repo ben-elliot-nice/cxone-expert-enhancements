@@ -1,3 +1,7 @@
+// Platform detection
+const isMac = process.platform === 'darwin';
+const modifier = isMac ? 'Meta' : 'Control';
+
 /**
  * Page object for CXone Expert Enhancements
  */
@@ -10,31 +14,36 @@ export class CXoneExpertPage {
    * Open the toolkit overlay
    */
   async openToolkit() {
-    await this.page.click('[data-testid="toggle-button"]');
-    await this.page.waitForSelector('.overlay-container', { state: 'visible' });
+    await this.page.click('#expert-enhancements-toggle');
+    await this.page.waitForSelector('#expert-enhancements-overlay', { state: 'visible' });
   }
 
   /**
-   * Close the toolkit overlay
+   * Close the toolkit overlay (minimize)
    */
   async closeToolkit() {
-    await this.page.click('.overlay-header .close-button');
-    await this.page.waitForSelector('.overlay-container', { state: 'hidden' });
+    // Find minimize button in header-buttons
+    await this.page.click('#expert-enhancements-overlay-header .header-buttons button[title="Minimize"]');
+    await this.page.waitForSelector('#expert-enhancements-overlay', { state: 'hidden' });
   }
 
   /**
    * Switch to an app
    */
   async switchApp(appName) {
-    await this.page.selectOption('[data-testid="app-switcher"]', appName);
-    await this.page.waitForTimeout(500); // Wait for app to load
+    await this.page.selectOption('#app-switcher', appName);
+    // Wait for app to fully mount and initialize
+    await this.page.waitForFunction(
+      () => document.querySelector('#expert-enhancements-overlay-content')?.children.length > 0,
+      { timeout: 5000 }
+    );
   }
 
   /**
    * Get current active app
    */
   async getActiveApp() {
-    return await this.page.inputValue('[data-testid="app-switcher"]');
+    return await this.page.inputValue('#app-switcher');
   }
 }
 
@@ -50,77 +59,102 @@ export class CSSEditorPage {
    * Switch to a role tab
    */
   async switchRole(role) {
-    await this.page.click(`[data-testid="tab-${role}"]`);
-    await this.page.waitForTimeout(300);
+    await this.page.click(`button[data-role="${role}"].toggle-btn`);
+    // Wait for Monaco editor to be created and rendered
+    await this.page.waitForSelector(`#editor-${role} .monaco-editor`, { state: 'visible' });
   }
 
   /**
    * Type in the Monaco editor
    */
   async typeInEditor(text) {
-    // Click in Monaco editor
-    await this.page.click('.monaco-editor');
+    // Click in Monaco editor to focus
+    await this.page.click('.monaco-editor .view-lines');
     // Type text
     await this.page.keyboard.type(text);
   }
 
   /**
-   * Get editor content
+   * Get editor content for a specific role
+   * Monaco editors are stored in the BaseEditor instance but not exposed globally
+   * Instead, we need to access through the app instance
    */
-  async getEditorContent() {
-    return await this.page.evaluate(() => {
-      // Access Monaco editor instance
-      // This depends on how the editor is exposed
-      const editor = window.monacoEditorInstance;
+  async getEditorContent(role) {
+    return await this.page.evaluate((roleId) => {
+      // Access through AppManager -> CSSEditorApp -> BaseEditor -> monacoEditors
+      const appManager = window.AppManager;
+      if (!appManager) return '';
+
+      const currentApp = appManager.getCurrentApp();
+      if (!currentApp || !currentApp._baseEditor) return '';
+
+      const editor = currentApp._baseEditor.monacoEditors[roleId];
       return editor ? editor.getValue() : '';
-    });
+    }, role);
   }
 
   /**
-   * Check if tab is dirty
+   * Check if role is dirty (has unsaved changes)
    */
-  async isTabDirty(role) {
-    const tab = await this.page.locator(`[data-testid="tab-${role}"]`);
-    const text = await tab.textContent();
-    return text.includes('*');
+  async isRoleDirty(role) {
+    // Check toggle button styling (bold orange = dirty)
+    const button = await this.page.locator(`button[data-role="${role}"].toggle-btn`);
+    const color = await button.evaluate(el => window.getComputedStyle(el).color);
+    // Orange color rgb(255, 152, 0) indicates dirty
+    return color.includes('255') && color.includes('152');
   }
 
   /**
-   * Save current role
+   * Save current role (focused editor)
    */
   async saveCurrentRole() {
-    await this.page.keyboard.press('Control+Shift+S');
-    await this.page.waitForTimeout(500);
+    await this.page.keyboard.press(`${modifier}+Shift+S`);
+    // Wait for save operation to complete
+    await this.page.waitForFunction(
+      () => !document.querySelector('.btn.saving'),
+      { timeout: 5000 }
+    );
   }
 
   /**
    * Save all roles
    */
   async saveAll() {
-    await this.page.keyboard.press('Control+S');
-    await this.page.waitForTimeout(500);
+    await this.page.click('#save-btn');
+    // Wait for save operation to complete
+    await this.page.waitForFunction(
+      () => !document.querySelector('#save-btn.saving'),
+      { timeout: 5000 }
+    );
   }
 
   /**
-   * Format current role
+   * Format all active editors
    */
-  async formatCurrent() {
-    await this.page.keyboard.press('Control+Shift+F');
-    await this.page.waitForTimeout(500);
+  async formatAllActive() {
+    await this.page.keyboard.press(`${modifier}+Shift+F`);
+    // Wait for formatting to complete
+    await this.page.waitForTimeout(1000);
   }
 
   /**
-   * Export current role
+   * Export role CSS
    */
   async exportRole(role) {
-    await this.page.click(`[data-testid="export-${role}"]`);
+    // Open actions dropdown for the role
+    const actionsBtn = await this.page.locator(`button[data-actions-role="${role}"]`);
+    await actionsBtn.click();
+    // Click export option
+    await this.page.click(`button[data-export-role="${role}"]`);
   }
 
   /**
    * Import file to role
    */
   async importFile(role, filepath) {
-    await this.page.setInputFiles(`[data-testid="import-${role}"]`, filepath);
+    // Find the hidden file input for this role
+    const fileInput = await this.page.locator(`#file-input-${role}`);
+    await fileInput.setInputFiles(filepath);
   }
 }
 
@@ -136,50 +170,71 @@ export class HTMLEditorPage {
    * Switch to a field tab
    */
   async switchField(field) {
-    await this.page.click(`[data-testid="tab-${field}"]`);
-    await this.page.waitForTimeout(300);
+    await this.page.click(`button[data-field="${field}"].toggle-btn`);
+    // Wait for Monaco editor to be created and rendered
+    await this.page.waitForSelector(`#editor-${field} .monaco-editor`, { state: 'visible' });
   }
 
   /**
    * Type in the Monaco editor
    */
   async typeInEditor(text) {
-    await this.page.click('.monaco-editor');
+    // Click in Monaco editor to focus
+    await this.page.click('.monaco-editor .view-lines');
     await this.page.keyboard.type(text);
   }
 
   /**
-   * Get editor content
+   * Get editor content for a specific field
+   * Monaco editors are stored in the BaseEditor instance but not exposed globally
+   * Instead, we need to access through the app instance
    */
-  async getEditorContent() {
-    return await this.page.evaluate(() => {
-      const editor = window.monacoEditorInstance;
+  async getEditorContent(field) {
+    return await this.page.evaluate((fieldId) => {
+      // Access through AppManager -> HTMLEditorApp -> BaseEditor -> monacoEditors
+      const appManager = window.AppManager;
+      if (!appManager) return '';
+
+      const currentApp = appManager.getCurrentApp();
+      if (!currentApp || !currentApp._baseEditor) return '';
+
+      const editor = currentApp._baseEditor.monacoEditors[fieldId];
       return editor ? editor.getValue() : '';
-    });
+    }, field);
   }
 
   /**
-   * Check if field is dirty
+   * Check if field is dirty (has unsaved changes)
    */
   async isFieldDirty(field) {
-    const tab = await this.page.locator(`[data-testid="tab-${field}"]`);
-    const text = await tab.textContent();
-    return text.includes('*');
+    // Check toggle button styling (bold orange = dirty)
+    const button = await this.page.locator(`button[data-field="${field}"].toggle-btn`);
+    const color = await button.evaluate(el => window.getComputedStyle(el).color);
+    // Orange color rgb(255, 152, 0) indicates dirty
+    return color.includes('255') && color.includes('152');
   }
 
   /**
-   * Save current field
+   * Save current field (focused editor)
    */
   async saveCurrentField() {
-    await this.page.keyboard.press('Control+Shift+S');
-    await this.page.waitForTimeout(500);
+    await this.page.keyboard.press(`${modifier}+Shift+S`);
+    // Wait for save operation to complete
+    await this.page.waitForFunction(
+      () => !document.querySelector('.btn.saving'),
+      { timeout: 5000 }
+    );
   }
 
   /**
    * Save all fields
    */
   async saveAll() {
-    await this.page.keyboard.press('Control+S');
-    await this.page.waitForTimeout(500);
+    await this.page.click('#save-btn');
+    // Wait for save operation to complete
+    await this.page.waitForFunction(
+      () => !document.querySelector('#save-btn.saving'),
+      { timeout: 5000 }
+    );
   }
 }
