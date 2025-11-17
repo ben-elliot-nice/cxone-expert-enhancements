@@ -69,9 +69,9 @@ test.describe('CSS Editor Workflow', () => {
     // Switch to admin role
     await cssEditor.switchRole('admin');
 
-    // Verify active tab
-    const activeTab = page.locator('[data-testid="tab-admin"][aria-selected="true"]');
-    await expect(activeTab).toBeVisible();
+    // Verify active button has active class
+    const activeButton = page.locator('button.toggle-btn[data-role="admin"].active');
+    await expect(activeButton).toBeVisible();
   });
 
   test('should save all roles with Ctrl+S', async ({ page }) => {
