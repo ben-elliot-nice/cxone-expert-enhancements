@@ -113,7 +113,11 @@ jobs:
         run: npm run test:e2e -- --project=${{ matrix.browser }}
         env:
           CI: 'true'
-          BASE_URL: https://${{ vars.DO_SPACES_BUCKET }}.${{ vars.DO_SPACES_ENDPOINT }}/cxone-expert-enhancements/${{ github.ref_name }}/
+          BASE_URL: http://localhost:8080/test-page.html
+          DO_SPACES_BUCKET: ${{ vars.DO_SPACES_BUCKET }}
+          DO_SPACES_ENDPOINT: ${{ vars.DO_SPACES_ENDPOINT }}
+          GITHUB_HEAD_REF: ${{ github.head_ref }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
 
       - name: Upload test results
         if: failure()
