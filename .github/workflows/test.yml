@@ -84,27 +84,28 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Wait for deployment to be accessible
+      - name: Wait for deployment workflow if running
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          DEPLOY_URL="https://${{ vars.DO_SPACES_BUCKET }}.${{ vars.DO_SPACES_ENDPOINT }}/cxone-expert-enhancements/${{ github.head_ref || github.ref_name }}/embed.js"
-          echo "Checking deployment at: $DEPLOY_URL"
+          BRANCH="${{ github.head_ref || github.ref_name }}"
+          echo "Checking for active deployment workflow on branch: $BRANCH"
 
-          MAX_ATTEMPTS=30
-          ATTEMPT=0
+          # Get the most recent feature-deploy workflow run for this branch
+          RUN_ID=$(gh run list \
+            --workflow=feature-deploy.yml \
+            --branch="$BRANCH" \
+            --limit=1 \
+            --json databaseId,status \
+            --jq '.[0] | select(.status == "in_progress" or .status == "queued") | .databaseId')
 
-          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-            if curl --output /dev/null --silent --head --fail "$DEPLOY_URL"; then
-              echo "✅ Deployment accessible at $DEPLOY_URL"
-              exit 0
-            fi
-
-            ATTEMPT=$((ATTEMPT + 1))
-            echo "Attempt $ATTEMPT/$MAX_ATTEMPTS: Deployment not ready, waiting 10s..."
-            sleep 10
-          done
-
-          echo "❌ Deployment not accessible after $MAX_ATTEMPTS attempts"
-          exit 1
+          if [ -n "$RUN_ID" ]; then
+            echo "⏳ Deployment workflow #$RUN_ID is running, waiting for completion..."
+            gh run watch "$RUN_ID" --exit-status
+            echo "✅ Deployment workflow completed successfully"
+          else
+            echo "✅ No active deployment workflow, using existing deployment"
+          fi
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps ${{ matrix.browser }}
