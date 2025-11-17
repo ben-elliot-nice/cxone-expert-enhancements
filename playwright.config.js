@@ -9,7 +9,9 @@ export default defineConfig({
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'html',
 
   use: {
-    baseURL: process.env.BASE_URL || 'http://localhost:5173',
+    baseURL: process.env.CI
+      ? 'http://localhost:8080/test-page.html'
+      : 'http://localhost:5173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure'
@@ -30,10 +32,17 @@ export default defineConfig({
     }
   ],
 
-  webServer: process.env.CI ? undefined : {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120000
-  }
+  webServer: process.env.CI
+    ? {
+        command: 'npx http-server tests/e2e/fixtures -p 8080',
+        url: 'http://localhost:8080/test-page.html',
+        reuseExistingServer: false,
+        timeout: 30000
+      }
+    : {
+        command: 'npm run dev',
+        url: 'http://localhost:5173',
+        reuseExistingServer: !process.env.CI,
+        timeout: 120000
+      }
 });
