@@ -22,9 +22,13 @@ test.describe('CSS Editor Workflow', () => {
     await expertPage.openToolkit();
     await expertPage.switchApp('css-editor');
 
-    // Verify CSS editor is visible
-    const editor = page.locator('.css-editor');
-    await expect(editor).toBeVisible();
+    // Verify CSS editor UI is visible (toggle bar with role buttons)
+    const toggleBar = page.locator('.toggle-bar');
+    await expect(toggleBar).toBeVisible();
+
+    // Verify at least one role button exists
+    const roleButton = page.locator('button.toggle-btn[data-role]').first();
+    await expect(roleButton).toBeVisible();
   });
 
   test('should edit CSS and mark tab as dirty', async ({ page }) => {
