@@ -100,21 +100,25 @@ export class CSSEditorPage {
     // Check toggle button has dirty styling (inline styles set by base-editor.js)
     const button = this.page.locator(`button[data-role="${role}"].toggle-btn`);
 
-    // Wait a bit for dirty state to be applied after typing
-    await this.page.waitForTimeout(100);
-
-    // Check if button has inline styles for dirty indicator
+    // Wait for dirty state to be applied (condition-based, up to 2s)
     // base-editor.js sets: style.fontWeight = 'bold' and style.color = '#ff9800'
-    const styles = await button.evaluate(el => ({
-      inlineFontWeight: el.style.fontWeight,
-      inlineColor: el.style.color
-    }));
+    try {
+      await button.waitForFunction(
+        el => el.style.fontWeight === 'bold' &&
+              (el.style.color === '#ff9800' || el.style.color === 'rgb(255, 152, 0)'),
+        { timeout: 2000 }
+      );
+      return true;
+    } catch {
+      // If timeout, check current state (may already be clean or never became dirty)
+      const styles = await button.evaluate(el => ({
+        inlineFontWeight: el.style.fontWeight,
+        inlineColor: el.style.color
+      }));
 
-    // Check inline styles directly - dirty state sets inline styles
-    const hasDirtyStyles = styles.inlineFontWeight === 'bold' &&
-                          (styles.inlineColor === 'rgb(255, 152, 0)' || styles.inlineColor === '#ff9800');
-
-    return hasDirtyStyles;
+      return styles.inlineFontWeight === 'bold' &&
+             (styles.inlineColor === 'rgb(255, 152, 0)' || styles.inlineColor === '#ff9800');
+    }
   }
 
   /**
@@ -223,21 +227,25 @@ export class HTMLEditorPage {
     // Check toggle button has dirty styling (inline styles set by base-editor.js)
     const button = this.page.locator(`button[data-field="${field}"].toggle-btn`);
 
-    // Wait a bit for dirty state to be applied after typing
-    await this.page.waitForTimeout(100);
-
-    // Check if button has inline styles for dirty indicator
+    // Wait for dirty state to be applied (condition-based, up to 2s)
     // base-editor.js sets: style.fontWeight = 'bold' and style.color = '#ff9800'
-    const styles = await button.evaluate(el => ({
-      inlineFontWeight: el.style.fontWeight,
-      inlineColor: el.style.color
-    }));
+    try {
+      await button.waitForFunction(
+        el => el.style.fontWeight === 'bold' &&
+              (el.style.color === '#ff9800' || el.style.color === 'rgb(255, 152, 0)'),
+        { timeout: 2000 }
+      );
+      return true;
+    } catch {
+      // If timeout, check current state (may already be clean or never became dirty)
+      const styles = await button.evaluate(el => ({
+        inlineFontWeight: el.style.fontWeight,
+        inlineColor: el.style.color
+      }));
 
-    // Check inline styles directly - dirty state sets inline styles
-    const hasDirtyStyles = styles.inlineFontWeight === 'bold' &&
-                          (styles.inlineColor === 'rgb(255, 152, 0)' || styles.inlineColor === '#ff9800');
-
-    return hasDirtyStyles;
+      return styles.inlineFontWeight === 'bold' &&
+             (styles.inlineColor === 'rgb(255, 152, 0)' || styles.inlineColor === '#ff9800');
+    }
   }
 
   /**
