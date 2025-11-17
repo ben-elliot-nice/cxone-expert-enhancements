@@ -73,9 +73,9 @@ describe('Monaco Integration Tests', () => {
         language: 'css'
       });
 
-      // Mock implementation returns empty string by default
+      // Mock implementation returns the value from options
       const value = editor.getValue();
-      expect(value).toBeDefined();
+      expect(value).toBe('test content');
 
       editor.dispose();
       container.remove();
