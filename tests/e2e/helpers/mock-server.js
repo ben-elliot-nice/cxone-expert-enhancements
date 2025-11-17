@@ -83,10 +83,12 @@ export class CXoneAPIMock {
         payload: postData
       });
 
+      // Deki form posts return a redirect
       route.fulfill({
-        status: 200,
-        contentType: 'text/html',
-        body: '<html><body>Success</body></html>'
+        status: 302,
+        headers: {
+          'Location': route.request().url()
+        }
       });
     });
 
@@ -131,10 +133,12 @@ export class CXoneAPIMock {
         payload: postData
       });
 
+      // Deki form posts return a redirect
       route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(this.fixtures.html.saveSuccess)
+        status: 302,
+        headers: {
+          'Location': route.request().url()
+        }
       });
     });
 

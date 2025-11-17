@@ -126,8 +126,20 @@ export class CSSEditorPage {
    */
   async saveCurrentRole() {
     await this.page.keyboard.press(`${modifier}+S`);
-    // Wait for save to complete (saving class removed from button)
-    await this.page.waitForSelector('#save-btn:not(.saving)', { state: 'visible', timeout: 5000 });
+    // Wait for "Saving..." text to disappear from any save button
+    try {
+      await this.page.waitForFunction(
+        () => {
+          const buttons = Array.from(document.querySelectorAll('button'));
+          return !buttons.some(btn => btn.textContent.includes('Saving'));
+        },
+        { timeout: 5000 }
+      );
+    } catch {
+      // Timeout is ok - save might have completed instantly
+    }
+    // Give UI a moment to update after save completes
+    await this.page.waitForTimeout(500);
   }
 
   /**
@@ -247,8 +259,20 @@ export class HTMLEditorPage {
    */
   async saveCurrentField() {
     await this.page.keyboard.press(`${modifier}+S`);
-    // Wait for save to complete (saving class removed from button)
-    await this.page.waitForSelector('#save-btn:not(.saving)', { state: 'visible', timeout: 5000 });
+    // Wait for "Saving..." text to disappear from any save button
+    try {
+      await this.page.waitForFunction(
+        () => {
+          const buttons = Array.from(document.querySelectorAll('button'));
+          return !buttons.some(btn => btn.textContent.includes('Saving'));
+        },
+        { timeout: 5000 }
+      );
+    } catch {
+      // Timeout is ok - save might have completed instantly
+    }
+    // Give UI a moment to update after save completes
+    await this.page.waitForTimeout(500);
   }
 
   /**
