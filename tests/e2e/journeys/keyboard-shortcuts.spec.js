@@ -25,7 +25,7 @@ test.describe('Keyboard Shortcuts', () => {
     await expertPage.switchApp('css-editor');
   });
 
-  test('Ctrl+S should save all tabs', async ({ page }) => {
+  test('Ctrl+S should save current/active tab', async ({ page }) => {
     await cssEditor.switchRole('all-roles');
     await cssEditor.typeInEditor('body { color: red; }');
 
@@ -35,9 +35,11 @@ test.describe('Keyboard Shortcuts', () => {
 
     const requests = mockAPI.getRequests('/api/css/save');
     expect(requests.length).toBeGreaterThan(0);
+    // Should only save current role
+    expect(requests[0].payload?.role).toBe('all-roles');
   });
 
-  test('Ctrl+Shift+S should save current tab only', async ({ page }) => {
+  test('Ctrl+Shift+S should save all tabs', async ({ page }) => {
     await cssEditor.switchRole('all-roles');
     await cssEditor.typeInEditor('body { color: blue; }');
 
@@ -47,8 +49,6 @@ test.describe('Keyboard Shortcuts', () => {
 
     const requests = mockAPI.getRequests('/api/css/save');
     expect(requests.length).toBeGreaterThan(0);
-    // Should only save current role
-    expect(requests[0].payload?.role).toBe('all-roles');
   });
 
   test('Ctrl+Shift+F should format all code', async ({ page }) => {
@@ -71,10 +71,13 @@ test.describe('Keyboard Shortcuts', () => {
     await cssEditor.typeInEditor('body { color: green; }');
 
     mockAPI.clearRequests();
+    // Cmd+S should save current/active tab (same as Ctrl+S)
     await page.keyboard.press('Meta+S');
     await page.waitForTimeout(500);
 
     const requests = mockAPI.getRequests('/api/css/save');
     expect(requests.length).toBeGreaterThan(0);
+    // Should only save current role
+    expect(requests[0].payload?.role).toBe('all-roles');
   });
 });
