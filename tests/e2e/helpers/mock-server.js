@@ -123,6 +123,11 @@ export class CXoneAPIMock {
 
     // Mock CSRF token
     await this.page.route('**/api/csrf-token', (route) => {
+      this.capturedRequests.push({
+        url: route.request().url(),
+        method: route.request().method()
+      });
+
       route.fulfill({
         status: 200,
         contentType: 'application/json',
