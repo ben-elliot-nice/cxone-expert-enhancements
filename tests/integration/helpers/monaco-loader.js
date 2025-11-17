@@ -32,21 +32,59 @@ export async function loadMonaco() {
   // For testing, we might need to use jsdom or similar
   // This is a placeholder for the actual implementation
 
-  // For now, return a mock Monaco
+  // Create a stateful mock Monaco
+  const models = [];
+
   global.monaco = {
     editor: {
-      create: () => ({
-        getValue: () => '',
-        setValue: () => {},
-        dispose: () => {},
-        onDidChangeModelContent: () => ({ dispose: () => {} })
-      }),
-      getModels: () => [],
-      createModel: () => ({
-        getValue: () => '',
-        setValue: () => {},
-        dispose: () => {}
-      })
+      create: (container, options = {}) => {
+        let value = options.value || '';
+        const changeListeners = [];
+
+        const editor = {
+          getValue: () => value,
+          setValue: (newValue) => {
+            value = newValue;
+            // Trigger change listeners
+            changeListeners.forEach(listener => listener());
+          },
+          dispose: () => {
+            // Clear listeners on dispose
+            changeListeners.length = 0;
+          },
+          onDidChangeModelContent: (callback) => {
+            changeListeners.push(callback);
+            return {
+              dispose: () => {
+                const index = changeListeners.indexOf(callback);
+                if (index > -1) {
+                  changeListeners.splice(index, 1);
+                }
+              }
+            };
+          }
+        };
+
+        return editor;
+      },
+      getModels: () => models,
+      createModel: (value = '', language) => {
+        let modelValue = value;
+        const model = {
+          getValue: () => modelValue,
+          setValue: (newValue) => {
+            modelValue = newValue;
+          },
+          dispose: () => {
+            const index = models.indexOf(model);
+            if (index > -1) {
+              models.splice(index, 1);
+            }
+          }
+        };
+        models.push(model);
+        return model;
+      }
     },
     languages: {
       register: () => {},
