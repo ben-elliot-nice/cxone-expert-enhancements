@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { CXoneAPIMock } from '../helpers/mock-server.js';
 import { CXoneExpertPage, CSSEditorPage } from '../helpers/page-objects.js';
+import { navigateToTestPage } from '../helpers/navigation.js';
 
 test.describe('CSS Editor Workflow', () => {
   let mockAPI;
@@ -14,9 +15,7 @@ test.describe('CSS Editor Workflow', () => {
     expertPage = new CXoneExpertPage(page);
     cssEditor = new CSSEditorPage(page);
 
-    // Navigate to test page or deployed URL
-    const baseURL = process.env.BASE_URL || 'http://localhost:5173';
-    await page.goto(baseURL);
+    await navigateToTestPage(page);
   });
 
   test('should load CSS editor and display content', async ({ page }) => {

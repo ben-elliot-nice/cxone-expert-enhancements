@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { CXoneAPIMock } from '../helpers/mock-server.js';
 import { CXoneExpertPage, HTMLEditorPage } from '../helpers/page-objects.js';
+import { navigateToTestPage } from '../helpers/navigation.js';
 
 test.describe('HTML Editor Workflow', () => {
   let mockAPI;
@@ -14,8 +15,7 @@ test.describe('HTML Editor Workflow', () => {
     expertPage = new CXoneExpertPage(page);
     htmlEditor = new HTMLEditorPage(page);
 
-    const baseURL = process.env.BASE_URL || 'http://localhost:5173';
-    await page.goto(baseURL);
+    await navigateToTestPage(page);
   });
 
   test('should load HTML editor and display content', async ({ page }) => {

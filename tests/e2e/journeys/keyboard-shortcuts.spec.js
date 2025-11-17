@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { CXoneAPIMock } from '../helpers/mock-server.js';
 import { CXoneExpertPage, CSSEditorPage } from '../helpers/page-objects.js';
+import { navigateToTestPage } from '../helpers/navigation.js';
 
 // Platform detection for keyboard shortcuts
 const isMac = process.platform === 'darwin';
@@ -18,8 +19,7 @@ test.describe('Keyboard Shortcuts', () => {
     expertPage = new CXoneExpertPage(page);
     cssEditor = new CSSEditorPage(page);
 
-    const baseURL = process.env.BASE_URL || 'http://localhost:5173';
-    await page.goto(baseURL);
+    await navigateToTestPage(page);
 
     await expertPage.openToolkit();
     await expertPage.switchApp('css-editor');
