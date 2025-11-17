@@ -125,12 +125,9 @@ export class CSSEditorPage {
    * Save current role (focused editor)
    */
   async saveCurrentRole() {
-    await this.page.keyboard.press(`${modifier}+Shift+S`);
-    // Wait for save operation to complete
-    await this.page.waitForFunction(
-      () => !document.querySelector('.btn.saving'),
-      { timeout: 5000 }
-    );
+    await this.page.keyboard.press(`${modifier}+S`);
+    // Wait for save to complete (saving class removed from button)
+    await this.page.waitForSelector('#save-btn:not(.saving)', { state: 'visible', timeout: 5000 });
   }
 
   /**
@@ -138,11 +135,8 @@ export class CSSEditorPage {
    */
   async saveAll() {
     await this.page.click('#save-btn');
-    // Wait for save operation to complete
-    await this.page.waitForFunction(
-      () => !document.querySelector('#save-btn.saving'),
-      { timeout: 5000 }
-    );
+    // Wait for save to complete (saving class removed from button)
+    await this.page.waitForSelector('#save-btn:not(.saving)', { state: 'visible', timeout: 5000 });
   }
 
   /**
@@ -252,12 +246,9 @@ export class HTMLEditorPage {
    * Save current field (focused editor)
    */
   async saveCurrentField() {
-    await this.page.keyboard.press(`${modifier}+Shift+S`);
-    // Wait for save operation to complete
-    await this.page.waitForFunction(
-      () => !document.querySelector('.btn.saving'),
-      { timeout: 5000 }
-    );
+    await this.page.keyboard.press(`${modifier}+S`);
+    // Wait for save to complete (saving class removed from button)
+    await this.page.waitForSelector('#save-btn:not(.saving)', { state: 'visible', timeout: 5000 });
   }
 
   /**
@@ -265,10 +256,7 @@ export class HTMLEditorPage {
    */
   async saveAll() {
     await this.page.click('#save-btn');
-    // Wait for save operation to complete
-    await this.page.waitForFunction(
-      () => !document.querySelector('#save-btn.saving'),
-      { timeout: 5000 }
-    );
+    // Wait for save to complete (saving class removed from button)
+    await this.page.waitForSelector('#save-btn:not(.saving)', { state: 'visible', timeout: 5000 });
   }
 }
