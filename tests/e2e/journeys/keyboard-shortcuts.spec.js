@@ -33,7 +33,7 @@ test.describe('Keyboard Shortcuts', () => {
     await page.keyboard.press(`${modifier}+S`);
     await page.waitForTimeout(500);
 
-    const requests = mockAPI.getRequests('/api/css/save');
+    const requests = mockAPI.getRequests('/deki/cp/custom_css.php');
     expect(requests.length).toBeGreaterThan(0);
     // Should only save current role
     expect(requests[0].payload?.role).toBe('all');
@@ -47,7 +47,7 @@ test.describe('Keyboard Shortcuts', () => {
     await page.keyboard.press(`${modifier}+Shift+S`);
     await page.waitForTimeout(500);
 
-    const requests = mockAPI.getRequests('/api/css/save');
+    const requests = mockAPI.getRequests('/deki/cp/custom_css.php');
     expect(requests.length).toBeGreaterThan(0);
   });
 
@@ -75,7 +75,7 @@ test.describe('Keyboard Shortcuts', () => {
     await page.keyboard.press('Meta+S');
     await page.waitForTimeout(500);
 
-    const requests = mockAPI.getRequests('/api/css/save');
+    const requests = mockAPI.getRequests('/deki/cp/custom_css.php');
     expect(requests.length).toBeGreaterThan(0);
     // Should only save current role
     expect(requests[0].payload?.role).toBe('all');

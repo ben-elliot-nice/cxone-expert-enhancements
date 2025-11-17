@@ -73,9 +73,9 @@ export class CXoneAPIMock {
       });
     });
 
-    // Mock CSS save
-    await this.page.route('**/api/css/save', async (route) => {
-      const postData = route.request().postDataJSON();
+    // Mock CSS save (actual endpoint used by CSS editor)
+    await this.page.route('**/deki/cp/custom_css.php**', async (route) => {
+      const postData = route.request().postData();
 
       this.capturedRequests.push({
         url: route.request().url(),
@@ -85,8 +85,8 @@ export class CXoneAPIMock {
 
       route.fulfill({
         status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(this.fixtures.css.saveSuccess)
+        contentType: 'text/html',
+        body: '<html><body>Success</body></html>'
       });
     });
 

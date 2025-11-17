@@ -54,7 +54,7 @@ test.describe('CSS Editor Workflow', () => {
     await cssEditor.saveCurrentRole();
 
     // Verify save request was made
-    const requests = mockAPI.getRequests('/api/css/save');
+    const requests = mockAPI.getRequests('/deki/cp/custom_css.php');
     expect(requests.length).toBeGreaterThan(0);
 
     // Verify dirty state cleared
@@ -89,7 +89,7 @@ test.describe('CSS Editor Workflow', () => {
     await cssEditor.saveAll();
 
     // Verify save requests
-    const requests = mockAPI.getRequests('/api/css/save');
+    const requests = mockAPI.getRequests('/deki/cp/custom_css.php');
     expect(requests.length).toBeGreaterThan(0);
   });
 });
