@@ -139,3 +139,42 @@ jobs:
           fi
 
           echo "✅ All tests passed"
+
+  pr-comment:
+    name: PR Test Results Comment
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests, e2e-tests]
+    if: github.event_name == 'pull_request' && always()
+
+    steps:
+      - name: Create test results comment
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const unitResult = '${{ needs.unit-tests.result }}';
+            const integrationResult = '${{ needs.integration-tests.result }}';
+            const e2eResult = '${{ needs.e2e-tests.result }}';
+
+            const icon = (result) => result === 'success' ? '✅' : '❌';
+
+            const comment = `## Test Results
+
+            | Test Type | Result |
+            |-----------|--------|
+            | Unit Tests | ${icon(unitResult)} ${unitResult} |
+            | Integration Tests | ${icon(integrationResult)} ${integrationResult} |
+            | E2E Tests | ${icon(e2eResult)} ${e2eResult} |
+
+            ${e2eResult === 'success' ?
+              '🎉 All tests passed! Ready to merge.' :
+              '⚠️ Some tests failed. Please review the results above.'}
+
+            **Deployed to:** https://releases.benelliot-nice.com/cxone-expert-enhancements/${{ github.head_ref }}/
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
