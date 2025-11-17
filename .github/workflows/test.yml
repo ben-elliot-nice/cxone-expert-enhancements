@@ -155,7 +155,15 @@ jobs:
             const integrationResult = '${{ needs.integration-tests.result }}';
             const e2eResult = '${{ needs.e2e-tests.result }}';
 
-            const icon = (result) => result === 'success' ? '✅' : '❌';
+            const icon = (result) => {
+              switch (result) {
+                case 'success': return '✅';
+                case 'failure': return '❌';
+                case 'cancelled': return '🚫';
+                case 'skipped': return '⏭️';
+                default: return '❔';
+              }
+            };
 
             const comment = `## Test Results
 
@@ -165,11 +173,13 @@ jobs:
             | Integration Tests | ${icon(integrationResult)} ${integrationResult} |
             | E2E Tests | ${icon(e2eResult)} ${e2eResult} |
 
-            ${e2eResult === 'success' ?
+            ${unitResult === 'success' && integrationResult === 'success' && e2eResult === 'success' ?
               '🎉 All tests passed! Ready to merge.' :
               '⚠️ Some tests failed. Please review the results above.'}
 
-            **Deployed to:** https://releases.benelliot-nice.com/cxone-expert-enhancements/${{ github.head_ref }}/
+            **Deployed to:** https://${{ vars.DO_SPACES_BUCKET }}.${{ vars.DO_SPACES_ENDPOINT }}/cxone-expert-enhancements/${{ github.ref_name }}/
+
+            [View detailed workflow results](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
             `;
 
             github.rest.issues.createComment({
