@@ -16,12 +16,13 @@ test.describe('CSS Editor Workflow', () => {
     cssEditor = new CSSEditorPage(page);
 
     await navigateToTestPage(page);
+
+    // Open toolkit and switch to CSS editor for all tests
+    await expertPage.openToolkit();
+    await expertPage.switchApp('css-editor');
   });
 
   test('should load CSS editor and display content', async ({ page }) => {
-    await expertPage.openToolkit();
-    await expertPage.switchApp('css-editor');
-
     // Verify CSS editor UI is visible (toggle bar with role buttons)
     const toggleBar = page.locator('.toggle-bar');
     await expect(toggleBar).toBeVisible();
@@ -32,8 +33,6 @@ test.describe('CSS Editor Workflow', () => {
   });
 
   test('should edit CSS and mark tab as dirty', async ({ page }) => {
-    await expertPage.openToolkit();
-    await expertPage.switchApp('css-editor');
     await cssEditor.switchRole('all');
 
     // Type in editor
@@ -45,8 +44,6 @@ test.describe('CSS Editor Workflow', () => {
   });
 
   test('should save CSS and clear dirty state', async ({ page }) => {
-    await expertPage.openToolkit();
-    await expertPage.switchApp('css-editor');
     await cssEditor.switchRole('all');
 
     // Edit and save
@@ -63,9 +60,6 @@ test.describe('CSS Editor Workflow', () => {
   });
 
   test('should switch between role tabs', async ({ page }) => {
-    await expertPage.openToolkit();
-    await expertPage.switchApp('css-editor');
-
     // Switch to admin role
     await cssEditor.switchRole('admin');
 
@@ -75,9 +69,6 @@ test.describe('CSS Editor Workflow', () => {
   });
 
   test('should save all roles with Ctrl+S', async ({ page }) => {
-    await expertPage.openToolkit();
-    await expertPage.switchApp('css-editor');
-
     // Make changes to multiple roles
     await cssEditor.switchRole('all');
     await cssEditor.typeInEditor('/* All roles */');

@@ -16,24 +16,22 @@ test.describe('HTML Editor Workflow', () => {
     htmlEditor = new HTMLEditorPage(page);
 
     await navigateToTestPage(page);
-  });
 
-  test('should load HTML editor and display content', async ({ page }) => {
+    // Open toolkit and switch to HTML editor for all tests
     await expertPage.openToolkit();
     await expertPage.switchApp('html-editor');
 
+    // Wait for HTML editor container to be visible and initialized
+    await page.waitForSelector('#html-editor-container', { state: 'visible' });
+    await page.waitForTimeout(500); // Give time for initialization
+  });
+
+  test('should load HTML editor and display content', async ({ page }) => {
     const editor = page.locator('#html-editor-container');
     await expect(editor).toBeVisible();
   });
 
   test('should edit HTML and mark field as dirty', async ({ page }) => {
-    await expertPage.openToolkit();
-    await expertPage.switchApp('html-editor');
-
-    // Wait for container to be visible before trying to switch fields
-    await page.waitForSelector('#html-editor-container', { state: 'visible' });
-    await page.waitForTimeout(500); // Give time for initialization
-
     await htmlEditor.switchField('head');
 
     await htmlEditor.typeInEditor('<div>Custom Head</div>');
@@ -43,13 +41,6 @@ test.describe('HTML Editor Workflow', () => {
   });
 
   test('should save HTML and clear dirty state', async ({ page }) => {
-    await expertPage.openToolkit();
-    await expertPage.switchApp('html-editor');
-
-    // Wait for container to be visible before trying to switch fields
-    await page.waitForSelector('#html-editor-container', { state: 'visible' });
-    await page.waitForTimeout(500); // Give time for initialization
-
     await htmlEditor.switchField('head');
 
     await htmlEditor.typeInEditor('<div>New Content</div>');
@@ -64,13 +55,6 @@ test.describe('HTML Editor Workflow', () => {
   });
 
   test('should switch between head and tail fields', async ({ page }) => {
-    await expertPage.openToolkit();
-    await expertPage.switchApp('html-editor');
-
-    // Wait for container to be visible before trying to switch fields
-    await page.waitForSelector('#html-editor-container', { state: 'visible' });
-    await page.waitForTimeout(500); // Give time for initialization
-
     await htmlEditor.switchField('tail');
 
     // Verify the tail editor is now visible
