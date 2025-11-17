@@ -84,6 +84,28 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Wait for deployment to be accessible
+        run: |
+          DEPLOY_URL="https://${{ vars.DO_SPACES_BUCKET }}.${{ vars.DO_SPACES_ENDPOINT }}/cxone-expert-enhancements/${{ github.head_ref || github.ref_name }}/embed.js"
+          echo "Checking deployment at: $DEPLOY_URL"
+
+          MAX_ATTEMPTS=30
+          ATTEMPT=0
+
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            if curl --output /dev/null --silent --head --fail "$DEPLOY_URL"; then
+              echo "✅ Deployment accessible at $DEPLOY_URL"
+              exit 0
+            fi
+
+            ATTEMPT=$((ATTEMPT + 1))
+            echo "Attempt $ATTEMPT/$MAX_ATTEMPTS: Deployment not ready, waiting 10s..."
+            sleep 10
+          done
+
+          echo "❌ Deployment not accessible after $MAX_ATTEMPTS attempts"
+          exit 1
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps ${{ matrix.browser }}
 
