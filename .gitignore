@@ -21,7 +21,7 @@ test-results/
 playwright-report/
 coverage/
 .nyc_output/
-html/
+/html/
 
 # Monaco local copy for integration tests
 tests/integration/helpers/monaco/
