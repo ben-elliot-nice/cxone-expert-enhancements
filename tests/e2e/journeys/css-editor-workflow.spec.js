@@ -30,20 +30,20 @@ test.describe('CSS Editor Workflow', () => {
   test('should edit CSS and mark tab as dirty', async ({ page }) => {
     await expertPage.openToolkit();
     await expertPage.switchApp('css-editor');
-    await cssEditor.switchRole('all-roles');
+    await cssEditor.switchRole('all');
 
     // Type in editor
     await cssEditor.typeInEditor('body { background: red; }');
 
     // Verify dirty state
-    const isDirty = await cssEditor.isRoleDirty('all-roles');
+    const isDirty = await cssEditor.isRoleDirty('all');
     expect(isDirty).toBe(true);
   });
 
   test('should save CSS and clear dirty state', async ({ page }) => {
     await expertPage.openToolkit();
     await expertPage.switchApp('css-editor');
-    await cssEditor.switchRole('all-roles');
+    await cssEditor.switchRole('all');
 
     // Edit and save
     await cssEditor.typeInEditor('body { background: blue; }');
@@ -54,7 +54,7 @@ test.describe('CSS Editor Workflow', () => {
     expect(requests.length).toBeGreaterThan(0);
 
     // Verify dirty state cleared
-    const isDirty = await cssEditor.isRoleDirty('all-roles');
+    const isDirty = await cssEditor.isRoleDirty('all');
     expect(isDirty).toBe(false);
   });
 
@@ -75,7 +75,7 @@ test.describe('CSS Editor Workflow', () => {
     await expertPage.switchApp('css-editor');
 
     // Make changes to multiple roles
-    await cssEditor.switchRole('all-roles');
+    await cssEditor.switchRole('all');
     await cssEditor.typeInEditor('/* All roles */');
 
     await cssEditor.switchRole('admin');

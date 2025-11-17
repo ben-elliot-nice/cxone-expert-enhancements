@@ -26,7 +26,7 @@ test.describe('Keyboard Shortcuts', () => {
   });
 
   test('Ctrl+S should save current/active tab', async ({ page }) => {
-    await cssEditor.switchRole('all-roles');
+    await cssEditor.switchRole('all');
     await cssEditor.typeInEditor('body { color: red; }');
 
     mockAPI.clearRequests();
@@ -36,11 +36,11 @@ test.describe('Keyboard Shortcuts', () => {
     const requests = mockAPI.getRequests('/api/css/save');
     expect(requests.length).toBeGreaterThan(0);
     // Should only save current role
-    expect(requests[0].payload?.role).toBe('all-roles');
+    expect(requests[0].payload?.role).toBe('all');
   });
 
   test('Ctrl+Shift+S should save all tabs', async ({ page }) => {
-    await cssEditor.switchRole('all-roles');
+    await cssEditor.switchRole('all');
     await cssEditor.typeInEditor('body { color: blue; }');
 
     mockAPI.clearRequests();
@@ -52,13 +52,13 @@ test.describe('Keyboard Shortcuts', () => {
   });
 
   test('Ctrl+Shift+F should format all code', async ({ page }) => {
-    await cssEditor.switchRole('all-roles');
+    await cssEditor.switchRole('all');
     await cssEditor.typeInEditor('body{color:red;}');
 
     await page.keyboard.press(`${modifier}+Shift+F`);
     await page.waitForTimeout(500);
 
-    const content = await cssEditor.getEditorContent('all-roles');
+    const content = await cssEditor.getEditorContent('all');
     // Should be formatted with spaces and newlines
     expect(content).toMatch(/body\s*{/);
     expect(content).toMatch(/color:\s*red/);
@@ -67,7 +67,7 @@ test.describe('Keyboard Shortcuts', () => {
   test('Mac Cmd key should work instead of Ctrl', async ({ page, browserName }) => {
     test.skip(browserName !== 'webkit', 'Mac shortcuts only on Safari/WebKit');
 
-    await cssEditor.switchRole('all-roles');
+    await cssEditor.switchRole('all');
     await cssEditor.typeInEditor('body { color: green; }');
 
     mockAPI.clearRequests();
@@ -78,6 +78,6 @@ test.describe('Keyboard Shortcuts', () => {
     const requests = mockAPI.getRequests('/api/css/save');
     expect(requests.length).toBeGreaterThan(0);
     // Should only save current role
-    expect(requests[0].payload?.role).toBe('all-roles');
+    expect(requests[0].payload?.role).toBe('all');
   });
 });
