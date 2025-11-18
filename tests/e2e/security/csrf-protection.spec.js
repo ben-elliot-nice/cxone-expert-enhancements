@@ -47,9 +47,9 @@ test.describe('CSRF Protection', () => {
     expect(lastSaveRequest.payload).toContain('csrf_token');
   });
 
-  test('should reject requests without CSRF token', async ({ page }) => {
-    // This test verifies that the application always includes CSRF tokens in save requests
-    // In production, the CXone API would reject requests without CSRF tokens
+  test('should always include non-empty CSRF token in save requests', async ({ page }) => {
+    // This test verifies that the application always includes non-empty CSRF tokens in save requests
+    // In production, the CXone API would reject requests without valid CSRF tokens
 
     // Clear captured requests to start fresh
     mockAPI.clearRequests();
