@@ -804,8 +804,8 @@ describe('BaseEditor Save Operations', () => {
           'Accept': expect.stringContaining('text/html')
         }),
         credentials: 'include',
-        body: 'mock-body',
-        redirect: 'follow'
+        body: 'mock-body'
+        // Note: redirect defaults to 'follow' (not explicitly set)
       });
 
       expect(response.ok).toBe(true);
