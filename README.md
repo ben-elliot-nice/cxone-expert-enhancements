@@ -205,6 +205,29 @@ We welcome contributions! To get started:
 - [Deployment Guide](docs/DEPLOYMENT.md) - CI/CD and deployments
 - [Architecture](docs/ARCHITECTURE.md) - Technical architecture
 
+## Testing
+
+This project uses comprehensive three-layer testing:
+
+- **Unit Tests** - Vitest for fast, isolated tests
+- **Integration Tests** - Monaco wrapper and core systems
+- **E2E Tests** - Playwright for full user journeys
+
+### Running Tests
+
+```bash
+npm test                    # All tests
+npm run test:unit          # Unit tests only
+npm run test:e2e           # E2E tests
+npm run test:coverage      # Coverage report
+```
+
+See [tests/README.md](tests/README.md) for detailed testing documentation.
+
+### CI/CD
+
+All tests run automatically on push. PRs must pass all tests before merging.
+
 ## 📄 License
 
 ISC
