@@ -59,6 +59,10 @@ if (import.meta.env.DEV) {
     console.log('✅ Vite dev server running');
     console.log('✅ HMR enabled - changes will reload automatically');
     console.log('✅ Source maps enabled - debug original source in DevTools');
+
+    // Expose AppManager to window for E2E tests
+    window.AppManager = AppManager;
+    console.log('✅ AppManager exposed to window for testing');
 }
 
 // ============================================================================

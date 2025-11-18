@@ -59,7 +59,7 @@ export class CXoneAPIMock {
       return;
     }
 
-    // Mock CSS load
+    // Mock CSS load (legacy API endpoint)
     await this.page.route('**/api/css/load', (route) => {
       this.capturedRequests.push({
         url: route.request().url(),
@@ -73,22 +73,46 @@ export class CXoneAPIMock {
       });
     });
 
-    // Mock CSS save (actual endpoint used by CSS editor)
-    await this.page.route('**/deki/cp/custom_css.php**', async (route) => {
-      const postData = route.request().postData();
+    // Mock CSS save/load (POST-Redirect-GET pattern)
+    // GET: Initial page loads (form page)
+    // POST: Save operations - return 200 OK directly to avoid Playwright route.fulfill() redirect issues
+    await this.page.route((url) => url.pathname.includes('/deki/cp/custom_css.php'), async (route) => {
+      const url = route.request().url();
+      const method = route.request().method();
 
-      this.capturedRequests.push({
-        url: route.request().url(),
-        method: route.request().method(),
-        payload: postData
-      });
+      console.log(`[Mock CSS] Intercepted ${method} ${url}`);
 
-      // Return success (200 OK satisfies response.ok check in base-editor)
-      route.fulfill({
-        status: 200,
-        contentType: 'text/html',
-        body: '<html><body>Success</body></html>'
-      });
+      if (method === 'POST') {
+        const postData = route.request().postData();
+
+        this.capturedRequests.push({
+          url,
+          method,
+          payload: postData
+        });
+
+        // Return 200 OK to simulate successful save (real API does POST→302→GET→200)
+        // Return empty body to avoid any navigation issues
+        console.log(`[Mock CSS] POST - returning 200 OK`);
+        await route.fulfill({
+          status: 200,
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0'
+          },
+          body: ''
+        });
+      } else if (method === 'GET') {
+        // GET requests (initial page load) return 200 with HTML
+        console.log(`[Mock CSS] GET - returning 200 OK with HTML`);
+        await route.fulfill({
+          status: 200,
+          contentType: 'text/html; charset=UTF-8',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0'
+          },
+          body: '<html><body><div class="successmsg">CSS loaded</div></body></html>'
+        });
+      }
     });
 
     // Mock HTML load
@@ -122,22 +146,46 @@ export class CXoneAPIMock {
       });
     });
 
-    // Mock actual HTML editor endpoint
-    await this.page.route('**/deki/cp/custom_html.php**', async (route) => {
-      const postData = route.request().postData();
+    // Mock HTML save/load (POST-Redirect-GET pattern)
+    // GET: Initial page loads (form page)
+    // POST: Save operations - return 200 OK directly to avoid Playwright route.fulfill() redirect issues
+    await this.page.route((url) => url.pathname.includes('/deki/cp/custom_html.php'), async (route) => {
+      const url = route.request().url();
+      const method = route.request().method();
 
-      this.capturedRequests.push({
-        url: route.request().url(),
-        method: route.request().method(),
-        payload: postData
-      });
+      console.log(`[Mock HTML] Intercepted ${method} ${url}`);
 
-      // Return success (200 OK satisfies response.ok check in base-editor)
-      route.fulfill({
-        status: 200,
-        contentType: 'text/html',
-        body: '<html><body>Success</body></html>'
-      });
+      if (method === 'POST') {
+        const postData = route.request().postData();
+
+        this.capturedRequests.push({
+          url,
+          method,
+          payload: postData
+        });
+
+        // Return 200 OK to simulate successful save (real API does POST→302→GET→200)
+        // Return empty body to avoid any navigation issues
+        console.log(`[Mock HTML] POST - returning 200 OK`);
+        await route.fulfill({
+          status: 200,
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0'
+          },
+          body: ''
+        });
+      } else if (method === 'GET') {
+        // GET requests (initial page load) return 200 with HTML
+        console.log(`[Mock HTML] GET - returning 200 OK with HTML`);
+        await route.fulfill({
+          status: 200,
+          contentType: 'text/html; charset=UTF-8',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0'
+          },
+          body: '<html><body><div class="successmsg">HTML loaded</div></body></html>'
+        });
+      }
     });
 
     // Mock CSRF token

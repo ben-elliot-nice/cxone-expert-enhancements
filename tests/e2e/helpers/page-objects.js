@@ -31,12 +31,90 @@ export class CXoneExpertPage {
    * Switch to an app
    */
   async switchApp(appName) {
-    await this.page.selectOption('#app-switcher', appName);
-    // Wait for app to fully mount and initialize
-    await this.page.waitForFunction(
-      () => document.querySelector('#expert-enhancements-overlay-content')?.children.length > 0,
-      { timeout: 5000 }
-    );
+    const appContainerMap = {
+      'css-editor': '#css-editor-container',
+      'html-editor': '#html-editor-container',
+      'settings': '#settings-container'
+    };
+
+    const expectedContainer = appContainerMap[appName];
+    if (!expectedContainer) {
+      throw new Error(`Unknown app: ${appName}`);
+    }
+
+    // Retry logic to handle race conditions between initial app load and app switching
+    const maxRetries = 5;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      // Trigger the app switch
+      await this.page.evaluate((appValue) => {
+        const switcher = document.querySelector('#app-switcher');
+        if (switcher) {
+          switcher.value = appValue;
+          switcher.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }, appName);
+
+      // Wait for AppManager to switch to the correct app
+      // This is the most reliable check since we exposed AppManager to window in DEV mode
+      try {
+        await this.page.waitForFunction(
+          (expectedAppId) => {
+            // Check app switcher dropdown matches
+            const switcher = document.querySelector('#app-switcher');
+            if (!switcher || switcher.value !== expectedAppId) return false;
+
+            // Check AppManager reports the correct current app
+            const appManager = window.AppManager;
+            if (!appManager) return false;
+
+            const currentApp = appManager.getCurrentApp();
+            return currentApp && currentApp.id === expectedAppId;
+          },
+          appName,
+          { timeout: 5000 }
+        );
+
+        // Verify the container is also visible (belt and suspenders)
+        const containerVisible = await this.page.evaluate((containerSelector) => {
+          const container = document.querySelector(containerSelector);
+          if (!container) return false;
+          const style = window.getComputedStyle(container);
+          return style.display !== 'none' && style.visibility !== 'hidden';
+        }, expectedContainer);
+
+        if (containerVisible) {
+          // Success! Both AppManager and DOM confirm correct app is loaded
+          // Wait a bit to ensure no other app is about to mount
+          await this.page.waitForTimeout(1000);
+
+          // CRITICAL: Re-verify the app is still loaded (catch time-of-check-to-time-of-use race)
+          const stillCorrectApp = await this.page.evaluate((expectedAppId) => {
+            const appManager = window.AppManager;
+            if (!appManager) return false;
+            const currentApp = appManager.getCurrentApp();
+            return currentApp && currentApp.id === expectedAppId;
+          }, appName);
+
+          if (stillCorrectApp) {
+            return; // Confirmed stable
+          }
+
+          // App changed after our check - retry
+          console.log(`[switchApp] App changed after verification, retrying...`);
+        }
+      } catch (e) {
+        // waitForFunction timed out - wrong app loaded
+      }
+
+      // Wrong app loaded - retry unless this was the last attempt
+      if (attempt < maxRetries) {
+        console.log(`[switchApp] Wrong app loaded, retrying (attempt ${attempt + 1}/${maxRetries})...`);
+        await this.page.waitForTimeout(1000); // Wait before retry
+      }
+    }
+
+    // If we get here, all retries failed
+    throw new Error(`Failed to switch to ${appName} after ${maxRetries} attempts - race condition persists`);
   }
 
   /**
@@ -80,6 +158,24 @@ export class CSSEditorPage {
    * Instead, we need to access through the app instance
    */
   async getEditorContent(role) {
+    // Wait for editor to be ready and have content (up to 2s)
+    await this.page.waitForFunction(
+      (roleId) => {
+        const appManager = window.AppManager;
+        if (!appManager) return false;
+
+        const currentApp = appManager.getCurrentApp();
+        if (!currentApp || !currentApp._baseEditor) return false;
+
+        const editor = currentApp._baseEditor.monacoEditors[roleId];
+        return editor && editor.getValue();
+      },
+      role,
+      { timeout: 2000 }
+    ).catch(() => {
+      // If timeout, proceed anyway - editor might be empty legitimately
+    });
+
     return await this.page.evaluate((roleId) => {
       // Access through AppManager -> CSSEditorApp -> BaseEditor -> monacoEditors
       const appManager = window.AppManager;
@@ -98,27 +194,17 @@ export class CSSEditorPage {
    */
   async isRoleDirty(role) {
     // Check toggle button has dirty styling (inline styles set by base-editor.js)
-    const button = this.page.locator(`button[data-role="${role}"].toggle-btn`);
-
-    // Wait for dirty state to be applied (condition-based, up to 2s)
     // base-editor.js sets: style.fontWeight = 'bold' and style.color = '#ff9800'
-    try {
-      await button.waitForFunction(
-        el => el.style.fontWeight === 'bold' &&
-              (el.style.color === '#ff9800' || el.style.color === 'rgb(255, 152, 0)'),
-        { timeout: 2000 }
-      );
-      return true;
-    } catch {
-      // If timeout, check current state (may already be clean or never became dirty)
-      const styles = await button.evaluate(el => ({
-        inlineFontWeight: el.style.fontWeight,
-        inlineColor: el.style.color
-      }));
+    const selector = `button[data-role="${role}"].toggle-btn`;
+    const button = this.page.locator(selector);
 
-      return styles.inlineFontWeight === 'bold' &&
-             (styles.inlineColor === 'rgb(255, 152, 0)' || styles.inlineColor === '#ff9800');
-    }
+    const styles = await button.evaluate(el => ({
+      inlineFontWeight: el.style.fontWeight,
+      inlineColor: el.style.color
+    }));
+
+    return styles.inlineFontWeight === 'bold' &&
+           (styles.inlineColor === 'rgb(255, 152, 0)' || styles.inlineColor === '#ff9800');
   }
 
   /**
@@ -138,8 +224,6 @@ export class CSSEditorPage {
     } catch {
       // Timeout is ok - save might have completed instantly
     }
-    // Give UI a moment to update after save completes
-    await this.page.waitForTimeout(500);
   }
 
   /**
@@ -213,6 +297,24 @@ export class HTMLEditorPage {
    * Instead, we need to access through the app instance
    */
   async getEditorContent(field) {
+    // Wait for editor to be ready and have content (up to 2s)
+    await this.page.waitForFunction(
+      (fieldId) => {
+        const appManager = window.AppManager;
+        if (!appManager) return false;
+
+        const currentApp = appManager.getCurrentApp();
+        if (!currentApp || !currentApp._baseEditor) return false;
+
+        const editor = currentApp._baseEditor.monacoEditors[fieldId];
+        return editor && editor.getValue();
+      },
+      field,
+      { timeout: 2000 }
+    ).catch(() => {
+      // If timeout, proceed anyway - editor might be empty legitimately
+    });
+
     return await this.page.evaluate((fieldId) => {
       // Access through AppManager -> HTMLEditorApp -> BaseEditor -> monacoEditors
       const appManager = window.AppManager;
@@ -231,27 +333,17 @@ export class HTMLEditorPage {
    */
   async isFieldDirty(field) {
     // Check toggle button has dirty styling (inline styles set by base-editor.js)
-    const button = this.page.locator(`button[data-field="${field}"].toggle-btn`);
-
-    // Wait for dirty state to be applied (condition-based, up to 2s)
     // base-editor.js sets: style.fontWeight = 'bold' and style.color = '#ff9800'
-    try {
-      await button.waitForFunction(
-        el => el.style.fontWeight === 'bold' &&
-              (el.style.color === '#ff9800' || el.style.color === 'rgb(255, 152, 0)'),
-        { timeout: 2000 }
-      );
-      return true;
-    } catch {
-      // If timeout, check current state (may already be clean or never became dirty)
-      const styles = await button.evaluate(el => ({
-        inlineFontWeight: el.style.fontWeight,
-        inlineColor: el.style.color
-      }));
+    const selector = `button[data-field="${field}"].toggle-btn`;
+    const button = this.page.locator(selector);
 
-      return styles.inlineFontWeight === 'bold' &&
-             (styles.inlineColor === 'rgb(255, 152, 0)' || styles.inlineColor === '#ff9800');
-    }
+    const styles = await button.evaluate(el => ({
+      inlineFontWeight: el.style.fontWeight,
+      inlineColor: el.style.color
+    }));
+
+    return styles.inlineFontWeight === 'bold' &&
+           (styles.inlineColor === 'rgb(255, 152, 0)' || styles.inlineColor === '#ff9800');
   }
 
   /**
@@ -271,8 +363,6 @@ export class HTMLEditorPage {
     } catch {
       // Timeout is ok - save might have completed instantly
     }
-    // Give UI a moment to update after save completes
-    await this.page.waitForTimeout(500);
   }
 
   /**

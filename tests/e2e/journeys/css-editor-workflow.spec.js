@@ -16,10 +16,12 @@ test.describe('CSS Editor Workflow', () => {
     cssEditor = new CSSEditorPage(page);
 
     await navigateToTestPage(page);
-
-    // Open toolkit and switch to CSS editor for all tests
     await expertPage.openToolkit();
     await expertPage.switchApp('css-editor');
+
+    // Wait for CSS editor to be fully initialized
+    await page.waitForSelector('.toggle-bar', { state: 'visible' });
+    await page.waitForTimeout(500);
   });
 
   test('should load CSS editor and display content', async ({ page }) => {

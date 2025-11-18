@@ -23,6 +23,10 @@ test.describe('Keyboard Shortcuts', () => {
 
     await expertPage.openToolkit();
     await expertPage.switchApp('css-editor');
+
+    // Wait for CSS editor to be fully initialized (same as css-editor-workflow.spec.js)
+    await page.waitForSelector('.toggle-bar', { state: 'visible' });
+    await page.waitForTimeout(500);
   });
 
   test('Ctrl+S should save current/active tab', async ({ page }) => {
@@ -35,8 +39,8 @@ test.describe('Keyboard Shortcuts', () => {
 
     const requests = mockAPI.getRequests('/deki/cp/custom_css.php');
     expect(requests.length).toBeGreaterThan(0);
-    // Should only save current role
-    expect(requests[0].payload?.role).toBe('all');
+    // Should only save current role - payload is multipart form data string
+    expect(requests[0].payload).toContain('css_template_all');
   });
 
   test('Ctrl+Shift+S should save all tabs', async ({ page }) => {
@@ -56,8 +60,21 @@ test.describe('Keyboard Shortcuts', () => {
     await cssEditor.typeInEditor('body{color:red;}');
 
     await page.keyboard.press(`${modifier}+Shift+F`);
-    await page.waitForTimeout(500);
 
+    // Wait for formatting to complete by checking for the "formatted" notification
+    // This is more reliable than polling Monaco's internal state
+    await page.waitForFunction(
+      () => {
+        // Look for the toast notification that formatting completed
+        const toasts = Array.from(document.querySelectorAll('.toast-notification, .notification, [class*="toast"]'));
+        return toasts.some(toast =>
+          toast.textContent && toast.textContent.toLowerCase().includes('formatted')
+        );
+      },
+      { timeout: 10000 }
+    );
+
+    // Verify the content was actually formatted
     const content = await cssEditor.getEditorContent('all');
     // Should be formatted with spaces and newlines
     expect(content).toMatch(/body\s*{/);
@@ -77,7 +94,7 @@ test.describe('Keyboard Shortcuts', () => {
 
     const requests = mockAPI.getRequests('/deki/cp/custom_css.php');
     expect(requests.length).toBeGreaterThan(0);
-    // Should only save current role
-    expect(requests[0].payload?.role).toBe('all');
+    // Should only save current role - payload is multipart form data string
+    expect(requests[0].payload).toContain('css_template_all');
   });
 });

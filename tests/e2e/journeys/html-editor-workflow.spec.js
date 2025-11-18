@@ -19,11 +19,7 @@ test.describe('HTML Editor Workflow', () => {
 
     // Open toolkit and switch to HTML editor for all tests
     await expertPage.openToolkit();
-    await expertPage.switchApp('html-editor');
-
-    // Wait for HTML editor container to be visible and initialized
-    await page.waitForSelector('#html-editor-container', { state: 'visible' });
-    await page.waitForTimeout(500); // Give time for initialization
+    await expertPage.switchApp('html-editor'); // Waits for AppManager.getCurrentApp() and container visibility
   });
 
   test('should load HTML editor and display content', async ({ page }) => {
