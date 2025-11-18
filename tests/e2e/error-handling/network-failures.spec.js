@@ -39,8 +39,8 @@ test.describe('Network Failure Handling', () => {
     // Attempt to save
     await cssEditor.saveCurrentRole();
 
-    // Wait for error to be processed
-    await page.waitForTimeout(1000);
+    // Wait for error to be processed - check that dirty state persists
+    await page.waitForTimeout(500);
 
     // Check console for error messages
     const consoleMessages = [];
@@ -59,6 +59,17 @@ test.describe('Network Failure Handling', () => {
     await expect(successMsg).not.toBeVisible({ timeout: 2000 }).catch(() => {
       // It's ok if element doesn't exist
     });
+
+    // Verify UI remains responsive - should be able to type more content
+    await cssEditor.typeInEditor('\n/* Additional content after error */');
+
+    // Verify editor content includes the new text
+    const content = await cssEditor.getEditorContent('all');
+    expect(content).toContain('Additional content after error');
+
+    // Verify save button is still available and not disabled
+    const saveBtn = page.locator('button:has-text("Save"), button[title*="Save"]').first();
+    await expect(saveBtn).toBeEnabled();
   });
 
   test('should handle HTML save failure gracefully', async ({ page }) => {
@@ -79,8 +90,8 @@ test.describe('Network Failure Handling', () => {
     // Attempt to save
     await htmlEditor.saveCurrentField();
 
-    // Wait for error to be processed
-    await page.waitForTimeout(1000);
+    // Wait for error to be processed - check that dirty state persists
+    await page.waitForTimeout(500);
 
     // Verify dirty state is still present (save failed)
     const isDirty = await htmlEditor.isFieldDirty('body_footer');
@@ -91,6 +102,17 @@ test.describe('Network Failure Handling', () => {
     await expect(successMsg).not.toBeVisible({ timeout: 2000 }).catch(() => {
       // It's ok if element doesn't exist
     });
+
+    // Verify UI remains responsive - should be able to type more content
+    await htmlEditor.typeInEditor('\n<!-- Additional content after error -->');
+
+    // Verify editor content includes the new text
+    const content = await htmlEditor.getEditorContent('body_footer');
+    expect(content).toContain('Additional content after error');
+
+    // Verify save button is still available and not disabled
+    const saveBtn = page.locator('button:has-text("Save"), button[title*="Save"]').first();
+    await expect(saveBtn).toBeEnabled();
   });
 
   test('should handle CSS load failure', async ({ page }) => {
@@ -177,11 +199,18 @@ test.describe('Network Failure Handling', () => {
     await cssEditor.saveCurrentRole();
 
     // Wait for error to be processed
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Verify dirty state remains
     const isDirty = await cssEditor.isRoleDirty('all');
     expect(isDirty).toBe(true);
+
+    // Verify UI remains responsive after 403 error
+    await cssEditor.typeInEditor('\n/* Still editable after 403 */');
+
+    // Verify save button is still enabled for retry
+    const saveBtn = page.locator('button:has-text("Save"), button[title*="Save"]').first();
+    await expect(saveBtn).toBeEnabled();
   });
 
   test('should handle intermittent network failures with retry', async ({ page }) => {
@@ -235,7 +264,9 @@ test.describe('Network Failure Handling', () => {
 
     // First save attempt (should fail)
     await cssEditor.saveCurrentRole();
-    await page.waitForTimeout(1000);
+
+    // Wait for save attempt to complete
+    await page.waitForTimeout(500);
 
     // Verify still dirty after first failure
     let isDirty = await cssEditor.isRoleDirty('all');
@@ -243,7 +274,9 @@ test.describe('Network Failure Handling', () => {
 
     // Second save attempt (should succeed)
     await cssEditor.saveCurrentRole();
-    await page.waitForTimeout(1000);
+
+    // Wait for save to complete successfully
+    await page.waitForTimeout(500);
 
     // Verify clean after second attempt
     isDirty = await cssEditor.isRoleDirty('all');
@@ -331,13 +364,16 @@ test.describe('Network Failure Handling', () => {
 
     // Attempt to save
     await cssEditor.saveCurrentRole();
-    await page.waitForTimeout(1000);
+
+    // Wait for save attempt to complete
+    await page.waitForTimeout(500);
 
     // Switch to different role and back
     await cssEditor.switchRole('admin');
-    await page.waitForTimeout(500);
+    await page.waitForSelector('.toggle-bar', { state: 'visible' });
+
     await cssEditor.switchRole('all');
-    await page.waitForTimeout(500);
+    await page.waitForSelector('.toggle-bar', { state: 'visible' });
 
     // Verify content is still there
     const content = await cssEditor.getEditorContent('all');
@@ -370,7 +406,9 @@ test.describe('Network Failure Handling', () => {
 
     // Try to save all
     await cssEditor.saveAll();
-    await page.waitForTimeout(2000);
+
+    // Wait for save attempts to complete
+    await page.waitForTimeout(1000);
 
     // Verify all roles are still dirty
     await cssEditor.switchRole('all');

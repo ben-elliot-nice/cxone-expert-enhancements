@@ -36,8 +36,12 @@ test.describe('Overlay Drag and Resize', () => {
     await page.mouse.move(initialX + 100, initialY + 50);
     await page.mouse.up();
 
-    // Wait for position to settle
-    await page.waitForTimeout(300);
+    // Wait for position to update (check that position has changed)
+    await expect(async () => {
+      const box = await overlay.boundingBox();
+      expect(Math.abs(box.x - (initialX + 100))).toBeLessThan(10);
+      expect(Math.abs(box.y - (initialY + 50))).toBeLessThan(10);
+    }).toPass({ timeout: 2000 });
 
     // Get new position
     const newBox = await overlay.boundingBox();
@@ -66,6 +70,7 @@ test.describe('Overlay Drag and Resize', () => {
     await page.mouse.move(initialX + 100, initialY + 50);
     await page.mouse.up();
 
+    // Wait a moment for any potential movement to occur
     await page.waitForTimeout(300);
 
     // Get new position - should be unchanged
@@ -87,7 +92,7 @@ test.describe('Overlay Drag and Resize', () => {
     const initialWidth = initialBox.width;
 
     // Find and drag right resize handle
-    const rightHandle = page.locator('#expert-enhancements-overlay .resize-handle-right');
+    const rightHandle = page.locator('#expert-enhancements-overlay .enhancements-resize-handle.right');
     const handleBox = await rightHandle.boundingBox();
     expect(handleBox).not.toBeNull();
 
@@ -97,7 +102,11 @@ test.describe('Overlay Drag and Resize', () => {
     await page.mouse.move(handleBox.x + 100, handleBox.y + handleBox.height / 2);
     await page.mouse.up();
 
-    await page.waitForTimeout(300);
+    // Wait for width to increase
+    await expect(async () => {
+      const box = await overlay.boundingBox();
+      expect(box.width).toBeGreaterThan(initialWidth + 80);
+    }).toPass({ timeout: 2000 });
 
     // Get new size
     const newBox = await overlay.boundingBox();
@@ -117,7 +126,7 @@ test.describe('Overlay Drag and Resize', () => {
     const initialHeight = initialBox.height;
 
     // Find and drag bottom resize handle
-    const bottomHandle = page.locator('#expert-enhancements-overlay .resize-handle-bottom');
+    const bottomHandle = page.locator('#expert-enhancements-overlay .enhancements-resize-handle.bottom');
     const handleBox = await bottomHandle.boundingBox();
     expect(handleBox).not.toBeNull();
 
@@ -127,7 +136,11 @@ test.describe('Overlay Drag and Resize', () => {
     await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + 100);
     await page.mouse.up();
 
-    await page.waitForTimeout(300);
+    // Wait for height to increase
+    await expect(async () => {
+      const box = await overlay.boundingBox();
+      expect(box.height).toBeGreaterThan(initialHeight + 80);
+    }).toPass({ timeout: 2000 });
 
     // Get new size
     const newBox = await overlay.boundingBox();
@@ -148,7 +161,7 @@ test.describe('Overlay Drag and Resize', () => {
     const initialRight = initialBox.x + initialBox.width;
 
     // Find and drag left resize handle
-    const leftHandle = page.locator('#expert-enhancements-overlay .resize-handle-left');
+    const leftHandle = page.locator('#expert-enhancements-overlay .enhancements-resize-handle.left');
     const handleBox = await leftHandle.boundingBox();
     expect(handleBox).not.toBeNull();
 
@@ -158,7 +171,11 @@ test.describe('Overlay Drag and Resize', () => {
     await page.mouse.move(handleBox.x - 100, handleBox.y + handleBox.height / 2);
     await page.mouse.up();
 
-    await page.waitForTimeout(300);
+    // Wait for width to increase
+    await expect(async () => {
+      const box = await overlay.boundingBox();
+      expect(box.width).toBeGreaterThan(initialWidth + 80);
+    }).toPass({ timeout: 2000 });
 
     // Get new size
     const newBox = await overlay.boundingBox();
@@ -185,7 +202,12 @@ test.describe('Overlay Drag and Resize', () => {
     const header = page.locator('#expert-enhancements-overlay-header');
     await header.dblclick();
 
-    await page.waitForTimeout(500);
+    // Wait for overlay to be much larger (fullscreen)
+    await expect(async () => {
+      const box = await overlay.boundingBox();
+      expect(box.width).toBeGreaterThan(initialWidth);
+      expect(box.height).toBeGreaterThan(initialHeight);
+    }).toPass({ timeout: 2000 });
 
     // Get fullscreen size
     const fullscreenBox = await overlay.boundingBox();
@@ -198,7 +220,12 @@ test.describe('Overlay Drag and Resize', () => {
     // Double-click again to exit fullscreen
     await header.dblclick();
 
-    await page.waitForTimeout(500);
+    // Wait for overlay to return to original size
+    await expect(async () => {
+      const box = await overlay.boundingBox();
+      expect(Math.abs(box.width - initialWidth)).toBeLessThan(10);
+      expect(Math.abs(box.height - initialHeight)).toBeLessThan(10);
+    }).toPass({ timeout: 2000 });
 
     // Get restored size
     const restoredBox = await overlay.boundingBox();
@@ -223,7 +250,12 @@ test.describe('Overlay Drag and Resize', () => {
     const fullscreenBtn = page.locator('button[title="Fullscreen (95%)"]');
     await fullscreenBtn.click();
 
-    await page.waitForTimeout(500);
+    // Wait for overlay to be much larger
+    await expect(async () => {
+      const box = await overlay.boundingBox();
+      expect(box.width).toBeGreaterThan(initialWidth);
+      expect(box.height).toBeGreaterThan(initialHeight);
+    }).toPass({ timeout: 2000 });
 
     // Get fullscreen size
     const fullscreenBox = await overlay.boundingBox();
@@ -236,7 +268,12 @@ test.describe('Overlay Drag and Resize', () => {
     // Click again to exit fullscreen
     await fullscreenBtn.click();
 
-    await page.waitForTimeout(500);
+    // Wait for overlay to return to original size
+    await expect(async () => {
+      const box = await overlay.boundingBox();
+      expect(Math.abs(box.width - initialWidth)).toBeLessThan(10);
+      expect(Math.abs(box.height - initialHeight)).toBeLessThan(10);
+    }).toPass({ timeout: 2000 });
 
     // Get restored size
     const restoredBox = await overlay.boundingBox();
@@ -254,6 +291,7 @@ test.describe('Overlay Drag and Resize', () => {
     const smallBtn = page.locator('button[title="Small (30%)"]');
     await smallBtn.click();
 
+    // Wait for size change to apply
     await page.waitForTimeout(300);
 
     const smallBox = await overlay.boundingBox();
@@ -264,6 +302,7 @@ test.describe('Overlay Drag and Resize', () => {
     const mediumBtn = page.locator('button[title="Medium (50%)"]');
     await mediumBtn.click();
 
+    // Wait for width to increase from small size
     await page.waitForTimeout(300);
 
     const mediumBox = await overlay.boundingBox();
@@ -276,6 +315,7 @@ test.describe('Overlay Drag and Resize', () => {
     const largeBtn = page.locator('button[title="Large (70%)"]');
     await largeBtn.click();
 
+    // Wait for width to increase from medium size
     await page.waitForTimeout(300);
 
     const largeBox = await overlay.boundingBox();
@@ -318,7 +358,8 @@ test.describe('Overlay Drag and Resize', () => {
     const appSwitcher = page.locator('#app-switcher');
     await appSwitcher.dblclick();
 
-    await page.waitForTimeout(500);
+    // Wait a moment to ensure no size change occurs
+    await page.waitForTimeout(300);
 
     // Get size after double-click
     const afterBox = await overlay.boundingBox();
