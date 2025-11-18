@@ -4,19 +4,26 @@ This document explains the technical architecture of CXone Expert Enhancements.
 
 ## Overview
 
-CXone Expert Enhancements is a **modular enhancement loader** that provides extensible developer tools for CXone Expert. It uses a **no-build approach** with vanilla JavaScript and CSS loaded directly from a CDN.
+CXone Expert Enhancements is a **modular enhancement loader** that provides extensible developer tools for CXone Expert. It uses **Vite** for bundling ES modules into a single IIFE bundle optimized for CDN delivery.
 
 ## Project Structure
 
 ```
 cxone-expert-enhancements/
-├── dist/                           # Production-ready files (no build step)
-│   ├── expert-enhancements-embed.js        # Loader (entry point)
-│   ├── expert-enhancements-core.js         # Core app manager
-│   ├── expert-enhancements-core.css        # Core styling
-│   ├── expert-enhancements-css.js          # CSS Editor module
-│   ├── expert-enhancements-css.css         # CSS Editor styling
-│   └── expert-enhancements-html.js         # HTML Editor module
+├── src/                            # Source files (ES modules)
+│   ├── main.js                     # Main entry point (Vite)
+│   ├── core.js                     # Core app manager
+│   ├── core.css                    # Core styling
+│   ├── css-editor.js               # CSS Editor module
+│   ├── css-editor.css              # CSS Editor styling
+│   ├── html-editor.js              # HTML Editor module
+│   └── settings.js                 # Settings module
+│
+├── dist/                           # Built files (Vite output)
+│   ├── embed.js                    # Bundled JS (IIFE)
+│   ├── embed.js.map                # Source map
+│   ├── core.css                    # Bundled CSS
+│   └── ... (old files for compatibility)
 │
 ├── deploy/                         # Deployment scripts
 │   ├── deploy-v2.js                # S3/DO Spaces uploader
@@ -47,51 +54,57 @@ cxone-expert-enhancements/
 ```
 1. User adds embed script to <head>
    ↓
-2. expert-enhancements-embed.js loads
+2. embed.js loads (bundled IIFE)
    ↓
-3. Detects CDN location automatically
+3. All modules execute from bundle (core, apps)
    ↓
-4. Loads core system (core.js + core.css)
+4. Loads CSS dynamically from CDN
    ↓
-5. Creates floating toggle button
+5. Pre-loads Monaco Editor
    ↓
-6. Lazy-loads app modules on demand
+6. Creates floating toggle button
    ↓
-7. Mounts selected app into overlay
+7. Switches between apps in overlay
+   ↓
+8. Mounts selected app into overlay
 ```
 
 ### File Dependencies
 
 ```
-expert-enhancements-embed.js (entry point)
-    ↓
-    Loads:
-    ├── expert-enhancements-core.js
-    └── expert-enhancements-core.css
-            ↓
-            Provides context to apps:
-            ├── expert-enhancements-css.js + css.css
-            └── expert-enhancements-html.js
+embed.js (bundled IIFE entry point)
+    Contains:
+    ├── main.js (initialization)
+    ├── core.js (app manager & utilities)
+    ├── css-editor.js (CSS editor app)
+    ├── html-editor.js (HTML editor app)
+    └── settings.js (settings app)
+
+    Loads externally:
+    └── core.css (bundled styles from CDN)
 ```
 
 ## Core Components
 
-### 1. Embed Script (`expert-enhancements-embed.js`)
+### 1. Main Entry Point (`src/main.js` → `dist/embed.js`)
 
-**Purpose:** Single-script loader that initializes the entire system
+**Purpose:** Single-script bundle that initializes the entire system
 
 **Responsibilities:**
-- Auto-detect CDN location
-- Load core JavaScript and CSS
+- Import all ES modules (core, apps)
+- Load CSS dynamically from CDN
+- Pre-load Monaco Editor
 - Initialize app registry
+- Create toggle button and overlay
 - Wait for DOM ready
 
 **Key features:**
-- Self-contained (no external dependencies)
-- Tiny footprint (~300 lines)
-- Error handling for failed loads
+- Bundled by Vite into IIFE format
+- Contains all JavaScript in single file
+- Auto-detects CDN path for CSS
+- Handles Monaco AMD loader conflicts
 
-### 2. Core System (`expert-enhancements-core.js`)
+### 2. Core System (`src/core.js`)
 
 **Purpose:** Central app manager and shared utilities
 
@@ -321,11 +334,11 @@ Two types of notifications:
 
 ### Planned Enhancements
 
-**#49: Webpack build step** (Breaking change)
-- Source files in `/src/`
-- Minified builds in `/dist/`
+**#49: Vite build system** (✅ COMPLETED)
+- Source files in `/src/` with ES modules
+- Bundled builds in `/dist/` (embed.js, core.css)
 - Source maps for debugging
-- Tree shaking for smaller bundles
+- IIFE format for browser compatibility
 
 **#48: Configurable system**
 - Centralized config object
@@ -340,10 +353,11 @@ Two types of notifications:
 ### Extensibility
 
 **Adding new apps:**
-1. Create new JS file (e.g., `expert-enhancements-myapp.js`)
+1. Create new JS file in `src/` (e.g., `src/myapp.js`)
 2. Implement app interface (`init`, `mount`, `unmount`)
-3. Register with `AppManager.registerApp()`
-4. Update embed script to load new file
+3. Register with `AppManager.register()` at module load
+4. Import in `src/main.js`
+5. Run `npm run build` to bundle
 
 **Adding new features to existing apps:**
 1. Add feature code to app module
@@ -354,36 +368,42 @@ Two types of notifications:
 ## Technology Stack
 
 **Frontend:**
-- Vanilla JavaScript (ES6+)
+- Vanilla JavaScript (ES6+ modules)
 - CSS (no preprocessors)
 - Monaco Editor (VS Code editor)
+
+**Build Tools:**
+- Vite 7.1.12 - Module bundler
+- IIFE format - Browser compatibility
+- Source maps - Debugging support
 
 **Backend/Infrastructure:**
 - Digital Ocean Spaces (S3-compatible storage)
 - GitHub Actions (CI/CD)
-- Node.js (deployment scripts only)
+- Node.js (build & deployment scripts)
 
 **Dependencies:**
+- `vite` - Build tool
 - `@aws-sdk/client-s3` - S3 uploads
 - `dotenv` - Environment variables
 - `monaco-editor` (CDN) - Code editor
 
 ## Development Philosophy
 
-**No Build Step:**
-- Files in `/dist/` are production-ready
-- Edit directly, deploy directly
-- Faster development cycle
-- Lower barrier to entry
+**Modern Build System (Vite):**
+- Source files in `/src/` with ES modules
+- Built output in `/dist/` optimized for production
+- Hot Module Replacement for fast development
+- Source maps for easy debugging
+
+**Benefits:**
+- Clean ES module architecture
+- Single bundled output file (embed.js)
+- Better code organization and imports
+- Foundation for future tree-shaking
 
 **Trade-offs:**
-- No minification (planned in #49)
-- No module bundling
-- Larger file sizes
-- Manual dependency management
-
-**Why no build step?**
-- Simplicity for contributors
-- Rapid prototyping
-- Easy debugging (no source maps needed yet)
-- Project started small, will migrate when needed
+- Build step required (`npm run build`)
+- Slightly more complex for contributors
+- But: Modern development practices
+- But: Better long-term maintainability

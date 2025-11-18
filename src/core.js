@@ -7,10 +7,20 @@
  * @version 1.0.0
  */
 
-(function() {
-    'use strict';
+// ES Module - no IIFE wrapper needed
+// Modules are automatically in strict mode
 
-    console.log('[Enhancements Core] Initializing...');
+// Import Configuration System
+import { ConfigManager } from './config.js';
+
+console.log('[Enhancements Core] Initializing...');
+
+// ============================================================================
+// Configuration Instance (Singleton)
+// ============================================================================
+
+const Config = new ConfigManager();
+console.log('[Enhancements Core] Configuration system initialized');
 
     // ============================================================================
     // App Registry & Manager
@@ -21,17 +31,64 @@
     let appContainer = null;
 
     const initializedApps = new Set();
+    const failedApps = new Map(); // Track apps that failed to register
 
     const AppManager = {
         /**
-         * Register an app
+         * Register an app (graceful - does not throw)
+         * Supports optional dependencies field: { dependencies: ['app-id1', 'app-id2'] }
          */
         register(app) {
-            if (!app.id || !app.name || !app.init || !app.mount || !app.unmount) {
-                throw new Error('Invalid app interface. Required: id, name, init, mount, unmount');
+            try {
+                // Validate app interface
+                if (!app || typeof app !== 'object') {
+                    const error = 'Invalid app: must be an object';
+                    console.error(`[App Manager] Registration failed:`, error);
+                    failedApps.set('unknown', { error, timestamp: new Date() });
+                    return false;
+                }
+
+                const appId = app.id || 'unknown';
+
+                if (!app.id || !app.name || !app.init || !app.mount || !app.unmount) {
+                    const error = `Invalid app interface for "${app.name || appId}". Required: id, name, init, mount, unmount`;
+                    console.error(`[App Manager] Registration failed:`, error);
+                    failedApps.set(appId, { error, app: app.name || appId, timestamp: new Date() });
+                    return false;
+                }
+
+                // Check for duplicate registration
+                if (apps.has(app.id)) {
+                    console.warn(`[App Manager] App "${app.name}" (${app.id}) is already registered. Skipping.`);
+                    return false;
+                }
+
+                // Validate dependencies (if specified)
+                if (app.dependencies && Array.isArray(app.dependencies)) {
+                    const missingDeps = app.dependencies.filter(depId => !apps.has(depId));
+
+                    if (missingDeps.length > 0) {
+                        const error = `Missing dependencies: ${missingDeps.join(', ')}`;
+                        console.warn(`[App Manager] ⚠ App "${app.name}" (${app.id}) has unmet dependencies: ${missingDeps.join(', ')}`);
+                        failedApps.set(appId, { error, app: app.name, timestamp: new Date(), type: 'dependency' });
+                        return false;
+                    }
+
+                    console.log(`[App Manager] Dependencies satisfied for "${app.name}":`, app.dependencies.join(', '));
+                }
+
+                // Register app
+                apps.set(app.id, app);
+                console.log(`[App Manager] ✓ Registered app: ${app.name} (${app.id})`);
+                return true;
+
+            } catch (error) {
+                const appId = app?.id || 'unknown';
+                const appName = app?.name || appId;
+                console.error(`[App Manager] Unexpected error registering "${appName}":`, error);
+                failedApps.set(appId, { error: error.message, app: appName, timestamp: new Date() });
+                return false;
             }
-            apps.set(app.id, app);
-            console.log(`[App Manager] Registered app: ${app.name} (${app.id})`);
         },
 
         /**
@@ -39,6 +96,24 @@
          */
         getApps() {
             return Array.from(apps.values());
+        },
+
+        /**
+         * Get failed app registrations (for debugging)
+         */
+        getFailedApps() {
+            return Array.from(failedApps.entries()).map(([id, info]) => ({
+                id,
+                ...info
+            }));
+        },
+
+        /**
+         * Get first available app ID
+         */
+        getFirstAvailableApp() {
+            const appList = this.getApps();
+            return appList.length > 0 ? appList[0].id : null;
         },
 
         /**
@@ -52,10 +127,48 @@
             }
 
             try {
+                // Check dependencies before initializing
+                if (app.dependencies && Array.isArray(app.dependencies)) {
+                    const missingDeps = app.dependencies.filter(depId => !apps.has(depId));
+                    const uninitializedDeps = app.dependencies.filter(depId => apps.has(depId) && !initializedApps.has(depId));
+
+                    if (missingDeps.length > 0) {
+                        console.error(`[App Manager] Cannot load "${app.name}" - missing dependencies: ${missingDeps.join(', ')}`);
+                        UI.showToast(`Cannot load ${app.name}: missing dependencies`, 'error');
+                        return false;
+                    }
+
+                    // Auto-initialize uninitialized dependencies
+                    if (uninitializedDeps.length > 0) {
+                        console.log(`[App Manager] Auto-initializing dependencies for "${app.name}": ${uninitializedDeps.join(', ')}`);
+                        for (const depId of uninitializedDeps) {
+                            const depApp = apps.get(depId);
+                            if (depApp && !initializedApps.has(depId)) {
+                                console.log(`[App Manager] Initializing dependency: ${depApp.name}`);
+                                const context = {
+                                    Config,
+                                    Monaco,
+                                    API,
+                                    Storage,
+                                    UI,
+                                    DOM,
+                                    Overlay,
+                                    LoadingOverlay,
+                                    FileImport,
+                                    Formatter
+                                };
+                                await depApp.init(context);
+                                initializedApps.add(depId);
+                            }
+                        }
+                    }
+                }
+
                 // Initialize app if not already initialized
                 if (!initializedApps.has(appId)) {
                     console.log(`[App Manager] Initializing: ${app.name}`);
                     const context = {
+                        Config,
                         Monaco,
                         API,
                         Storage,
@@ -197,7 +310,7 @@
 
                 window.monacoRequire.config({
                     paths: {
-                        'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs'
+                        'vs': Config.get('advanced.cdnUrls.monaco')
                     }
                 });
 
@@ -303,15 +416,14 @@
     // Storage Utilities
     // ============================================================================
 
-    const STORAGE_PREFIX = 'expertEnhancements';
-
     const Storage = {
         /**
          * Get common state (shared across all apps)
          */
         getCommonState() {
             try {
-                const saved = localStorage.getItem(`${STORAGE_PREFIX}:common`);
+                const prefix = Config.get('advanced.storagePrefix');
+                const saved = localStorage.getItem(`${prefix}:common`);
                 return saved ? JSON.parse(saved) : {};
             } catch (error) {
                 console.warn('[Storage] Failed to get common state:', error);
@@ -326,7 +438,8 @@
             try {
                 const current = this.getCommonState();
                 const updated = { ...current, ...state };
-                localStorage.setItem(`${STORAGE_PREFIX}:common`, JSON.stringify(updated));
+                const prefix = Config.get('advanced.storagePrefix');
+                localStorage.setItem(`${prefix}:common`, JSON.stringify(updated));
             } catch (error) {
                 console.warn('[Storage] Failed to set common state:', error);
             }
@@ -337,7 +450,8 @@
          */
         getAppState(appId) {
             try {
-                const saved = localStorage.getItem(`${STORAGE_PREFIX}:app:${appId}`);
+                const prefix = Config.get('advanced.storagePrefix');
+                const saved = localStorage.getItem(`${prefix}:app:${appId}`);
                 return saved ? JSON.parse(saved) : null;
             } catch (error) {
                 console.warn(`[Storage] Failed to get state for ${appId}:`, error);
@@ -350,7 +464,8 @@
          */
         setAppState(appId, state) {
             try {
-                localStorage.setItem(`${STORAGE_PREFIX}:app:${appId}`, JSON.stringify(state));
+                const prefix = Config.get('advanced.storagePrefix');
+                localStorage.setItem(`${prefix}:app:${appId}`, JSON.stringify(state));
             } catch (error) {
                 console.warn(`[Storage] Failed to set state for ${appId}:`, error);
             }
@@ -361,7 +476,8 @@
          */
         clearAppState(appId) {
             try {
-                localStorage.removeItem(`${STORAGE_PREFIX}:app:${appId}`);
+                const prefix = Config.get('advanced.storagePrefix');
+                localStorage.removeItem(`${prefix}:app:${appId}`);
             } catch (error) {
                 console.warn(`[Storage] Failed to clear state for ${appId}:`, error);
             }
@@ -372,12 +488,13 @@
          */
         getFormatterSettings() {
             try {
-                const saved = localStorage.getItem(`${STORAGE_PREFIX}:formatter`);
+                const prefix = Config.get('advanced.storagePrefix');
+                const saved = localStorage.getItem(`${prefix}:formatter`);
                 const defaults = {
-                    formatOnSave: true,
-                    indentStyle: 'spaces',
-                    indentSize: 2,
-                    quoteStyle: 'single',
+                    formatOnSave: Config.get('behavior.formatOnSave'),
+                    indentStyle: Config.get('editor.indentStyle'),
+                    indentSize: Config.get('editor.tabSize'),
+                    quoteStyle: Config.get('editor.quoteStyle'),
                     cssSettings: {
                         parser: 'css'
                     },
@@ -389,10 +506,10 @@
             } catch (error) {
                 console.warn('[Storage] Failed to get formatter settings:', error);
                 return {
-                    formatOnSave: true,
-                    indentStyle: 'spaces',
-                    indentSize: 2,
-                    quoteStyle: 'single',
+                    formatOnSave: Config.get('behavior.formatOnSave'),
+                    indentStyle: Config.get('editor.indentStyle'),
+                    indentSize: Config.get('editor.tabSize'),
+                    quoteStyle: Config.get('editor.quoteStyle'),
                     cssSettings: { parser: 'css' },
                     htmlSettings: { parser: 'html' }
                 };
@@ -404,7 +521,8 @@
          */
         setFormatterSettings(settings) {
             try {
-                localStorage.setItem(`${STORAGE_PREFIX}:formatter`, JSON.stringify(settings));
+                const prefix = Config.get('advanced.storagePrefix');
+                localStorage.setItem(`${prefix}:formatter`, JSON.stringify(settings));
             } catch (error) {
                 console.warn('[Storage] Failed to set formatter settings:', error);
             }
@@ -435,7 +553,11 @@
          * @param {string} type - The type of toast: 'success', 'warning', 'error', or 'info'
          * @param {number} duration - How long to show the toast (ms)
          */
-        showToast(text, type = 'info', duration = 4000) {
+        showToast(text, type = 'info', duration = null) {
+            // Use config duration if not specified
+            if (duration === null) {
+                duration = Config.get('performance.toastDuration');
+            }
             // Find the overlay container
             const overlay = document.getElementById('expert-enhancements-overlay');
             if (!overlay) {
@@ -554,15 +676,9 @@
             const overlay = document.getElementById('expert-enhancements-overlay');
             if (!overlay) return;
 
-            // Color scheme based on type
-            const colors = {
-                success: 'rgba(34, 197, 94, 0.8)',   // Green
-                warning: 'rgba(251, 146, 60, 0.8)',  // Orange
-                error: 'rgba(239, 68, 68, 0.8)',     // Red
-                info: 'rgba(59, 130, 246, 0.8)'      // Blue
-            };
-
-            const backgroundColor = colors[toastData.type] || colors.info;
+            // Color scheme based on type - get from config
+            const toastColors = Config.get('appearance.toastColors');
+            const backgroundColor = toastColors[toastData.type] || toastColors.info;
 
             // Create toast container
             const toast = document.createElement('div');
@@ -604,7 +720,8 @@
             toast.appendChild(closeBtn);
 
             // Calculate z-index based on position in stack (bottom toast = lowest z-index)
-            const zIndex = 10000 + this._toastState.activeToasts.length;
+            const baseZIndex = Config.get('advanced.zIndex.toast');
+            const zIndex = baseZIndex + this._toastState.activeToasts.length;
 
             toast.style.cssText = `
                 position: absolute;
@@ -834,7 +951,7 @@
                     right: 0;
                     bottom: 0;
                     background: rgba(0, 0, 0, 0.5);
-                    z-index: 1000000;
+                    z-index: ${Config.get('advanced.zIndex.modal')};
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -897,7 +1014,9 @@
                 // Confirm button
                 const confirmBtn = document.createElement('button');
                 confirmBtn.textContent = confirmText;
-                const bgColor = type === 'danger' ? '#dc3545' : '#0d6efd';
+                const errorColor = Config.get('appearance.errorColor') || '#dc3545';
+                const infoColor = Config.get('appearance.infoColor') || '#0d6efd';
+                const bgColor = type === 'danger' ? errorColor : infoColor;
                 const hoverColor = type === 'danger' ? '#bb2d3b' : '#0b5ed7';
                 confirmBtn.style.cssText = `
                     background: ${bgColor};
@@ -1030,6 +1149,7 @@
             // Store original button content and dimensions
             const originalText = button.textContent;
             const originalColor = button.style.color;
+            const originalWidth = button.offsetWidth + 'px';
             const originalHeight = button.offsetHeight + 'px';
             const originalMinHeight = button.style.minHeight;
 
@@ -1040,6 +1160,7 @@
             button.style.gap = '0';
             button.style.justifyContent = 'space-between';
             button.style.padding = '0';
+            button.style.width = originalWidth;
             button.style.height = originalHeight;
             button.style.minHeight = originalHeight;
 
@@ -1051,6 +1172,7 @@
             confirmText.style.paddingLeft = '1rem';
             confirmText.style.paddingRight = '0.5rem';
             confirmText.style.flex = '1';
+            confirmText.style.background = '#fff5f6';
 
             const buttonGroup = document.createElement('span');
             buttonGroup.style.display = 'flex';
@@ -1120,6 +1242,7 @@
                 button.style.gap = '';
                 button.style.justifyContent = '';
                 button.style.padding = '';
+                button.style.width = '';
                 button.style.height = '';
                 button.style.minHeight = originalMinHeight;
             };
@@ -1238,7 +1361,7 @@
          */
         show(message = 'Loading...', options = {}) {
             const {
-                timeout = 30000, // 30 seconds default timeout
+                timeout = Config.get('performance.loadingTimeout'), // Use config timeout
                 showProgress = true, // Show progress after 2 seconds
                 onTimeout = null
             } = options;
@@ -1469,8 +1592,8 @@
                 window.require = undefined;
 
                 // Helper to wait for a global variable with exponential backoff
-                // Max timeout: 60 seconds
-                const waitForGlobal = (checkFn, name, maxTimeout = 60000) => {
+                // Max timeout: use config value
+                const waitForGlobal = (checkFn, name, maxTimeout = Config.get('performance.formatterTimeout')) => {
                     return new Promise((resolve, reject) => {
                         const startTime = Date.now();
                         let currentInterval = 50; // Start with 50ms
@@ -1498,7 +1621,7 @@
 
                 // Load Prettier standalone first
                 const prettierScript = document.createElement('script');
-                prettierScript.src = 'https://unpkg.com/prettier@3.6.2/standalone.js';
+                prettierScript.src = Config.get('advanced.cdnUrls.prettier');
 
                 prettierScript.onload = async () => {
                     console.log('[Formatter] Prettier standalone script loaded');
@@ -1518,7 +1641,7 @@
 
                         // Load CSS parser (postcss)
                         const cssParserScript = document.createElement('script');
-                        cssParserScript.src = 'https://unpkg.com/prettier@3.6.2/plugins/postcss.js';
+                        cssParserScript.src = Config.get('advanced.cdnUrls.prettierCSS');
 
                         const cssLoaded = new Promise((resolveCSS, rejectCSS) => {
                             cssParserScript.onload = () => {
@@ -1546,7 +1669,7 @@
 
                         // Load HTML parser
                         const htmlParserScript = document.createElement('script');
-                        htmlParserScript.src = 'https://unpkg.com/prettier@3.6.2/plugins/html.js';
+                        htmlParserScript.src = Config.get('advanced.cdnUrls.prettierHTML');
 
                         const htmlLoaded = new Promise((resolveHTML, rejectHTML) => {
                             htmlParserScript.onload = () => {
@@ -1765,6 +1888,10 @@
 
             // Header
             overlayHeader = DOM.create('div', { id: 'expert-enhancements-overlay-header' });
+
+            // Apply header color from config
+            const headerColor = Config.get('appearance.headerColor');
+            overlayHeader.style.background = headerColor;
 
             const headerLeft = DOM.create('div', { className: 'header-left' });
             const headerTitle = DOM.create('span', { className: 'header-title' }, ['CXone Expert Enhancements']);
@@ -2734,23 +2861,43 @@
         }
     };
 
-    // ============================================================================
-    // Export Global Context
-    // ============================================================================
+// ============================================================================
+// Export ES Modules
+// ============================================================================
 
-    window.ExpertEnhancements = {
-        AppManager,
-        Monaco,
-        API,
-        Storage,
-        UI,
-        DOM,
-        Overlay,
-        LoadingOverlay,
-        FileImport,
-        Formatter,
-        version: '1.0.0'
-    };
+export {
+    Config,
+    ConfigManager,
+    AppManager,
+    Monaco,
+    API,
+    Storage,
+    UI,
+    DOM,
+    Overlay,
+    LoadingOverlay,
+    FileImport,
+    Formatter
+};
 
-    console.log('[Enhancements Core] Initialized successfully');
-})();
+export const version = '1.0.0';
+
+console.log('[Enhancements Core] Initialized successfully');
+
+// Also export on window for backwards compatibility during transition
+// This can be removed once all code uses ES imports
+window.ExpertEnhancements = {
+    Config,
+    ConfigManager,
+    AppManager,
+    Monaco,
+    API,
+    Storage,
+    UI,
+    DOM,
+    Overlay,
+    LoadingOverlay,
+    FileImport,
+    Formatter,
+    version
+};

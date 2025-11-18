@@ -1,0 +1,208 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm run test:unit
+
+      - name: Generate coverage report
+        run: npm run test:coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage/lcov.info
+          flags: unittests
+          name: unit-coverage
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run integration tests
+        run: npm run test:integration
+
+  e2e-tests:
+    name: E2E Tests (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests]
+
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Wait for deployment workflow if running
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BRANCH="${{ github.head_ref || github.ref_name }}"
+          echo "Checking for active deployment workflow on branch: $BRANCH"
+
+          # Get the most recent feature-deploy workflow run for this branch
+          RUN_ID=$(gh run list \
+            --workflow=feature-deploy.yml \
+            --branch="$BRANCH" \
+            --limit=1 \
+            --json databaseId,status \
+            --jq '.[0] | select(.status == "in_progress" or .status == "queued") | .databaseId')
+
+          if [ -n "$RUN_ID" ]; then
+            echo "⏳ Deployment workflow #$RUN_ID is running, waiting for completion..."
+            gh run watch "$RUN_ID" --exit-status
+            echo "✅ Deployment workflow completed successfully"
+          else
+            echo "✅ No active deployment workflow, using existing deployment"
+          fi
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Run E2E tests
+        run: npm run test:e2e -- --project=${{ matrix.browser }}
+        env:
+          CI: 'true'
+          BASE_URL: http://localhost:8080/test-page.html
+          DO_SPACES_BUCKET: ${{ vars.DO_SPACES_BUCKET }}
+          DO_SPACES_ENDPOINT: ${{ vars.DO_SPACES_ENDPOINT }}
+          GITHUB_HEAD_REF: ${{ github.head_ref }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results-${{ matrix.browser }}
+          path: test-results/
+          retention-days: 7
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.browser }}
+          path: playwright-report/
+          retention-days: 7
+
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests, e2e-tests]
+    if: always()
+
+    steps:
+      - name: Check test results
+        run: |
+          echo "Unit Tests: ${{ needs.unit-tests.result }}"
+          echo "Integration Tests: ${{ needs.integration-tests.result }}"
+          echo "E2E Tests: ${{ needs.e2e-tests.result }}"
+
+          if [[ "${{ needs.unit-tests.result }}" != "success" ]] || \
+             [[ "${{ needs.integration-tests.result }}" != "success" ]] || \
+             [[ "${{ needs.e2e-tests.result }}" != "success" ]]; then
+            echo "❌ Some tests failed"
+            exit 1
+          fi
+
+          echo "✅ All tests passed"
+
+  pr-comment:
+    name: PR Test Results Comment
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests, e2e-tests]
+    if: github.event_name == 'pull_request' && always()
+
+    steps:
+      - name: Create test results comment
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const unitResult = '${{ needs.unit-tests.result }}';
+            const integrationResult = '${{ needs.integration-tests.result }}';
+            const e2eResult = '${{ needs.e2e-tests.result }}';
+
+            const icon = (result) => {
+              switch (result) {
+                case 'success': return '✅';
+                case 'failure': return '❌';
+                case 'cancelled': return '🚫';
+                case 'skipped': return '⏭️';
+                default: return '❔';
+              }
+            };
+
+            const comment = `## Test Results
+
+            | Test Type | Result |
+            |-----------|--------|
+            | Unit Tests | ${icon(unitResult)} ${unitResult} |
+            | Integration Tests | ${icon(integrationResult)} ${integrationResult} |
+            | E2E Tests | ${icon(e2eResult)} ${e2eResult} |
+
+            ${unitResult === 'success' && integrationResult === 'success' && e2eResult === 'success' ?
+              '🎉 All tests passed! Ready to merge.' :
+              '⚠️ Some tests failed. Please review the results above.'}
+
+            **Deployed to:** https://${{ vars.DO_SPACES_BUCKET }}.${{ vars.DO_SPACES_ENDPOINT }}/cxone-expert-enhancements/${{ github.ref_name }}/
+
+            [View detailed workflow results](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
