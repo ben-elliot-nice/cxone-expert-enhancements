@@ -12,10 +12,29 @@ export class CXoneAPIMock {
   constructor(page, options = {}) {
     this.page = page;
     this.mode = options.mode || process.env.TEST_MODE || 'mock';
+    this.debug = options.debug || process.env.DEBUG_MOCK_SERVER === 'true';
     this.fixtures = this.loadFixtures();
     this.capturedRequests = [];
     this.errorOverrides = [];
     this.sequentialResponses = new Map();
+  }
+
+  /**
+   * Log debug messages if debug mode is enabled
+   */
+  log(...args) {
+    if (this.debug) {
+      console.log(...args);
+    }
+  }
+
+  /**
+   * Log warning messages if debug mode is enabled
+   */
+  warn(...args) {
+    if (this.debug) {
+      console.warn(...args);
+    }
   }
 
   /**
@@ -47,7 +66,7 @@ export class CXoneAPIMock {
     try {
       return JSON.parse(fs.readFileSync(filepath, 'utf-8'));
     } catch (error) {
-      console.warn(`Could not load fixture: ${filepath}`);
+      this.warn(`Could not load fixture: ${filepath}`);
       return null;
     }
   }
@@ -57,7 +76,7 @@ export class CXoneAPIMock {
    */
   async enableMocking() {
     if (this.mode !== 'mock') {
-      console.log('Running in REAL mode - API calls will hit actual endpoints');
+      this.log('Running in REAL mode - API calls will hit actual endpoints');
       return;
     }
 
@@ -90,7 +109,7 @@ export class CXoneAPIMock {
       const method = route.request().method();
       const errorType = this.getErrorFor(url);
 
-      console.log(`[Mock CSS] Intercepted ${method} ${url}`);
+      this.log(`[Mock CSS] Intercepted ${method} ${url}`);
 
       if (errorType) {
         return this.respondWithError(route, errorType);
@@ -119,7 +138,7 @@ export class CXoneAPIMock {
 
         // Return 200 OK to simulate successful save (real API does POST→302→GET→200)
         // Return empty body to avoid any navigation issues
-        console.log(`[Mock CSS] POST - returning 200 OK`);
+        this.log(`[Mock CSS] POST - returning 200 OK`);
         await route.fulfill({
           status: 200,
           headers: {
@@ -129,7 +148,7 @@ export class CXoneAPIMock {
         });
       } else if (method === 'GET') {
         // GET requests (initial page load) return 200 with HTML
-        console.log(`[Mock CSS] GET - returning 200 OK with HTML`);
+        this.log(`[Mock CSS] GET - returning 200 OK with HTML`);
         await route.fulfill({
           status: 200,
           contentType: 'text/html; charset=UTF-8',
@@ -187,7 +206,7 @@ export class CXoneAPIMock {
       const method = route.request().method();
       const errorType = this.getErrorFor(url);
 
-      console.log(`[Mock HTML] Intercepted ${method} ${url}`);
+      this.log(`[Mock HTML] Intercepted ${method} ${url}`);
 
       if (errorType) {
         return this.respondWithError(route, errorType);
@@ -216,7 +235,7 @@ export class CXoneAPIMock {
 
         // Return 200 OK to simulate successful save (real API does POST→302→GET→200)
         // Return empty body to avoid any navigation issues
-        console.log(`[Mock HTML] POST - returning 200 OK`);
+        this.log(`[Mock HTML] POST - returning 200 OK`);
         await route.fulfill({
           status: 200,
           headers: {
@@ -226,7 +245,7 @@ export class CXoneAPIMock {
         });
       } else if (method === 'GET') {
         // GET requests (initial page load) return 200 with HTML
-        console.log(`[Mock HTML] GET - returning 200 OK with HTML`);
+        this.log(`[Mock HTML] GET - returning 200 OK with HTML`);
         await route.fulfill({
           status: 200,
           contentType: 'text/html; charset=UTF-8',
