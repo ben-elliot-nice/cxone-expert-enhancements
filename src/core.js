@@ -2655,7 +2655,8 @@ console.log('[Enhancements Core] Configuration system initialized');
         }
     };
 
-    if (typeof window !== 'undefined' && import.meta.env?.DEV) {
+    // Expose test API for E2E tests (same reasoning as AppManager exposure)
+    if (typeof window !== 'undefined') {
         window.__ENHANCEMENTS_OVERLAY_TEST_API__ = {
             applyPresetSize: (preset) => Overlay.applyPresetSize(preset)
         };

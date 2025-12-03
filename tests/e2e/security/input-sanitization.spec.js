@@ -141,7 +141,11 @@ test.describe('Input Sanitization', () => {
     // Generate large but reasonable content
     const largeContent = '<div>\n' + '  <p>Line of text</p>\n'.repeat(100) + '</div>';
 
-    await htmlEditor.typeInEditor(largeContent);
+    // Use insertText (paste) instead of keyboard.type for large content - much faster in CI
+    const viewLines = page.locator('.monaco-editor .view-lines');
+    await viewLines.waitFor({ state: 'visible', timeout: 5000 });
+    await viewLines.click();
+    await page.keyboard.insertText(largeContent);
 
     // Verify editor still responsive
     const editorContent = await htmlEditor.getEditorContent('head');
