@@ -107,9 +107,20 @@ jobs:
           fi
 
           echo "No completed deploy found. Triggering feature-deploy for $BRANCH"
-          RUN_ID=$(gh workflow run feature-deploy.yml --ref "$BRANCH" --json run_id --jq '.run_id')
-          gh run watch "$RUN_ID" --exit-status
-          echo "Deployment run $RUN_ID finished"
+          BEFORE=$(gh run list --workflow=feature-deploy.yml --branch="$BRANCH" --limit=1 --json databaseId --jq '.[0].databaseId // ""')
+          gh workflow run feature-deploy.yml --ref "$BRANCH"
+          echo "Waiting for new deploy run to appear..."
+          for i in {1..60}; do
+            RUN_ID=$(gh run list --workflow=feature-deploy.yml --branch="$BRANCH" --limit=1 --json databaseId --jq '.[0].databaseId // ""')
+            if [ -n "$RUN_ID" ] && [ "$RUN_ID" != "$BEFORE" ]; then
+              echo "Detected new run id $RUN_ID"
+              gh run watch "$RUN_ID" --exit-status
+              exit $?
+            fi
+            sleep 5
+          done
+          echo "Timed out waiting for deploy run" >&2
+          exit 1
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps ${{ matrix.browser }}
