@@ -91,17 +91,25 @@ jobs:
           echo "DEPLOYMENT_BRANCH_SLUG=$SLUG" >> $GITHUB_ENV
           echo "BRANCH_NAME=$BRANCH" >> $GITHUB_ENV
 
-      - name: Deploy feature branch (PR only)
+      - name: Trigger feature deploy if needed
         if: github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
           BRANCH: ${{ github.head_ref }}
         run: |
-          echo "Triggering feature-deploy workflow for $BRANCH"
+          RUNS=$(gh run list --workflow=feature-deploy.yml --branch="$BRANCH" --limit=1 --json status,conclusion --jq '.[0]')
+          STATUS=$(echo "$RUNS" | jq -r '.status // ""')
+          CONCLUSION=$(echo "$RUNS" | jq -r '.conclusion // ""')
+
+          if [ "$STATUS" = "completed" ] && [ "$CONCLUSION" = "success" ]; then
+            echo "Found completed deploy for branch $BRANCH. Reusing it."
+            exit 0
+          fi
+
+          echo "No completed deploy found. Triggering feature-deploy for $BRANCH"
           RUN_ID=$(gh workflow run feature-deploy.yml --ref "$BRANCH" --json run_id --jq '.run_id')
-          echo "Waiting for deploy run $RUN_ID to finish"
           gh run watch "$RUN_ID" --exit-status
-          echo "Deployment run completed"
+          echo "Deployment run $RUN_ID finished"
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps ${{ matrix.browser }}
