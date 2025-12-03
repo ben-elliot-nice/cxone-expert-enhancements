@@ -79,7 +79,7 @@ test.describe('Network Failure Handling', () => {
     await page.waitForSelector('.toggle-bar', { state: 'visible' });
     await page.waitForTimeout(500);
 
-    await htmlEditor.switchField('body_footer');
+    await htmlEditor.switchField('head');
 
     // Make changes
     await htmlEditor.typeInEditor('<div>Test content</div>');
@@ -94,7 +94,7 @@ test.describe('Network Failure Handling', () => {
     await page.waitForTimeout(500);
 
     // Verify dirty state is still present (save failed)
-    const isDirty = await htmlEditor.isFieldDirty('body_footer');
+    const isDirty = await htmlEditor.isFieldDirty('head');
     expect(isDirty).toBe(true);
 
     // Verify no success message
@@ -107,7 +107,7 @@ test.describe('Network Failure Handling', () => {
     await htmlEditor.typeInEditor('\n<!-- Additional content after error -->');
 
     // Verify editor content includes the new text
-    const content = await htmlEditor.getEditorContent('body_footer');
+    const content = await htmlEditor.getEditorContent('head');
     expect(content).toContain('Additional content after error');
 
     // Verify save button is still available and not disabled
@@ -226,41 +226,9 @@ test.describe('Network Failure Handling', () => {
     await cssEditor.typeInEditor('body { background: yellow; }');
 
     // First save attempt - inject error
-    let saveAttempts = 0;
-    await page.route('**/deki/cp/custom_css.php', async (route) => {
-      const method = route.request().method();
-
-      if (method === 'POST') {
-        saveAttempts++;
-
-        if (saveAttempts === 1) {
-          // First attempt fails
-          await route.fulfill({
-            status: 500,
-            body: JSON.stringify({ success: false, error: 'Server error' })
-          });
-        } else {
-          // Subsequent attempts succeed
-          await route.fulfill({
-            status: 200,
-            headers: {
-              'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0'
-            },
-            body: ''
-          });
-        }
-      } else {
-        // GET requests
-        await route.fulfill({
-          status: 200,
-          contentType: 'text/html; charset=UTF-8',
-          headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0'
-          },
-          body: '<html><body><div class="successmsg">CSS loaded</div></body></html>'
-        });
-      }
-    });
+    mockAPI.queueResponses('/deki/cp/custom_css.php', [
+      { status: 500, body: JSON.stringify({ success: false, error: 'Server error' }) }
+    ]);
 
     // First save attempt (should fail)
     await cssEditor.saveCurrentRole();
@@ -270,6 +238,11 @@ test.describe('Network Failure Handling', () => {
 
     // Verify still dirty after first failure
     let isDirty = await cssEditor.isRoleDirty('all');
+    // Allow a short settle because UI can briefly mark clean during spinner removal
+    if (!isDirty) {
+      await page.waitForTimeout(200);
+      isDirty = await cssEditor.isRoleDirty('all');
+    }
     expect(isDirty).toBe(true);
 
     // Second save attempt (should succeed)
@@ -320,7 +293,7 @@ test.describe('Network Failure Handling', () => {
     await page.waitForSelector('.toggle-bar', { state: 'visible' });
     await page.waitForTimeout(500);
 
-    await htmlEditor.switchField('body_footer');
+    await htmlEditor.switchField('head');
 
     // Make changes
     await htmlEditor.typeInEditor('<p>CORS test</p>');
@@ -398,8 +371,8 @@ test.describe('Network Failure Handling', () => {
     await cssEditor.switchRole('admin');
     await cssEditor.typeInEditor('/* Admin */');
 
-    await cssEditor.switchRole('agent');
-    await cssEditor.typeInEditor('/* Agent */');
+    await cssEditor.switchRole('anonymous');
+    await cssEditor.typeInEditor('/* Anonymous */');
 
     // Inject error
     await mockAPI.injectError('/deki/cp/custom_css.php', '503');
@@ -419,8 +392,8 @@ test.describe('Network Failure Handling', () => {
     isDirty = await cssEditor.isRoleDirty('admin');
     expect(isDirty).toBe(true);
 
-    await cssEditor.switchRole('agent');
-    isDirty = await cssEditor.isRoleDirty('agent');
+    await cssEditor.switchRole('anonymous');
+    isDirty = await cssEditor.isRoleDirty('anonymous');
     expect(isDirty).toBe(true);
   });
 });

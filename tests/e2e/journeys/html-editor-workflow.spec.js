@@ -20,6 +20,12 @@ test.describe('HTML Editor Workflow', () => {
     // Open toolkit and switch to HTML editor for all tests
     await expertPage.openToolkit();
     await expertPage.switchApp('html-editor'); // Waits for AppManager.getCurrentApp() and container visibility
+
+    // Ensure HTML-specific toggle buttons are rendered before continuing
+    await page.waitForSelector('.toggle-bar button.toggle-btn[data-field]', {
+      state: 'visible',
+      timeout: 5000
+    });
   });
 
   test('should load HTML editor and display content', async ({ page }) => {

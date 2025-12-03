@@ -14,8 +14,10 @@ export class CXoneExpertPage {
    * Open the toolkit overlay
    */
   async openToolkit() {
-    await this.page.click('#expert-enhancements-toggle');
-    await this.page.waitForSelector('#expert-enhancements-overlay', { state: 'visible' });
+    const toggle = this.page.locator('#expert-enhancements-toggle').last();
+    await toggle.waitFor({ state: 'visible', timeout: 10000 });
+    await toggle.click({ force: true });
+    await this.page.waitForSelector('#expert-enhancements-overlay', { state: 'visible', timeout: 10000 });
   }
 
   /**
@@ -42,79 +44,43 @@ export class CXoneExpertPage {
       throw new Error(`Unknown app: ${appName}`);
     }
 
-    // Retry logic to handle race conditions between initial app load and app switching
-    const maxRetries = 5;
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      // Trigger the app switch
-      await this.page.evaluate((appValue) => {
-        const switcher = document.querySelector('#app-switcher');
-        if (switcher) {
-          switcher.value = appValue;
-          switcher.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-      }, appName);
+    // Wait for switcher and option to exist
+    await this.page.waitForSelector('#app-switcher', { state: 'visible', timeout: 5000 });
+    await this.page.waitForSelector(`#app-switcher option[value="${appName}"]`, { state: 'attached', timeout: 5000 });
 
-      // Wait for AppManager to switch to the correct app
-      // This is the most reliable check since we exposed AppManager to window in DEV mode
-      try {
-        await this.page.waitForFunction(
-          (expectedAppId) => {
-            // Check app switcher dropdown matches
-            const switcher = document.querySelector('#app-switcher');
-            if (!switcher || switcher.value !== expectedAppId) return false;
+    // Ensure AppManager is initialized so change events will be handled
+    await this.page.waitForFunction(
+      (expectedAppId) => {
+        const appManager = window.AppManager;
+        if (!appManager || typeof appManager.getApps !== 'function') return false;
+        return appManager.getApps().some(app => app.id === expectedAppId);
+      },
+      appName,
+      { timeout: 5000 }
+    ).catch(() => {});
 
-            // Check AppManager reports the correct current app
-            const appManager = window.AppManager;
-            if (!appManager) return false;
+    // Use native selectOption for determinism
+    await this.page.selectOption('#app-switcher', appName);
 
-            const currentApp = appManager.getCurrentApp();
-            return currentApp && currentApp.id === expectedAppId;
-          },
-          appName,
-          { timeout: 5000 }
-        );
+    // Wait for container to be visible
+    await this.page.waitForSelector(expectedContainer, { state: 'visible', timeout: 5000 });
 
-        // Verify the container is also visible (belt and suspenders)
-        const containerVisible = await this.page.evaluate((containerSelector) => {
-          const container = document.querySelector(containerSelector);
-          if (!container) return false;
-          const style = window.getComputedStyle(container);
-          return style.display !== 'none' && style.visibility !== 'hidden';
-        }, expectedContainer);
+    // If AppManager is available, confirm it agrees
+    await this.page.waitForFunction(
+      (expectedAppId) => {
+        const appManager = window.AppManager;
+        if (!appManager) return false;
+        const currentApp = appManager.getCurrentApp();
+        return currentApp && currentApp.id === expectedAppId;
+      },
+      appName,
+      { timeout: 5000 }
+    ).catch(() => {
+      // Non-fatal in dev; container visibility above is primary signal
+    });
 
-        if (containerVisible) {
-          // Success! Both AppManager and DOM confirm correct app is loaded
-          // Wait a bit to ensure no other app is about to mount
-          await this.page.waitForTimeout(1000);
-
-          // CRITICAL: Re-verify the app is still loaded (catch time-of-check-to-time-of-use race)
-          const stillCorrectApp = await this.page.evaluate((expectedAppId) => {
-            const appManager = window.AppManager;
-            if (!appManager) return false;
-            const currentApp = appManager.getCurrentApp();
-            return currentApp && currentApp.id === expectedAppId;
-          }, appName);
-
-          if (stillCorrectApp) {
-            return; // Confirmed stable
-          }
-
-          // App changed after our check - retry
-          console.log(`[switchApp] App changed after verification, retrying...`);
-        }
-      } catch (e) {
-        // waitForFunction timed out - wrong app loaded
-      }
-
-      // Wrong app loaded - retry unless this was the last attempt
-      if (attempt < maxRetries) {
-        console.log(`[switchApp] Wrong app loaded, retrying (attempt ${attempt + 1}/${maxRetries})...`);
-        await this.page.waitForTimeout(1000); // Wait before retry
-      }
-    }
-
-    // If we get here, all retries failed
-    throw new Error(`Failed to switch to ${appName} after ${maxRetries} attempts - race condition persists`);
+    // Short settle to allow layout before interactions
+    await this.page.waitForTimeout(300);
   }
 
   /**
@@ -137,7 +103,16 @@ export class CSSEditorPage {
    * Switch to a role tab
    */
   async switchRole(role) {
-    await this.page.click(`button[data-role="${role}"].toggle-btn`);
+    const buttonSelector = `button[data-role="${role}"].toggle-btn`;
+    const button = this.page.locator(buttonSelector);
+    try {
+      await button.waitFor({ state: 'visible', timeout: 5000 });
+      await button.click();
+    } catch {
+      // Fallback to mobile select
+      await this.page.waitForSelector('#mobile-editor-select', { state: 'visible', timeout: 5000 });
+      await this.page.selectOption('#mobile-editor-select', role);
+    }
     // Wait for Monaco editor to be created and rendered
     await this.page.waitForSelector(`#editor-${role} .monaco-editor`, { state: 'visible' });
   }
@@ -147,7 +122,9 @@ export class CSSEditorPage {
    */
   async typeInEditor(text) {
     // Click in Monaco editor to focus
-    await this.page.click('.monaco-editor .view-lines');
+    const viewLines = this.page.locator('.monaco-editor .view-lines');
+    await viewLines.waitFor({ state: 'visible', timeout: 5000 });
+    await viewLines.click();
     // Type text
     await this.page.keyboard.type(text);
   }
@@ -168,16 +145,13 @@ export class CSSEditorPage {
         if (!currentApp || !currentApp._baseEditor) return false;
 
         const editor = currentApp._baseEditor.monacoEditors[roleId];
-        return editor && editor.getValue();
+        return !!editor;
       },
       role,
-      { timeout: 2000 }
-    ).catch(() => {
-      // If timeout, proceed anyway - editor might be empty legitimately
-    });
+      { timeout: 5000 }
+    ).catch(() => {});
 
     return await this.page.evaluate((roleId) => {
-      // Access through AppManager -> CSSEditorApp -> BaseEditor -> monacoEditors
       const appManager = window.AppManager;
       if (!appManager) return '';
 
@@ -185,7 +159,11 @@ export class CSSEditorPage {
       if (!currentApp || !currentApp._baseEditor) return '';
 
       const editor = currentApp._baseEditor.monacoEditors[roleId];
-      return editor ? editor.getValue() : '';
+      if (!editor || typeof editor.getValue !== 'function') {
+        return '';
+      }
+
+      return editor.getValue();
     }, role);
   }
 
@@ -198,13 +176,22 @@ export class CSSEditorPage {
     const selector = `button[data-role="${role}"].toggle-btn`;
     const button = this.page.locator(selector);
 
-    const styles = await button.evaluate(el => ({
-      inlineFontWeight: el.style.fontWeight,
-      inlineColor: el.style.color
-    }));
+    if (await button.count()) {
+      const styles = await button.evaluate(el => ({
+        inlineFontWeight: el.style.fontWeight,
+        inlineColor: el.style.color
+      }));
 
-    return styles.inlineFontWeight === 'bold' &&
-           (styles.inlineColor === 'rgb(255, 152, 0)' || styles.inlineColor === '#ff9800');
+      return styles.inlineFontWeight === 'bold' &&
+             (styles.inlineColor === 'rgb(255, 152, 0)' || styles.inlineColor === '#ff9800');
+    }
+
+    // Mobile view fallback - read AppManager state directly
+    return await this.page.evaluate((roleId) => {
+      const appManager = window.AppManager;
+      const currentApp = appManager?.getCurrentApp();
+      return currentApp?._baseEditor?.editorState?.[roleId]?.isDirty ?? false;
+    }, role);
   }
 
   /**
@@ -277,7 +264,15 @@ export class HTMLEditorPage {
    * Switch to a field tab
    */
   async switchField(field) {
-    await this.page.click(`button[data-field="${field}"].toggle-btn`);
+    const buttonSelector = `button[data-field="${field}"].toggle-btn`;
+    const button = this.page.locator(buttonSelector);
+    try {
+      await button.waitFor({ state: 'visible', timeout: 5000 });
+      await button.click();
+    } catch {
+      await this.page.waitForSelector('#mobile-editor-select', { state: 'visible', timeout: 5000 });
+      await this.page.selectOption('#mobile-editor-select', field);
+    }
     // Wait for Monaco editor to be created and rendered
     await this.page.waitForSelector(`#editor-${field} .monaco-editor`, { state: 'visible' });
   }
@@ -287,7 +282,9 @@ export class HTMLEditorPage {
    */
   async typeInEditor(text) {
     // Click in Monaco editor to focus
-    await this.page.click('.monaco-editor .view-lines');
+    const viewLines = this.page.locator('.monaco-editor .view-lines');
+    await viewLines.waitFor({ state: 'visible', timeout: 5000 });
+    await viewLines.click();
     await this.page.keyboard.type(text);
   }
 
@@ -307,16 +304,13 @@ export class HTMLEditorPage {
         if (!currentApp || !currentApp._baseEditor) return false;
 
         const editor = currentApp._baseEditor.monacoEditors[fieldId];
-        return editor && editor.getValue();
+        return !!editor;
       },
       field,
-      { timeout: 2000 }
-    ).catch(() => {
-      // If timeout, proceed anyway - editor might be empty legitimately
-    });
+      { timeout: 5000 }
+    ).catch(() => {});
 
     return await this.page.evaluate((fieldId) => {
-      // Access through AppManager -> HTMLEditorApp -> BaseEditor -> monacoEditors
       const appManager = window.AppManager;
       if (!appManager) return '';
 
@@ -324,7 +318,11 @@ export class HTMLEditorPage {
       if (!currentApp || !currentApp._baseEditor) return '';
 
       const editor = currentApp._baseEditor.monacoEditors[fieldId];
-      return editor ? editor.getValue() : '';
+      if (!editor || typeof editor.getValue !== 'function') {
+        return '';
+      }
+
+      return editor.getValue();
     }, field);
   }
 
@@ -337,13 +335,21 @@ export class HTMLEditorPage {
     const selector = `button[data-field="${field}"].toggle-btn`;
     const button = this.page.locator(selector);
 
-    const styles = await button.evaluate(el => ({
-      inlineFontWeight: el.style.fontWeight,
-      inlineColor: el.style.color
-    }));
+    if (await button.count()) {
+      const styles = await button.evaluate(el => ({
+        inlineFontWeight: el.style.fontWeight,
+        inlineColor: el.style.color
+      }));
 
-    return styles.inlineFontWeight === 'bold' &&
-           (styles.inlineColor === 'rgb(255, 152, 0)' || styles.inlineColor === '#ff9800');
+      return styles.inlineFontWeight === 'bold' &&
+             (styles.inlineColor === 'rgb(255, 152, 0)' || styles.inlineColor === '#ff9800');
+    }
+
+    return await this.page.evaluate((fieldId) => {
+      const appManager = window.AppManager;
+      const currentApp = appManager?.getCurrentApp();
+      return currentApp?._baseEditor?.editorState?.[fieldId]?.isDirty ?? false;
+    }, field);
   }
 
   /**

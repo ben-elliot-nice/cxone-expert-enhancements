@@ -2655,6 +2655,12 @@ console.log('[Enhancements Core] Configuration system initialized');
         }
     };
 
+    if (typeof window !== 'undefined' && import.meta.env?.DEV) {
+        window.__ENHANCEMENTS_OVERLAY_TEST_API__ = {
+            applyPresetSize: (preset) => Overlay.applyPresetSize(preset)
+        };
+    }
+
     // ============================================================================
     // File Import Module
     // ============================================================================

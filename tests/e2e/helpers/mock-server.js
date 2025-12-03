@@ -14,6 +14,8 @@ export class CXoneAPIMock {
     this.mode = options.mode || process.env.TEST_MODE || 'mock';
     this.fixtures = this.loadFixtures();
     this.capturedRequests = [];
+    this.errorOverrides = [];
+    this.sequentialResponses = new Map();
   }
 
   /**
@@ -61,10 +63,17 @@ export class CXoneAPIMock {
 
     // Mock CSS load (legacy API endpoint)
     await this.page.route('**/api/css/load', (route) => {
+      const url = route.request().url();
+      const errorType = this.getErrorFor(url);
+
       this.capturedRequests.push({
-        url: route.request().url(),
+        url,
         method: route.request().method()
       });
+
+      if (errorType) {
+        return this.respondWithError(route, errorType);
+      }
 
       route.fulfill({
         status: 200,
@@ -79,11 +88,28 @@ export class CXoneAPIMock {
     await this.page.route((url) => url.pathname.includes('/deki/cp/custom_css.php'), async (route) => {
       const url = route.request().url();
       const method = route.request().method();
+      const errorType = this.getErrorFor(url);
 
       console.log(`[Mock CSS] Intercepted ${method} ${url}`);
 
+      if (errorType) {
+        return this.respondWithError(route, errorType);
+      }
+
       if (method === 'POST') {
         const postData = route.request().postData();
+
+        const queued = this.consumeQueuedResponse(url);
+        if (queued) {
+          await route.fulfill({
+            status: queued.status,
+            headers: queued.headers || {
+              'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0'
+            },
+            body: queued.body ?? ''
+          });
+          return;
+        }
 
         this.capturedRequests.push({
           url,
@@ -117,10 +143,17 @@ export class CXoneAPIMock {
 
     // Mock HTML load
     await this.page.route('**/api/html/load', (route) => {
+      const url = route.request().url();
+      const errorType = this.getErrorFor(url);
+
       this.capturedRequests.push({
-        url: route.request().url(),
+        url,
         method: route.request().method()
       });
+
+      if (errorType) {
+        return this.respondWithError(route, errorType);
+      }
 
       route.fulfill({
         status: 200,
@@ -152,11 +185,28 @@ export class CXoneAPIMock {
     await this.page.route((url) => url.pathname.includes('/deki/cp/custom_html.php'), async (route) => {
       const url = route.request().url();
       const method = route.request().method();
+      const errorType = this.getErrorFor(url);
 
       console.log(`[Mock HTML] Intercepted ${method} ${url}`);
 
+      if (errorType) {
+        return this.respondWithError(route, errorType);
+      }
+
       if (method === 'POST') {
         const postData = route.request().postData();
+
+        const queued = this.consumeQueuedResponse(url);
+        if (queued) {
+          await route.fulfill({
+            status: queued.status,
+            headers: queued.headers || {
+              'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0'
+            },
+            body: queued.body ?? ''
+          });
+          return;
+        }
 
         this.capturedRequests.push({
           url,
@@ -207,23 +257,14 @@ export class CXoneAPIMock {
    * Inject errors on specific endpoints
    */
   async injectError(endpoint, errorType = '500') {
-    await this.page.route(`**${endpoint}`, (route) => {
-      if (errorType === 'timeout') {
-        // Don't respond - simulates timeout
-        return;
-      }
+    const normalized = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const existing = this.errorOverrides.find((entry) => entry.pattern === normalized);
 
-      const statusCode = parseInt(errorType) || 500;
-
-      route.fulfill({
-        status: statusCode,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          success: false,
-          error: `Mock ${errorType} error`
-        })
-      });
-    });
+    if (existing) {
+      existing.type = errorType;
+    } else {
+      this.errorOverrides.push({ pattern: normalized, type: errorType });
+    }
   }
 
   /**
@@ -241,5 +282,77 @@ export class CXoneAPIMock {
    */
   clearRequests() {
     this.capturedRequests = [];
+  }
+
+  /**
+   * Find an error override for a URL if one exists
+   * @param {string} url
+   * @returns {string|null}
+   */
+  getErrorFor(url) {
+    const match = this.errorOverrides.find((entry) => url.includes(entry.pattern));
+    return match ? match.type : null;
+  }
+
+  /**
+   * Uniform error response helper for mocked routes
+   */
+  respondWithError(route, errorType) {
+    if (errorType === 'timeout') {
+      // Simulate network timeout by delaying before returning 504
+      return new Promise((resolve) => {
+        setTimeout(async () => {
+          await route.fulfill({
+            status: 504,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              success: false,
+              error: 'Mock timeout error'
+            })
+          });
+          resolve();
+        }, 2000);
+      });
+    }
+
+    if (errorType === 'abort') {
+      return route.abort('failed');
+    }
+
+    const statusCode = parseInt(errorType, 10) || 500;
+
+    return route.fulfill({
+      status: statusCode,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: false,
+        error: `Mock ${errorType} error`
+      })
+    });
+  }
+
+  /**
+   * Queue a sequence of responses for a specific endpoint.
+   * Each call consumes the next entry in the sequence.
+   * @param {string} endpoint - Path fragment (e.g. '/deki/cp/custom_css.php')
+   * @param {Array<{status:number, body?:string, headers?:Object}>} responses
+   */
+  queueResponses(endpoint, responses) {
+    const normalized = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const queue = this.sequentialResponses.get(normalized) || [];
+    queue.push(...responses);
+    this.sequentialResponses.set(normalized, queue);
+  }
+
+  /**
+   * Return the next queued response for a URL or null if none remain.
+   */
+  consumeQueuedResponse(url) {
+    for (const [pattern, queue] of this.sequentialResponses.entries()) {
+      if (url.includes(pattern) && queue.length) {
+        return queue.shift();
+      }
+    }
+    return null;
   }
 }

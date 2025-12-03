@@ -84,28 +84,24 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Wait for deployment workflow if running
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Compute deployment branch slug
         run: |
           BRANCH="${{ github.head_ref || github.ref_name }}"
-          echo "Checking for active deployment workflow on branch: $BRANCH"
+          SLUG=$(echo "$BRANCH" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9\-_\/]/-/g')
+          echo "DEPLOYMENT_BRANCH_SLUG=$SLUG" >> $GITHUB_ENV
+          echo "BRANCH_NAME=$BRANCH" >> $GITHUB_ENV
 
-          # Get the most recent feature-deploy workflow run for this branch
-          RUN_ID=$(gh run list \
-            --workflow=feature-deploy.yml \
-            --branch="$BRANCH" \
-            --limit=1 \
-            --json databaseId,status \
-            --jq '.[0] | select(.status == "in_progress" or .status == "queued") | .databaseId')
-
-          if [ -n "$RUN_ID" ]; then
-            echo "⏳ Deployment workflow #$RUN_ID is running, waiting for completion..."
-            gh run watch "$RUN_ID" --exit-status
-            echo "✅ Deployment workflow completed successfully"
-          else
-            echo "✅ No active deployment workflow, using existing deployment"
-          fi
+      - name: Deploy feature branch (PR only)
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          echo "Triggering feature-deploy workflow for $BRANCH"
+          RUN_ID=$(gh workflow run feature-deploy.yml --ref "$BRANCH" --json run_id --jq '.run_id')
+          echo "Waiting for deploy run $RUN_ID to finish"
+          gh run watch "$RUN_ID" --exit-status
+          echo "Deployment run completed"
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps ${{ matrix.browser }}
@@ -119,6 +115,7 @@ jobs:
           DO_SPACES_ENDPOINT: ${{ vars.DO_SPACES_ENDPOINT }}
           GITHUB_HEAD_REF: ${{ github.head_ref }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
+          DEPLOYMENT_BRANCH_SLUG: ${{ env.DEPLOYMENT_BRANCH_SLUG }}
 
       - name: Upload test results
         if: failure()
