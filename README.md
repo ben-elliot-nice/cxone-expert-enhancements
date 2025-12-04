@@ -1,6 +1,6 @@
 # CXone Expert Enhancements
 
-Extensible developer toolkit for CXone Expert with CSS/HTML editors, live preview, and more.
+A comprehensive developer toolkit for CXone Expert featuring CSS/HTML editors, live preview, and more.
 
 ## 🚀 Quick Start
 
