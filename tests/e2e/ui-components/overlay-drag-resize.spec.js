@@ -3,6 +3,21 @@ import { CXoneAPIMock } from '../helpers/mock-server.js';
 import { CXoneExpertPage } from '../helpers/page-objects.js';
 import { navigateToTestPage } from '../helpers/navigation.js';
 
+async function applyOverlayPreset(page, preset) {
+  await page.evaluate(
+    async (presetName) => {
+      const api = window.__ENHANCEMENTS_OVERLAY_TEST_API__;
+      if (!api || typeof api.applyPresetSize !== 'function') {
+        throw new Error('Overlay test API not available');
+      }
+      api.applyPresetSize(presetName);
+      // Wait for two animation frames so layout/style changes settle
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    },
+    preset
+  );
+}
+
 test.describe('Overlay Drag and Resize', () => {
   let mockAPI;
   let expertPage;
@@ -17,8 +32,7 @@ test.describe('Overlay Drag and Resize', () => {
     await expertPage.openToolkit();
 
     // Start from a predictable size so resize assertions aren't clamped by viewport
-    await page.evaluate(() => window.__ENHANCEMENTS_OVERLAY_TEST_API__.applyPresetSize('small'));
-    await page.waitForTimeout(200);
+    await applyOverlayPreset(page, 'small');
   });
 
   test('should drag overlay to new position', async ({ page }) => {
@@ -76,16 +90,13 @@ test.describe('Overlay Drag and Resize', () => {
     await page.mouse.move(initialX + 100, initialY + 50);
     await page.mouse.up();
 
-    // Wait a moment for any potential movement to occur
-    await page.waitForTimeout(300);
-
-    // Get new position - should be unchanged
-    const newBox = await overlay.boundingBox();
-    expect(newBox).not.toBeNull();
-
-    // Verify overlay did NOT move
-    expect(Math.abs(newBox.x - initialX)).toBeLessThan(5);
-    expect(Math.abs(newBox.y - initialY)).toBeLessThan(5);
+    // Verify overlay did NOT move (allowing time for drag handler to settle)
+    await expect(async () => {
+      const box = await overlay.boundingBox();
+      expect(box).not.toBeNull();
+      expect(Math.abs(box.x - initialX)).toBeLessThan(5);
+      expect(Math.abs(box.y - initialY)).toBeLessThan(5);
+    }).toPass({ timeout: 2000 });
   });
 
   test('should resize overlay using right handle', async ({ page }) => {
@@ -276,27 +287,21 @@ test.describe('Overlay Drag and Resize', () => {
     expect(initialBox).not.toBeNull();
 
     // Apply small preset via exposed test API
-    await page.evaluate(() => window.__ENHANCEMENTS_OVERLAY_TEST_API__.applyPresetSize('small'));
-    await page.waitForTimeout(300);
-
+    await applyOverlayPreset(page, 'small');
     const smallBox = await overlay.boundingBox();
     expect(smallBox).not.toBeNull();
     expect(smallBox.width).toBeLessThanOrEqual(initialBox.width);
     expect(smallBox.height).toBeLessThanOrEqual(initialBox.height);
 
     // Apply split-left preset
-    await page.evaluate(() => window.__ENHANCEMENTS_OVERLAY_TEST_API__.applyPresetSize('split-left'));
-    await page.waitForTimeout(300);
-
+    await applyOverlayPreset(page, 'split-left');
     const splitLeftBox = await overlay.boundingBox();
     expect(splitLeftBox).not.toBeNull();
     expect(splitLeftBox.width).toBeLessThanOrEqual(initialBox.width);
     expect(splitLeftBox.x).toBeLessThanOrEqual(initialBox.x + 150);
 
     // Apply split-right preset
-    await page.evaluate(() => window.__ENHANCEMENTS_OVERLAY_TEST_API__.applyPresetSize('split-right'));
-    await page.waitForTimeout(300);
-
+    await applyOverlayPreset(page, 'split-right');
     const splitRightBox = await overlay.boundingBox();
     expect(splitRightBox).not.toBeNull();
     expect(splitRightBox.width).toBeLessThanOrEqual(initialBox.width);
@@ -336,15 +341,12 @@ test.describe('Overlay Drag and Resize', () => {
     const appSwitcher = page.locator('#app-switcher');
     await appSwitcher.dblclick();
 
-    // Wait a moment to ensure no size change occurs
-    await page.waitForTimeout(300);
-
-    // Get size after double-click
-    const afterBox = await overlay.boundingBox();
-    expect(afterBox).not.toBeNull();
-
-    // Verify overlay size did NOT change significantly
-    expect(Math.abs(afterBox.width - initialWidth)).toBeLessThan(10);
-    expect(Math.abs(afterBox.height - initialHeight)).toBeLessThan(10);
+    // Verify overlay size did NOT change significantly (allow handler time)
+    await expect(async () => {
+      const box = await overlay.boundingBox();
+      expect(box).not.toBeNull();
+      expect(Math.abs(box.width - initialWidth)).toBeLessThan(10);
+      expect(Math.abs(box.height - initialHeight)).toBeLessThan(10);
+    }).toPass({ timeout: 2000 });
   });
 });

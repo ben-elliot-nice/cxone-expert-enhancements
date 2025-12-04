@@ -43,8 +43,6 @@ test.describe('Input Sanitization', () => {
     // This test verifies that content in the Monaco editor is not executed
     // The editor displays code but does not execute it
 
-    let maliciousScriptExecuted = false;
-
     // Set up a trap - if the script executes, it will set a global variable
     await page.evaluate(() => {
       window.maliciousScriptTrap = false;
@@ -56,15 +54,23 @@ test.describe('Input Sanitization', () => {
     const maliciousContent = '<script>window.maliciousScriptTrap = true; alert("XSS");</script>';
     await htmlEditor.typeInEditor(maliciousContent);
 
-    // Wait a moment to see if any script execution occurs
-    await page.waitForTimeout(1000);
+    // Watch for the trap to trigger over ~1s window using in-page timers
+    const maliciousScriptExecuted = await page.evaluate(() => {
+      return new Promise((resolve) => {
+        const interval = setInterval(() => {
+          if (window.maliciousScriptTrap === true) {
+            clearInterval(interval);
+            resolve(true);
+          }
+        }, 50);
 
-    // Check if the trap was triggered
-    maliciousScriptExecuted = await page.evaluate(() => {
-      return window.maliciousScriptTrap === true;
+        setTimeout(() => {
+          clearInterval(interval);
+          resolve(window.maliciousScriptTrap === true);
+        }, 1000);
+      });
     });
 
-    // The script should NOT have executed (editor content is not live)
     expect(maliciousScriptExecuted).toBe(false);
   });
 

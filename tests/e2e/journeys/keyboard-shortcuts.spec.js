@@ -6,6 +6,7 @@ import { navigateToTestPage } from '../helpers/navigation.js';
 // Platform detection for keyboard shortcuts
 const isMac = process.platform === 'darwin';
 const modifier = isMac ? 'Meta' : 'Control';
+const EDITOR_READY_TIMEOUT = 2000;
 
 test.describe('Keyboard Shortcuts', () => {
   let mockAPI;
@@ -24,9 +25,11 @@ test.describe('Keyboard Shortcuts', () => {
     await expertPage.openToolkit();
     await expertPage.switchApp('css-editor');
 
-    // Wait for CSS editor to be fully initialized (same as css-editor-workflow.spec.js)
-    await page.waitForSelector('.toggle-bar', { state: 'visible' });
-    await page.waitForTimeout(500);
+    // Wait for CSS editor role buttons to render instead of sleeping
+    await page.waitForSelector('.toggle-bar .toggle-btn[data-role]', {
+      state: 'visible',
+      timeout: EDITOR_READY_TIMEOUT
+    });
   });
 
   test('Ctrl+S should save current/active tab', async ({ page }) => {
@@ -35,10 +38,15 @@ test.describe('Keyboard Shortcuts', () => {
 
     mockAPI.clearRequests();
     await page.keyboard.press(`${modifier}+S`);
-    await page.waitForTimeout(500);
+
+    await expect
+      .poll(
+        () => mockAPI.getRequests('/deki/cp/custom_css.php').length,
+        { timeout: 2000 }
+      )
+      .toBeGreaterThan(0);
 
     const requests = mockAPI.getRequests('/deki/cp/custom_css.php');
-    expect(requests.length).toBeGreaterThan(0);
     // Should only save current role - payload is multipart form data string
     expect(requests[0].payload).toContain('css_template_all');
   });
@@ -49,10 +57,13 @@ test.describe('Keyboard Shortcuts', () => {
 
     mockAPI.clearRequests();
     await page.keyboard.press(`${modifier}+Shift+S`);
-    await page.waitForTimeout(500);
 
-    const requests = mockAPI.getRequests('/deki/cp/custom_css.php');
-    expect(requests.length).toBeGreaterThan(0);
+    await expect
+      .poll(
+        () => mockAPI.getRequests('/deki/cp/custom_css.php').length,
+        { timeout: 2000 }
+      )
+      .toBeGreaterThan(0);
   });
 
   test('Ctrl+Shift+F should format all code', async ({ page }) => {
@@ -90,10 +101,15 @@ test.describe('Keyboard Shortcuts', () => {
     mockAPI.clearRequests();
     // Cmd+S should save current/active tab (same as Ctrl+S)
     await page.keyboard.press('Meta+S');
-    await page.waitForTimeout(500);
+
+    await expect
+      .poll(
+        () => mockAPI.getRequests('/deki/cp/custom_css.php').length,
+        { timeout: 2000 }
+      )
+      .toBeGreaterThan(0);
 
     const requests = mockAPI.getRequests('/deki/cp/custom_css.php');
-    expect(requests.length).toBeGreaterThan(0);
     // Should only save current role - payload is multipart form data string
     expect(requests[0].payload).toContain('css_template_all');
   });

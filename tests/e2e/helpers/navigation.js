@@ -25,7 +25,10 @@ export async function navigateToTestPage(page) {
     await page.goto(`${baseURL}?embedUrl=${encodeURIComponent(embedUrl)}&${cacheBuster}`);
 
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(200);
+    await page.waitForFunction(
+      () => document.querySelector('#expert-enhancements-toggle') !== null,
+      { timeout: 5000 }
+    );
 
     console.log('CI mode: Loading test page with deployed script:', embedUrl);
   } else {
@@ -34,7 +37,10 @@ export async function navigateToTestPage(page) {
     await page.goto(`${baseURL}?${cacheBuster}`);
 
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(100);
+    await page.waitForFunction(
+      () => document.querySelector('#expert-enhancements-toggle') !== null,
+      { timeout: 5000 }
+    );
 
     console.log('Dev mode: Loading from vite dev server:', baseURL);
   }

@@ -3,6 +3,8 @@ import { CXoneAPIMock } from '../helpers/mock-server.js';
 import { CXoneExpertPage, CSSEditorPage } from '../helpers/page-objects.js';
 import { navigateToTestPage } from '../helpers/navigation.js';
 
+const EDITOR_READY_TIMEOUT = 2000; // limit initial wait so failures surface quickly
+
 test.describe('CSS Editor Workflow', () => {
   let mockAPI;
   let expertPage;
@@ -19,9 +21,12 @@ test.describe('CSS Editor Workflow', () => {
     await expertPage.openToolkit();
     await expertPage.switchApp('css-editor');
 
-    // Wait for CSS editor to be fully initialized
+    // Wait for CSS editor role buttons to become visible instead of using a fixed delay
     await page.waitForSelector('.toggle-bar', { state: 'visible' });
-    await page.waitForTimeout(500);
+    await page.waitForSelector('.toggle-bar .toggle-btn[data-role]', {
+      state: 'visible',
+      timeout: EDITOR_READY_TIMEOUT
+    });
   });
 
   test('should load CSS editor and display content', async ({ page }) => {

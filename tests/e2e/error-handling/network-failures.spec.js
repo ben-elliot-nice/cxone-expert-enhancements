@@ -3,6 +3,28 @@ import { CXoneAPIMock } from '../helpers/mock-server.js';
 import { CXoneExpertPage, CSSEditorPage, HTMLEditorPage } from '../helpers/page-objects.js';
 import { navigateToTestPage } from '../helpers/navigation.js';
 
+const EDITOR_READY_TIMEOUT = 2000;
+
+async function waitForCssEditorReady(page) {
+  await page.waitForSelector('.toggle-bar .toggle-btn[data-role]', {
+    state: 'visible',
+    timeout: EDITOR_READY_TIMEOUT
+  });
+}
+
+async function waitForHtmlEditorReady(page) {
+  await page.waitForSelector('.toggle-bar .toggle-btn[data-field]', {
+    state: 'visible',
+    timeout: EDITOR_READY_TIMEOUT
+  });
+}
+
+async function waitForToast(page, matcher, timeout = 5000) {
+  await expect(page.locator('.enhancements-toast').filter({ hasText: matcher })).toBeVisible({
+    timeout
+  });
+}
+
 test.describe('Network Failure Handling', () => {
   let mockAPI;
   let expertPage;
@@ -23,10 +45,7 @@ test.describe('Network Failure Handling', () => {
 
   test('should handle CSS save failure gracefully', async ({ page }) => {
     await expertPage.switchApp('css-editor');
-
-    // Wait for CSS editor to be fully initialized
-    await page.waitForSelector('.toggle-bar', { state: 'visible' });
-    await page.waitForTimeout(500);
+    await waitForCssEditorReady(page);
 
     await cssEditor.switchRole('all');
 
@@ -36,11 +55,9 @@ test.describe('Network Failure Handling', () => {
     // Inject error for save endpoint
     await mockAPI.injectError('/deki/cp/custom_css.php', '500');
 
-    // Attempt to save
     await cssEditor.saveCurrentRole();
 
-    // Wait for error to be processed - check that dirty state persists
-    await page.waitForTimeout(500);
+    await waitForToast(page, /Failed to save/i);
 
     // Check console for error messages
     const consoleMessages = [];
@@ -74,10 +91,7 @@ test.describe('Network Failure Handling', () => {
 
   test('should handle HTML save failure gracefully', async ({ page }) => {
     await expertPage.switchApp('html-editor');
-
-    // Wait for HTML editor to be fully initialized
-    await page.waitForSelector('.toggle-bar', { state: 'visible' });
-    await page.waitForTimeout(500);
+    await waitForHtmlEditorReady(page);
 
     await htmlEditor.switchField('head');
 
@@ -87,11 +101,7 @@ test.describe('Network Failure Handling', () => {
     // Inject error for save endpoint
     await mockAPI.injectError('/deki/cp/custom_html.php', '500');
 
-    // Attempt to save
     await htmlEditor.saveCurrentField();
-
-    // Wait for error to be processed - check that dirty state persists
-    await page.waitForTimeout(500);
 
     // Verify dirty state is still present (save failed)
     const isDirty = await htmlEditor.isFieldDirty('head');
@@ -118,11 +128,7 @@ test.describe('Network Failure Handling', () => {
   test('should handle CSS load failure', async ({ page }) => {
     // Inject error before loading editor
     await mockAPI.injectError('/api/css/load', '404');
-
     await expertPage.switchApp('css-editor');
-
-    // Wait for error to be handled
-    await page.waitForTimeout(1000);
 
     // Editor should still mount even if load fails
     const toggleBar = page.locator('.toggle-bar');
@@ -136,11 +142,7 @@ test.describe('Network Failure Handling', () => {
   test('should handle HTML load failure', async ({ page }) => {
     // Inject error before loading editor
     await mockAPI.injectError('/api/html/load', '404');
-
     await expertPage.switchApp('html-editor');
-
-    // Wait for error to be handled
-    await page.waitForTimeout(1000);
 
     // Editor should still mount even if load fails
     const toggleBar = page.locator('.toggle-bar');
@@ -153,10 +155,7 @@ test.describe('Network Failure Handling', () => {
 
   test('should handle network timeout gracefully', async ({ page }) => {
     await expertPage.switchApp('css-editor');
-
-    // Wait for CSS editor to be fully initialized
-    await page.waitForSelector('.toggle-bar', { state: 'visible' });
-    await page.waitForTimeout(500);
+    await waitForCssEditorReady(page);
 
     await cssEditor.switchRole('all');
 
@@ -166,11 +165,9 @@ test.describe('Network Failure Handling', () => {
     // Inject timeout error
     await mockAPI.injectError('/deki/cp/custom_css.php', 'timeout');
 
-    // Attempt to save (this will hang)
     await cssEditor.saveCurrentRole();
 
-    // Wait to see if timeout is handled
-    await page.waitForTimeout(3000);
+    await waitForToast(page, /Failed to save/i);
 
     // Editor should still be responsive
     const overlay = page.locator('#expert-enhancements-overlay');
@@ -182,10 +179,7 @@ test.describe('Network Failure Handling', () => {
 
   test('should handle 403 forbidden error', async ({ page }) => {
     await expertPage.switchApp('css-editor');
-
-    // Wait for CSS editor to be fully initialized
-    await page.waitForSelector('.toggle-bar', { state: 'visible' });
-    await page.waitForTimeout(500);
+    await waitForCssEditorReady(page);
 
     await cssEditor.switchRole('all');
 
@@ -195,11 +189,9 @@ test.describe('Network Failure Handling', () => {
     // Inject 403 error
     await mockAPI.injectError('/deki/cp/custom_css.php', '403');
 
-    // Attempt to save
     await cssEditor.saveCurrentRole();
 
-    // Wait for error to be processed
-    await page.waitForTimeout(500);
+    await waitForToast(page, /Failed to save/i);
 
     // Verify dirty state remains
     const isDirty = await cssEditor.isRoleDirty('all');
@@ -215,10 +207,7 @@ test.describe('Network Failure Handling', () => {
 
   test('should handle intermittent network failures with retry', async ({ page }) => {
     await expertPage.switchApp('css-editor');
-
-    // Wait for CSS editor to be fully initialized
-    await page.waitForSelector('.toggle-bar', { state: 'visible' });
-    await page.waitForTimeout(500);
+    await waitForCssEditorReady(page);
 
     await cssEditor.switchRole('all');
 
@@ -233,35 +222,21 @@ test.describe('Network Failure Handling', () => {
     // First save attempt (should fail)
     await cssEditor.saveCurrentRole();
 
-    // Wait for save attempt to complete
-    await page.waitForTimeout(500);
+    await waitForToast(page, /Failed to save/i);
 
-    // Verify still dirty after first failure
-    let isDirty = await cssEditor.isRoleDirty('all');
-    // Allow a short settle because UI can briefly mark clean during spinner removal
-    if (!isDirty) {
-      await page.waitForTimeout(200);
-      isDirty = await cssEditor.isRoleDirty('all');
-    }
-    expect(isDirty).toBe(true);
+    await expect.poll(() => cssEditor.isRoleDirty('all')).toBe(true);
 
     // Second save attempt (should succeed)
     await cssEditor.saveCurrentRole();
 
-    // Wait for save to complete successfully
-    await page.waitForTimeout(500);
+    await waitForToast(page, /saved successfully/i);
 
-    // Verify clean after second attempt
-    isDirty = await cssEditor.isRoleDirty('all');
-    expect(isDirty).toBe(false);
+    await expect.poll(() => cssEditor.isRoleDirty('all')).toBe(false);
   });
 
   test('should handle malformed JSON response', async ({ page }) => {
     await expertPage.switchApp('css-editor');
-
-    // Wait for CSS editor to be fully initialized
-    await page.waitForSelector('.toggle-bar', { state: 'visible' });
-    await page.waitForTimeout(500);
+    await waitForCssEditorReady(page);
 
     // Inject malformed JSON for load
     await page.route('**/api/css/load', async (route) => {
@@ -275,9 +250,6 @@ test.describe('Network Failure Handling', () => {
     // Try to switch roles (which triggers load)
     await cssEditor.switchRole('admin');
 
-    // Wait for error handling
-    await page.waitForTimeout(1000);
-
     // Editor should still be functional
     const overlay = page.locator('#expert-enhancements-overlay');
     await expect(overlay).toBeVisible();
@@ -288,10 +260,7 @@ test.describe('Network Failure Handling', () => {
 
   test('should handle CORS errors gracefully', async ({ page }) => {
     await expertPage.switchApp('html-editor');
-
-    // Wait for HTML editor to be fully initialized
-    await page.waitForSelector('.toggle-bar', { state: 'visible' });
-    await page.waitForTimeout(500);
+    await waitForHtmlEditorReady(page);
 
     await htmlEditor.switchField('head');
 
@@ -304,11 +273,7 @@ test.describe('Network Failure Handling', () => {
       await route.abort('failed');
     });
 
-    // Attempt to save
     await htmlEditor.saveCurrentField();
-
-    // Wait for error handling
-    await page.waitForTimeout(1000);
 
     // Editor should still be usable
     const overlay = page.locator('#expert-enhancements-overlay');
@@ -320,10 +285,7 @@ test.describe('Network Failure Handling', () => {
 
   test('should preserve unsaved changes after network error', async ({ page }) => {
     await expertPage.switchApp('css-editor');
-
-    // Wait for CSS editor to be fully initialized
-    await page.waitForSelector('.toggle-bar', { state: 'visible' });
-    await page.waitForTimeout(500);
+    await waitForCssEditorReady(page);
 
     await cssEditor.switchRole('all');
 
@@ -335,11 +297,9 @@ test.describe('Network Failure Handling', () => {
     // Inject error
     await mockAPI.injectError('/deki/cp/custom_css.php', '500');
 
-    // Attempt to save
     await cssEditor.saveCurrentRole();
 
-    // Wait for save attempt to complete
-    await page.waitForTimeout(500);
+    await waitForToast(page, /Failed to save/i);
 
     // Switch to different role and back
     await cssEditor.switchRole('admin');
@@ -359,10 +319,7 @@ test.describe('Network Failure Handling', () => {
 
   test('should handle multiple simultaneous save failures', async ({ page }) => {
     await expertPage.switchApp('css-editor');
-
-    // Wait for CSS editor to be fully initialized
-    await page.waitForSelector('.toggle-bar', { state: 'visible' });
-    await page.waitForTimeout(500);
+    await waitForCssEditorReady(page);
 
     // Make changes to multiple roles
     await cssEditor.switchRole('all');
@@ -380,8 +337,7 @@ test.describe('Network Failure Handling', () => {
     // Try to save all
     await cssEditor.saveAll();
 
-    // Wait for save attempts to complete
-    await page.waitForTimeout(1000);
+    await waitForToast(page, /Failed to save/i);
 
     // Verify all roles are still dirty
     await cssEditor.switchRole('all');

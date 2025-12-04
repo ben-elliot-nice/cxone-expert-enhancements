@@ -79,8 +79,16 @@ export class CXoneExpertPage {
       // Non-fatal in dev; container visibility above is primary signal
     });
 
-    // Short settle to allow layout before interactions
-    await this.page.waitForTimeout(300);
+    // Wait for app container to render actual UI instead of sleeping
+    await this.page.waitForFunction(
+      (containerSelector) => {
+        const container = document.querySelector(containerSelector);
+        if (!container) return false;
+        return container.childElementCount > 0;
+      },
+      expectedContainer,
+      { timeout: 5000 }
+    );
   }
 
   /**
@@ -227,8 +235,19 @@ export class CSSEditorPage {
    */
   async formatAllActive() {
     await this.page.keyboard.press(`${modifier}+Shift+F`);
-    // Wait for formatting to complete
-    await this.page.waitForTimeout(1000);
+    // Wait for formatting toast instead of a blind delay
+    await this.page.waitForFunction(
+      () => {
+        const toasts = Array.from(
+          document.querySelectorAll('.toast-notification, .notification, [class*="toast"]')
+        );
+        return toasts.some((toast) => {
+          const text = toast.textContent?.toLowerCase() || '';
+          return text.includes('formatted');
+        });
+      },
+      { timeout: 10000 }
+    );
   }
 
   /**
