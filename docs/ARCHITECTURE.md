@@ -14,6 +14,8 @@ cxone-expert-enhancements/
 │   ├── main.js                     # Main entry point (Vite)
 │   ├── core.js                     # Core app manager
 │   ├── core.css                    # Core styling
+│   ├── config.js                   # Configuration system (defaults + embed/user overrides)
+│   ├── base-editor.js              # Shared editor base class
 │   ├── css-editor.js               # CSS Editor module
 │   ├── css-editor.css              # CSS Editor styling
 │   ├── html-editor.js              # HTML Editor module
@@ -122,6 +124,16 @@ embed.js (bundled IIFE entry point)
 - Overlay window management
 - Shared state persistence
 - Common UI components
+
+### 2.5 Configuration (`src/config.js`)
+
+**Purpose:** Single source of truth for defaults, embed overrides, and user settings.
+
+**Responsibilities:**
+- Parse `data-config` embed JSON
+- Merge defaults → user settings → embed config
+- Provide `get`, `setUserSetting`, `getSource`, and reset helpers
+- Expose effective config to all apps via context
 
 ### 3. App Modules
 

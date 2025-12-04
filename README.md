@@ -55,6 +55,7 @@ Once loaded, a floating toggle button appears in the top-right corner. Click it 
 - **Export** - Download individual or all CSS files
 - **Multiple Editors** - Toggle between CSS and HTML editors
 - **Split View** - Show up to 3 editors simultaneously
+- **Configurable** - Colors, toggle button position, timeouts, and editor defaults controlled via embed `data-config` (see `docs/CONFIGURATION.md`)
 
 ### 🔒 Security & Reliability
 - **CSRF Protection** - Automatic security token handling
@@ -184,7 +185,7 @@ A: No. The editor requires internet connection to load Monaco Editor from CDN.
 A: Chrome 90+, Firefox 88+, Safari 14+, Edge 90+. Modern browsers only.
 
 **Q: Can I customize the colors or position?**
-A: Not yet, but configurable options are planned (#48). For now, you can drag/resize the overlay.
+A: Yes. Use the embed `data-config` to set colors, toggle button placement, timeouts, and more. See `docs/CONFIGURATION.md`.
 
 **Q: Where is my CSS actually saved?**
 A: Two places: (1) CXone Expert's database when you click "Save All", (2) Your browser's localStorage as a backup.

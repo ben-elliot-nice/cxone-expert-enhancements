@@ -4,9 +4,9 @@ This guide covers local development setup and workflow for contributing to CXone
 
 ## Prerequisites
 
-- **Node.js 18+** - Required for dependencies and scripts
+- **Node.js 20+** - Matches CI and release workflows
 - **Git** - Version control
-- **Digital Ocean Spaces credentials** - For deployment testing (optional for development)
+- **Digital Ocean Spaces credentials** - Only needed if you plan to deploy from local
 
 ## Local Setup
 
@@ -103,11 +103,7 @@ See [GIT_WORKFLOW.md](GIT_WORKFLOW.md) for detailed branching, versioning, and r
 2. Make your changes and commit:
    ```bash
    git add .
-   git commit -m "feat: Add my feature
-
-   🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-   Co-Authored-By: Claude <noreply@anthropic.com>"
+   git commit -m "feat: add my feature"
    ```
 
 3. Push and create PR:

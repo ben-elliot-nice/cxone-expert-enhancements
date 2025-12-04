@@ -1,6 +1,6 @@
 # CXone Expert Enhancements - Test Suite
 
-This directory contains comprehensive testing for the project.
+This directory contains comprehensive testing for the project. Canonical guidance lives in `docs/TESTING.md`.
 
 ## Test Structure
 
@@ -153,20 +153,19 @@ E2E tests include a mock server (`tests/e2e/helpers/mock-server.js`) for simulat
 
 ## CI/CD
 
-Tests run automatically on push/PR. All must pass to merge.
+Tests run automatically on pushes to `develop` and `main`, and on PRs targeting those branches. All test jobs must pass to merge protected branches.
 
 ### CI Configuration
-- **Platform**: GitHub Actions
-- **Triggers**: Push and Pull Request
-- **Retries**: 2 retries for flaky tests
-- **Workers**: 1 worker in CI for stability
-- **Artifacts**: HTML reports, screenshots, videos, traces
+- **Platform**: GitHub Actions (`.github/workflows/test.yml`)
+- **Node**: 20 in CI
+- **Triggers**: Push to `develop`/`main`, PR to `develop`/`main`
+- **Retries**: Playwright retries twice in CI (see `playwright.config.js`)
+- **Workers**: Playwright uses 5 workers in CI; Vitest uses defaults
+- **Artifacts**: HTML reports, screenshots, videos, traces on failures
 
 ### PR Requirements
-- All unit tests must pass
-- All integration tests must pass
-- All E2E tests must pass
-- Coverage must meet 80% threshold
+- Unit, integration, and all three E2E browser jobs must pass
+- Maintain coverage targets (80% statements/branches/functions/lines)
 
 ## Troubleshooting
 
@@ -238,4 +237,3 @@ open coverage/index.html
 - [Vitest Documentation](https://vitest.dev/)
 - [Playwright Documentation](https://playwright.dev/)
 - [Testing Best Practices](https://testingjavascript.com/)
-- [Project Testing Methodology](../docs/plans/2025-11-15-testing-methodology-implementation.md)

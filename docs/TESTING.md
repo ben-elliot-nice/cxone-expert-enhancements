@@ -14,17 +14,13 @@ This document provides comprehensive information about the testing infrastructur
 
 ## Branch Protection Configuration
 
-### Required Status Checks
+Configure branch protection for `develop` and `main` branches to ensure code quality and prevent breaking changes. Require these checks:
 
-Configure branch protection for `develop` and `main` branches to ensure code quality and prevent breaking changes.
-
-### Status Checks (all must pass):
-
-- Unit Tests
-- Integration Tests
-- E2E Tests (chromium)
-- E2E Tests (firefox)
-- E2E Tests (webkit)
+- `Unit Tests`
+- `Integration Tests`
+- `E2E Tests (chromium)`
+- `E2E Tests (firefox)`
+- `E2E Tests (webkit)`
 
 ### Settings
 
@@ -34,12 +30,7 @@ Configure branch protection for `develop` and `main` branches to ensure code qua
 2. Add branch protection rule for `develop`:
    - Require status checks to pass before merging
    - Require branches to be up to date before merging
-   - Select all test jobs as required:
-     - `Unit Tests`
-     - `Integration Tests`
-     - `E2E Tests (chromium)`
-     - `E2E Tests (firefox)`
-     - `E2E Tests (webkit)`
+   - Select all test jobs above as required
    - Require linear history (optional but recommended)
 
 **For `main` branch:**
@@ -154,22 +145,25 @@ Coverage reports are generated in the `coverage/` directory.
 ## CI/CD Testing Workflow
 
 The GitHub Actions workflow (`.github/workflows/test.yml`) runs on:
-- Push to `develop`, `main`, or any `feature/**`, `bugfix/**`, `hotfix/**` branch
-- Pull requests to `develop` or `main`
+- Push to `develop` or `main`
+- Pull requests targeting `develop` or `main`
 
 ### Workflow Jobs
 
 1. **Unit Tests**
    - Runs on: `ubuntu-latest`
+   - Node: 20 (matches release pipeline)
    - Executes: Unit test suite with coverage
    - Uploads: Coverage report to Codecov
 
 2. **Integration Tests**
    - Runs on: `ubuntu-latest`
+   - Node: 20
    - Executes: Integration test suite
 
 3. **E2E Tests (Matrix)**
    - Runs on: `ubuntu-latest`
+   - Node: 20
    - Browsers: Chromium, Firefox, WebKit
    - Depends on: Unit and Integration tests passing
    - Steps:
