@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "npm run build && node deploy/deploy-v2.js",
+    "deploy": "npm run build && node deploy/deploy-artifact.js",
     "cleanup": "node deploy/cleanup-feature.js",
     "test": "npm run test:unit && npm run test:integration && npm run test:e2e",
     "test:unit": "vitest run",

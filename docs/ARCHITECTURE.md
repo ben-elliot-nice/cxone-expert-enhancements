@@ -26,7 +26,7 @@ cxone-expert-enhancements/
 │   └── ... (old files for compatibility)
 │
 ├── deploy/                         # Deployment scripts
-│   ├── deploy-v2.js                # S3/DO Spaces uploader
+│   ├── deploy-artifact.js          # S3/DO Spaces uploader
 │   └── cleanup-feature.js          # Feature branch cleanup
 │
 ├── .github/workflows/              # CI/CD automation
