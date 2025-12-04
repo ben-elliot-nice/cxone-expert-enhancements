@@ -123,7 +123,17 @@ const DEFAULT_CONFIG = {
             width: 12,
             cornerSize: 20,
             hoverOpacity: 1,
-            idleOpacity: 0
+            idleOpacity: 0,
+            lineStyle: {
+                defaultWidth: 2,
+                hoverWidth: 3,
+                activeWidth: 4,
+                defaultOpacity: 0.15,
+                hoverOpacity: 0.5,
+                activeOpacity: 0.8,
+                glowBlur: 8,
+                glowBlurActive: 12
+            }
         },
         toasts: {
             maxVisible: 3,

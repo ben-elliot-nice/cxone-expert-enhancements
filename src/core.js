@@ -1886,11 +1886,31 @@ console.log('[Enhancements Core] Configuration system initialized');
             // Main overlay
             overlay = DOM.create('div', { id: 'expert-enhancements-overlay' });
 
+            // Apply CSS custom properties for resize handles from config
+            const headerColor = Config.get('appearance.headerColor');
+            const lineStyle = Config.get('advanced.resizeHandles.lineStyle');
+
+            // Convert hex color to RGB for use in rgba()
+            const hexToRgb = (hex) => {
+                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '102, 126, 234';
+            };
+            const headerRgb = hexToRgb(headerColor);
+
+            overlay.style.setProperty('--resize-primary-rgb', headerRgb);
+            overlay.style.setProperty('--resize-line-default-width', `${lineStyle.defaultWidth}px`);
+            overlay.style.setProperty('--resize-line-hover-width', `${lineStyle.hoverWidth}px`);
+            overlay.style.setProperty('--resize-line-active-width', `${lineStyle.activeWidth}px`);
+            overlay.style.setProperty('--resize-line-default-opacity', lineStyle.defaultOpacity);
+            overlay.style.setProperty('--resize-line-hover-opacity', lineStyle.hoverOpacity);
+            overlay.style.setProperty('--resize-line-active-opacity', lineStyle.activeOpacity);
+            overlay.style.setProperty('--resize-line-glow-blur', `${lineStyle.glowBlur}px`);
+            overlay.style.setProperty('--resize-line-glow-blur-active', `${lineStyle.glowBlurActive}px`);
+
             // Header
             overlayHeader = DOM.create('div', { id: 'expert-enhancements-overlay-header' });
 
-            // Apply header color from config
-            const headerColor = Config.get('appearance.headerColor');
+            // Apply header color from config (already retrieved above for resize handles)
             overlayHeader.style.background = headerColor;
 
             const headerLeft = DOM.create('div', { className: 'header-left' });

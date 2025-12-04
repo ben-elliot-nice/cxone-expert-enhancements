@@ -305,67 +305,93 @@
 }
 
 /* ============================================================================
-   Resize Handles
+   Resize Handles - Thin Accent Line Design
    ============================================================================ */
 
 .enhancements-resize-handle {
     position: absolute;
     background: transparent;
     z-index: 10;
-    opacity: 0;
-    transition: opacity 0.2s ease, background 0.15s ease;
-}
-
-/* Show handles on overlay hover */
-#expert-enhancements-overlay:hover .enhancements-resize-handle {
     opacity: 1;
+    transition: all 0.2s ease;
 }
 
-/* Keep handles visible while resizing */
+/* Keep handles visible while resizing - disable transition for immediate feedback */
 .enhancements-resize-handle.resizing {
-    opacity: 1 !important;
+    transition: none !important;
 }
 
-/* Hover state - subtle gradient highlight fading from editor to edge */
-.enhancements-resize-handle.left:hover {
-    background: linear-gradient(to left, rgba(102, 126, 234, 0.15), rgba(102, 126, 234, 1));
+/* Create thin accent lines using ::before pseudo-element */
+.enhancements-resize-handle.left::before,
+.enhancements-resize-handle.right::before,
+.enhancements-resize-handle.bottom::before {
+    content: '';
+    position: absolute;
+    background: rgba(var(--resize-primary-rgb), var(--resize-line-default-opacity));
+    transition: all 0.2s ease;
 }
 
-.enhancements-resize-handle.right:hover {
-    background: linear-gradient(to right, rgba(102, 126, 234, 0.15), rgba(102, 126, 234, 1));
+/* Default state - thin lines (always visible) */
+.enhancements-resize-handle.left::before {
+    left: 0;
+    top: 0;
+    width: var(--resize-line-default-width);
+    height: 100%;
 }
 
-.enhancements-resize-handle.bottom:hover {
-    background: linear-gradient(to bottom, rgba(102, 126, 234, 0.15), rgba(102, 126, 234, 1));
+.enhancements-resize-handle.right::before {
+    right: 0;
+    top: 0;
+    width: var(--resize-line-default-width);
+    height: 100%;
 }
 
-.enhancements-resize-handle.corner-right:hover {
-    background: linear-gradient(to bottom right, rgba(102, 126, 234, 0.15), rgba(102, 126, 234, 1));
+.enhancements-resize-handle.bottom::before {
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: var(--resize-line-default-width);
 }
 
-.enhancements-resize-handle.corner-left:hover {
-    background: linear-gradient(to bottom left, rgba(102, 126, 234, 0.15), rgba(102, 126, 234, 1));
+/* Hover state - brighter line with glow */
+.enhancements-resize-handle.left:hover::before {
+    width: var(--resize-line-hover-width);
+    background: rgba(var(--resize-primary-rgb), var(--resize-line-hover-opacity));
+    box-shadow: 0 0 var(--resize-line-glow-blur) rgba(var(--resize-primary-rgb), 0.4);
 }
 
-/* Active/dragging state - stronger gradient */
-.enhancements-resize-handle.left.resizing {
-    background: linear-gradient(to left, rgba(102, 126, 234, 0.25), rgba(102, 126, 234, 1));
+.enhancements-resize-handle.right:hover::before {
+    width: var(--resize-line-hover-width);
+    background: rgba(var(--resize-primary-rgb), var(--resize-line-hover-opacity));
+    box-shadow: 0 0 var(--resize-line-glow-blur) rgba(var(--resize-primary-rgb), 0.4);
 }
 
-.enhancements-resize-handle.right.resizing {
-    background: linear-gradient(to right, rgba(102, 126, 234, 0.25), rgba(102, 126, 234, 1));
+.enhancements-resize-handle.bottom:hover::before {
+    height: var(--resize-line-hover-width);
+    background: rgba(var(--resize-primary-rgb), var(--resize-line-hover-opacity));
+    box-shadow: 0 0 var(--resize-line-glow-blur) rgba(var(--resize-primary-rgb), 0.4);
 }
 
-.enhancements-resize-handle.bottom.resizing {
-    background: linear-gradient(to bottom, rgba(102, 126, 234, 0.25), rgba(102, 126, 234, 1));
+/* Active/dragging state - stronger line with stronger glow */
+.enhancements-resize-handle.left.resizing::before {
+    width: var(--resize-line-active-width);
+    background: rgba(var(--resize-primary-rgb), var(--resize-line-active-opacity));
+    box-shadow: 0 0 var(--resize-line-glow-blur-active) rgba(var(--resize-primary-rgb), 0.6);
+    transition: none;
 }
 
-.enhancements-resize-handle.corner-right.resizing {
-    background: linear-gradient(to bottom right, rgba(102, 126, 234, 0.25), rgba(102, 126, 234, 1));
+.enhancements-resize-handle.right.resizing::before {
+    width: var(--resize-line-active-width);
+    background: rgba(var(--resize-primary-rgb), var(--resize-line-active-opacity));
+    box-shadow: 0 0 var(--resize-line-glow-blur-active) rgba(var(--resize-primary-rgb), 0.6);
+    transition: none;
 }
 
-.enhancements-resize-handle.corner-left.resizing {
-    background: linear-gradient(to bottom left, rgba(102, 126, 234, 0.25), rgba(102, 126, 234, 1));
+.enhancements-resize-handle.bottom.resizing::before {
+    height: var(--resize-line-active-width);
+    background: rgba(var(--resize-primary-rgb), var(--resize-line-active-opacity));
+    box-shadow: 0 0 var(--resize-line-glow-blur-active) rgba(var(--resize-primary-rgb), 0.6);
+    transition: none;
 }
 
 .enhancements-resize-handle.left {
@@ -400,19 +426,38 @@
     cursor: nwse-resize;
 }
 
-.enhancements-resize-handle.corner-right::after {
+/* Corner dot indicator (always visible) */
+.enhancements-resize-handle.corner-right::after,
+.enhancements-resize-handle.corner-left::after {
     content: '';
     position: absolute;
-    right: 2px;
-    bottom: 2px;
-    width: 16px;
-    height: 16px;
-    background: linear-gradient(-45deg, transparent 0%, transparent 40%, rgba(255,255,255,0.25) 40%, rgba(255,255,255,0.25) 45%, transparent 45%, transparent 55%, rgba(255,255,255,0.25) 55%, rgba(255,255,255,0.25) 60%, transparent 60%);
-    transition: opacity 0.15s ease;
+    width: var(--resize-line-default-width);
+    height: var(--resize-line-default-width);
+    border-radius: 50%;
+    background: rgba(var(--resize-primary-rgb), var(--resize-line-default-opacity));
+    transition: all 0.2s ease;
 }
 
+.enhancements-resize-handle.corner-right::after {
+    right: 2px;
+    bottom: 2px;
+}
+
+/* Hover state for corner - larger dot with glow */
 .enhancements-resize-handle.corner-right:hover::after {
-    background: linear-gradient(-45deg, transparent 0%, transparent 40%, rgba(255,255,255,0.4) 40%, rgba(255,255,255,0.4) 45%, transparent 45%, transparent 55%, rgba(255,255,255,0.4) 55%, rgba(255,255,255,0.4) 60%, transparent 60%);
+    width: var(--resize-line-hover-width);
+    height: var(--resize-line-hover-width);
+    background: rgba(var(--resize-primary-rgb), var(--resize-line-hover-opacity));
+    box-shadow: 0 0 var(--resize-line-glow-blur) rgba(var(--resize-primary-rgb), 0.4);
+}
+
+/* Active/dragging state for corner */
+.enhancements-resize-handle.corner-right.resizing::after {
+    width: var(--resize-line-active-width);
+    height: var(--resize-line-active-width);
+    background: rgba(var(--resize-primary-rgb), var(--resize-line-active-opacity));
+    box-shadow: 0 0 var(--resize-line-glow-blur-active) rgba(var(--resize-primary-rgb), 0.6);
+    transition: none;
 }
 
 .enhancements-resize-handle.corner-left {
@@ -424,30 +469,65 @@
 }
 
 .enhancements-resize-handle.corner-left::after {
-    content: '';
-    position: absolute;
     left: 2px;
     bottom: 2px;
-    width: 16px;
-    height: 16px;
-    background: linear-gradient(45deg, transparent 0%, transparent 40%, rgba(255,255,255,0.25) 40%, rgba(255,255,255,0.25) 45%, transparent 45%, transparent 55%, rgba(255,255,255,0.25) 55%, rgba(255,255,255,0.25) 60%, transparent 60%);
-    transition: opacity 0.15s ease;
 }
 
+/* Hover state for left corner */
 .enhancements-resize-handle.corner-left:hover::after {
-    background: linear-gradient(45deg, transparent 0%, transparent 40%, rgba(255,255,255,0.4) 40%, rgba(255,255,255,0.4) 45%, transparent 45%, transparent 55%, rgba(255,255,255,0.4) 55%, rgba(255,255,255,0.4) 60%, transparent 60%);
+    width: var(--resize-line-hover-width);
+    height: var(--resize-line-hover-width);
+    background: rgba(var(--resize-primary-rgb), var(--resize-line-hover-opacity));
+    box-shadow: 0 0 var(--resize-line-glow-blur) rgba(var(--resize-primary-rgb), 0.4);
+}
+
+/* Active/dragging state for left corner */
+.enhancements-resize-handle.corner-left.resizing::after {
+    width: var(--resize-line-active-width);
+    height: var(--resize-line-active-width);
+    background: rgba(var(--resize-primary-rgb), var(--resize-line-active-opacity));
+    box-shadow: 0 0 var(--resize-line-glow-blur-active) rgba(var(--resize-primary-rgb), 0.6);
+    transition: none;
 }
 
 /* Touch device support */
 @media (hover: none) and (pointer: coarse) {
-    /* Always show handles on touch devices at 50% opacity */
-    .enhancements-resize-handle {
-        opacity: 0.5;
+    /* Make handles more visible on touch devices */
+    .enhancements-resize-handle.left::before,
+    .enhancements-resize-handle.right::before,
+    .enhancements-resize-handle.bottom::before {
+        background: rgba(var(--resize-primary-rgb), var(--resize-line-hover-opacity));
+        width: var(--resize-line-hover-width);
+    }
+
+    .enhancements-resize-handle.bottom::before {
+        height: var(--resize-line-hover-width);
+    }
+
+    .enhancements-resize-handle.corner-right::after,
+    .enhancements-resize-handle.corner-left::after {
+        background: rgba(var(--resize-primary-rgb), var(--resize-line-hover-opacity));
+        width: var(--resize-line-hover-width);
+        height: var(--resize-line-hover-width);
     }
 
     /* Full opacity when overlay is being touched/active */
-    #expert-enhancements-overlay:active .enhancements-resize-handle {
-        opacity: 1;
+    #expert-enhancements-overlay:active .enhancements-resize-handle.left::before,
+    #expert-enhancements-overlay:active .enhancements-resize-handle.right::before,
+    #expert-enhancements-overlay:active .enhancements-resize-handle.bottom::before {
+        background: rgba(var(--resize-primary-rgb), var(--resize-line-active-opacity));
+        width: var(--resize-line-active-width);
+    }
+
+    #expert-enhancements-overlay:active .enhancements-resize-handle.bottom::before {
+        height: var(--resize-line-active-width);
+    }
+
+    #expert-enhancements-overlay:active .enhancements-resize-handle.corner-right::after,
+    #expert-enhancements-overlay:active .enhancements-resize-handle.corner-left::after {
+        background: rgba(var(--resize-primary-rgb), var(--resize-line-active-opacity));
+        width: var(--resize-line-active-width);
+        height: var(--resize-line-active-width);
     }
 }
 
