@@ -2,9 +2,13 @@ name: Test Suite
 
 on:
   push:
-    branches: [develop, main]
+    branches:
+      - develop
+      - main
   pull_request:
-    branches: [develop, main]
+    branches:
+      - develop
+      - main
 
 permissions:
   contents: read
@@ -28,10 +32,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run unit tests
-        run: npm run test:unit
-
-      - name: Generate coverage report
+      - name: Run unit tests with coverage
         run: npm run test:coverage
 
       - name: Upload coverage to Codecov
@@ -61,10 +62,37 @@ jobs:
       - name: Run integration tests
         run: npm run test:integration
 
+  version-check-required:
+    name: Version Check (Required)
+    if: github.event_name == 'pull_request' && github.base_ref == 'main' && github.head_ref == 'develop'
+    uses: ./.github/workflows/version-check.yml
+    with:
+      base_ref: origin/${{ github.base_ref }}
+      head_ref: ${{ github.head_ref }}
+      fail_on_match: true
+
+  version-check-warning:
+    name: Version Check (Warning)
+    if: github.event_name == 'pull_request' && github.base_ref == 'develop'
+    uses: ./.github/workflows/version-check.yml
+    with:
+      base_ref: origin/${{ github.base_ref }}
+      head_ref: ${{ github.head_ref }}
+      fail_on_match: false
+
+  deploy-artifact:
+    name: Deploy Test Artifact
+    needs: [unit-tests, integration-tests]
+    uses: ./.github/workflows/deploy-reusable.yml
+    secrets: inherit
+    with:
+      branch_name: ${{ github.head_ref || github.ref_name }}
+      reuse_summary: false
+
   e2e-tests:
     name: E2E Tests (${{ matrix.browser }})
     runs-on: ubuntu-latest
-    needs: [unit-tests, integration-tests]
+    needs: [unit-tests, integration-tests, deploy-artifact]
 
     strategy:
       fail-fast: false
@@ -84,43 +112,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Compute deployment branch slug
-        run: |
-          BRANCH="${{ github.head_ref || github.ref_name }}"
-          SLUG=$(echo "$BRANCH" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9\-_\/]/-/g')
-          echo "DEPLOYMENT_BRANCH_SLUG=$SLUG" >> $GITHUB_ENV
-          echo "BRANCH_NAME=$BRANCH" >> $GITHUB_ENV
-
-      - name: Trigger feature deploy if needed
-        if: github.event_name == 'pull_request'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          BRANCH: ${{ github.head_ref }}
-        run: |
-          RUNS=$(gh run list --workflow=feature-deploy.yml --branch="$BRANCH" --limit=1 --json status,conclusion --jq '.[0]')
-          STATUS=$(echo "$RUNS" | jq -r '.status // ""')
-          CONCLUSION=$(echo "$RUNS" | jq -r '.conclusion // ""')
-
-          if [ "$STATUS" = "completed" ] && [ "$CONCLUSION" = "success" ]; then
-            echo "Found completed deploy for branch $BRANCH. Reusing it."
-            exit 0
-          fi
-
-          echo "No completed deploy found. Triggering feature-deploy for $BRANCH"
-          BEFORE=$(gh run list --workflow=feature-deploy.yml --branch="$BRANCH" --limit=1 --json databaseId --jq '.[0].databaseId // ""')
-          gh workflow run feature-deploy.yml --ref "$BRANCH"
-          echo "Waiting for new deploy run to appear..."
-          for i in {1..60}; do
-            RUN_ID=$(gh run list --workflow=feature-deploy.yml --branch="$BRANCH" --limit=1 --json databaseId --jq '.[0].databaseId // ""')
-            if [ -n "$RUN_ID" ] && [ "$RUN_ID" != "$BEFORE" ]; then
-              echo "Detected new run id $RUN_ID"
-              gh run watch "$RUN_ID" --exit-status
-              exit $?
-            fi
-            sleep 5
-          done
-          echo "Timed out waiting for deploy run" >&2
-          exit 1
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps ${{ matrix.browser }}
@@ -132,9 +128,7 @@ jobs:
           BASE_URL: http://localhost:8080/test-page.html
           DO_SPACES_BUCKET: ${{ vars.DO_SPACES_BUCKET }}
           DO_SPACES_ENDPOINT: ${{ vars.DO_SPACES_ENDPOINT }}
-          GITHUB_HEAD_REF: ${{ github.head_ref }}
-          GITHUB_REF_NAME: ${{ github.ref_name }}
-          DEPLOYMENT_BRANCH_SLUG: ${{ env.DEPLOYMENT_BRANCH_SLUG }}
+          DEPLOYMENT_BRANCH_SLUG: ${{ needs.deploy-artifact.outputs.branch_slug }}
 
       - name: Upload test results
         if: failure()
@@ -177,7 +171,7 @@ jobs:
   pr-comment:
     name: PR Test Results Comment
     runs-on: ubuntu-latest
-    needs: [unit-tests, integration-tests, e2e-tests]
+    needs: [unit-tests, integration-tests, e2e-tests, deploy-artifact]
     if: github.event_name == 'pull_request' && always()
 
     steps:
@@ -188,6 +182,7 @@ jobs:
             const unitResult = '${{ needs.unit-tests.result }}';
             const integrationResult = '${{ needs.integration-tests.result }}';
             const e2eResult = '${{ needs.e2e-tests.result }}';
+            const deployUrl = '${{ needs.deploy-artifact.outputs.deployment_url }}';
 
             const icon = (result) => {
               switch (result) {
@@ -211,7 +206,7 @@ jobs:
               '🎉 All tests passed! Ready to merge.' :
               '⚠️ Some tests failed. Please review the results above.'}
 
-            **Deployed to:** https://${{ vars.DO_SPACES_BUCKET }}.${{ vars.DO_SPACES_ENDPOINT }}/cxone-expert-enhancements/${{ github.ref_name }}/
+            **Deployed embed:** ${deployUrl || 'n/a'}
 
             [View detailed workflow results](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
             `;

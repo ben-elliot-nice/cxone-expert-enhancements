@@ -1,0 +1,94 @@
+name: Reusable Deploy
+
+on:
+  workflow_call:
+    inputs:
+      branch_name:
+        required: true
+        type: string
+      deployment_path:
+        required: false
+        type: string
+      reuse_summary:
+        required: false
+        type: boolean
+        default: true
+    outputs:
+      branch_slug:
+        description: "Sanitized branch slug used for deployment path"
+        value: ${{ jobs.deploy.outputs.branch_slug }}
+      deployment_url:
+        description: "Public URL to the embed.js for this deployment"
+        value: ${{ jobs.deploy.outputs.deployment_url }}
+
+concurrency:
+  group: deploy-${{ inputs.deployment_path || inputs.branch_name }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    outputs:
+      branch_slug: ${{ steps.slug.outputs.branch_slug }}
+      deployment_url: ${{ steps.summary.outputs.deployment_url }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Determine deployment slug
+        id: slug
+        run: |
+          NAME="${{ inputs.deployment_path || inputs.branch_name }}"
+          if [ -z "$NAME" ]; then
+            echo "Branch/deployment name is required" >&2
+            exit 1
+          fi
+          SLUG=$(echo "$NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9\-_\/]/-/g')
+          echo "branch_slug=$SLUG" >> "$GITHUB_OUTPUT"
+          echo "Using deployment slug: $SLUG"
+
+      - name: Build with Vite
+        run: npm run build
+
+      - name: Deploy to Digital Ocean Spaces
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          DO_SPACES_BUCKET: ${{ vars.DO_SPACES_BUCKET }}
+          DO_SPACES_ENDPOINT: ${{ vars.DO_SPACES_ENDPOINT }}
+          GITHUB_REF_NAME: ${{ steps.slug.outputs.branch_slug }}
+          GITHUB_ACTIONS: 'true'
+        run: npm run deploy
+
+      - name: Summarize deployment
+        id: summary
+        env:
+          DO_SPACES_BUCKET: ${{ vars.DO_SPACES_BUCKET }}
+          DO_SPACES_ENDPOINT: ${{ vars.DO_SPACES_ENDPOINT }}
+        run: |
+          SLUG="${{ steps.slug.outputs.branch_slug }}"
+          BASE_URL="https://${DO_SPACES_BUCKET}.${DO_SPACES_ENDPOINT}/cxone-expert-enhancements"
+          DEPLOYMENT_URL="${BASE_URL}/${SLUG}/embed.js"
+          echo "deployment_url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
+
+          if [ "${{ inputs.reuse_summary }}" = "true" ]; then
+            {
+              echo "## 🚀 Deployment Successful"
+              echo ""
+              echo "**Path:** \`cxone-expert-enhancements/${SLUG}/\`"
+              echo "**embed.js:** ${DEPLOYMENT_URL}"
+              echo ""
+              echo "```html"
+              echo "<script src=\"${DEPLOYMENT_URL}\"></script>"
+              echo "```"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
