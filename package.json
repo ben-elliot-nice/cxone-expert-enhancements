@@ -18,7 +18,8 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "clean:local": "node -e \"const fs=require('fs');const path=require('path');const targets=['.vite','dist','coverage','test-results','playwright-report','html','.nyc_output'];for (const t of targets){const full=path.join(process.cwd(),t);if(fs.existsSync(full)){fs.rmSync(full,{recursive:true,force:true});console.log('Removed',t);}}\""
   },
   "keywords": [
     "cxone",
