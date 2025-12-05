@@ -22,7 +22,7 @@ console.log('[Enhancements Core] Initializing...');
 const Config = new ConfigManager({
     disableNetwork: typeof process !== 'undefined' && process?.env?.NODE_ENV === 'test'
 });
-await Config.init().catch(error => {
+const ConfigReady = Config.init().catch(error => {
     console.warn('[Enhancements Core] Configuration init failed, using defaults', error);
 });
 console.log('[Enhancements Core] Configuration system initialized');
@@ -2906,6 +2906,7 @@ console.log('[Enhancements Core] Configuration system initialized');
 
 export {
     Config,
+    ConfigReady,
     ConfigManager,
     AppManager,
     Monaco,
