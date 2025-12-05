@@ -72,24 +72,15 @@ test.describe('Keyboard Shortcuts', () => {
 
     await page.keyboard.press(`${modifier}+Shift+F`);
 
-    // Wait for formatting to complete by checking for the "formatted" notification
-    // This is more reliable than polling Monaco's internal state
-    await page.waitForFunction(
-      () => {
-        // Look for the toast notification that formatting completed
-        const toasts = Array.from(document.querySelectorAll('.toast-notification, .notification, [class*="toast"]'));
-        return toasts.some(toast =>
-          toast.textContent && toast.textContent.toLowerCase().includes('formatted')
-        );
-      },
-      { timeout: 10000 }
-    );
+    // Wait for the "formatted" toast to appear
+    const toast = page.locator('.enhancements-toast');
+    await expect(toast).toContainText(/formatted/i, { timeout: 10000 });
 
-    // Verify the content was actually formatted
+    // Verify the content was actually formatted (structure changed)
     const content = await cssEditor.getEditorContent('all');
-    // Should be formatted with spaces and newlines
-    expect(content).toMatch(/body\s*{/);
-    expect(content).toMatch(/color:\s*red/);
+    expect(content).toMatch(/body\s*\{\s*\n\s*color:\s*red;?\s*\n\}/);
+    // Ensure formatting added whitespace/newlines (length > original)
+    expect(content.length).toBeGreaterThan('body{color:red;}'.length);
   });
 
   test('Mac Cmd key should work instead of Ctrl', async ({ page, browserName }) => {

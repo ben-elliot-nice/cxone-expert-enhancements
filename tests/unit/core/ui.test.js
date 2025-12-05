@@ -106,16 +106,20 @@ describe('Core.UI', () => {
     });
 
     it('should auto-dismiss toast after duration', async () => {
-      // Test that toast is created with a duration
-      // Full auto-dismiss test is complex with fake timers + RAF
-      Core.UI.showToast('Auto dismiss', 'info', 1000);
+      vi.useFakeTimers();
+      Core.UI.showToast('Auto dismiss', 'info', 200);
 
-      // Wait for toast to render
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-      const toast = document.querySelector('.enhancements-toast');
+      // Render phase (lifecycle debounce + double RAF + initial render)
+      await vi.advanceTimersByTimeAsync(600);
+      let toast = document.querySelector('.enhancements-toast');
       expect(toast).not.toBeNull();
-      expect(toast.textContent).toContain('Auto dismiss');
+
+      // Allow render animation + duration + dismiss animation
+      await vi.advanceTimersByTimeAsync(1200);
+      toast = document.querySelector('.enhancements-toast');
+      expect(toast).toBeNull();
+
+      vi.useRealTimers();
     });
 
     it('should limit number of concurrent toasts', async () => {
