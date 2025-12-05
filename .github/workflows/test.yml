@@ -24,13 +24,14 @@ jobs:
       - id: check
         env:
           GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
           # Default: do not skip
           SKIP=false
 
           if [ "${{ github.event_name }}" = "push" ]; then
             BRANCH="${{ github.ref_name }}"
-            PR_COUNT=$(gh pr list --state open --head "$BRANCH" --json number --jq 'length')
+            PR_COUNT=$(gh pr list --repo "$GITHUB_REPOSITORY" --state open --head "$BRANCH" --json number --jq 'length')
             echo "Open PRs for branch '$BRANCH': $PR_COUNT"
             if [ "$PR_COUNT" -gt 0 ]; then
               SKIP=true
