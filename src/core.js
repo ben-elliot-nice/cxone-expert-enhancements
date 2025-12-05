@@ -20,7 +20,8 @@ console.log('[Enhancements Core] Initializing...');
 // ============================================================================
 
 const Config = new ConfigManager({
-    disableNetwork: typeof process !== 'undefined' && process?.env?.NODE_ENV === 'test'
+    disableNetwork: typeof process !== 'undefined' && process?.env?.NODE_ENV === 'test',
+    debug: true
 });
 const ConfigReady = Config.init().catch(error => {
     console.warn('[Enhancements Core] Configuration init failed, using defaults', error);
