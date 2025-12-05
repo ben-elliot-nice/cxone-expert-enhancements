@@ -99,6 +99,7 @@ class ConfigManager {
         this.storage = options.storage || (typeof localStorage !== 'undefined' ? localStorage : null);
         this.storageKey = options.storageKey || DEFAULT_STORAGE_KEY;
         this.disableNetwork = Boolean(options.disableNetwork);
+        this.debug = Boolean(options.debug);
 
         this.embedConfigFlat = options.embedConfig ? normalizeFlat(options.embedConfig) : {};
         this.embedConfig = unflattenObject(this.embedConfigFlat);
@@ -110,6 +111,7 @@ class ConfigManager {
     }
 
     async init(options = {}) {
+        this.log('init:start', { userId: options.userId });
         if (options.embedConfig) {
             this.embedConfigFlat = normalizeFlat(options.embedConfig);
         } else if (!Object.keys(this.embedConfigFlat).length) {
@@ -138,6 +140,12 @@ class ConfigManager {
         }
 
         this.recomputeResolved();
+        this.log('init:complete', {
+            embed: Object.keys(this.embedConfigFlat).length,
+            site: Object.keys(this.siteProperties).length,
+            user: Object.keys(this.userProperties).length,
+            local: Object.keys(this.localCache).length
+        });
     }
 
     parseEmbedConfig() {
@@ -212,6 +220,7 @@ class ConfigManager {
             const data = await response.json();
             return this.parsePropertiesList(data);
         } catch {
+            this.log('fetch:site:failed');
             return {};
         }
     }
@@ -225,6 +234,7 @@ class ConfigManager {
             const data = await response.json();
             return this.parsePropertiesList(data);
         } catch {
+            this.log('fetch:user:failed');
             return {};
         }
     }
@@ -407,6 +417,7 @@ class ConfigManager {
         }
 
         this.recomputeResolved();
+        this.log('set', { path, value, synced, source: shouldSync ? 'user' : 'local' });
 
         return {
             success: true,
@@ -458,6 +469,7 @@ class ConfigManager {
         }
 
         this.recomputeResolved();
+        this.log('reset', { path, synced });
 
         return {
             success: true,
@@ -505,6 +517,12 @@ class ConfigManager {
                 Object.fromEntries(Object.entries(resolvedFlat).map(([key, meta]) => [key, meta.value]))
             )
         };
+    }
+
+    log(event, payload = {}) {
+        if (!this.debug) return;
+        // eslint-disable-next-line no-console
+        console.debug(`[ConfigManager] ${event}`, payload);
     }
 }
 
