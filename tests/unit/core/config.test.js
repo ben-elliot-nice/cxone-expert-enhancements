@@ -1,256 +1,107 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createMockLocalStorage } from '../helpers/test-utils.js';
-import { loadCore } from '../helpers/core-loader.js';
+import { ConfigManager } from '../../../src/config-manager.js';
+import { CONFIG_SCHEMA } from '../../../src/config-schema.js';
 
-describe('Core.Config', () => {
-  let Core;
-  let mockLocalStorage;
+describe('ConfigManager - four-tier architecture', () => {
+  let storage;
+  let fetchMock;
 
-  beforeEach(async () => {
-    mockLocalStorage = createMockLocalStorage();
-    global.localStorage = mockLocalStorage;
-    Core = await loadCore();
-    // Reset all user settings to start with a clean slate
-    Core.Config.resetAllUserSettings();
+  beforeEach(() => {
+    storage = createMockLocalStorage();
+    global.localStorage = storage;
+    fetchMock = vi.fn();
   });
 
-  describe('get', () => {
-    it('should retrieve config value by key', () => {
-      const result = Core.Config.get('editor.fontSize');
-
-      expect(result).toBeDefined();
-      expect(typeof result).toBe('number');
+  async function createManager(options = {}) {
+    const manager = new ConfigManager({
+      schema: CONFIG_SCHEMA,
+      storage,
+      fetchImpl: fetchMock,
+      ...options
     });
 
-    it('should return undefined for non-existent key', () => {
-      const result = Core.Config.get('nonExistent.key');
-
-      expect(result).toBeUndefined();
+    await manager.init({
+      userId: options.userId ?? null,
+      embedConfig: options.embedConfig,
+      siteProperties: options.siteProperties ?? {},
+      userProperties: options.userProperties ?? (options.userId ? {} : undefined)
     });
 
-    it('should support nested config keys', () => {
-      const result = Core.Config.get('behavior.formatOnSave');
+    return manager;
+  }
 
-      expect(result).toBeDefined();
-      expect(typeof result).toBe('boolean');
-    });
+  it('falls back to defaults when no tiers provide a value', async () => {
+    const manager = await createManager();
 
-    it('should retrieve deeply nested values', () => {
-      const result = Core.Config.get('advanced.cdnUrls.monaco');
-
-      expect(result).toBeDefined();
-      expect(typeof result).toBe('string');
-    });
+    expect(manager.get('editor.fontSize')).toBe(14);
+    expect(manager.getSource('editor.fontSize')).toBe('default');
   });
 
-  describe('getAll', () => {
-    it('should return entire configuration object', () => {
-      const result = Core.Config.getAll();
+  it('resolves using priority embed > user > site > localStorage > default', async () => {
+    storage.getItem.mockReturnValueOnce(JSON.stringify({ values: { 'editor.fontSize': 12 } }));
 
-      expect(result).toBeDefined();
-      expect(result).toHaveProperty('behavior');
-      expect(result).toHaveProperty('editor');
-      expect(result).toHaveProperty('appearance');
-      expect(result).toHaveProperty('advanced');
+    const manager = await createManager({
+      userId: 'u-1',
+      embedConfig: { 'editor.fontSize': 20 },
+      siteProperties: { 'editor.fontSize': 16 },
+      userProperties: { 'editor.fontSize': 18 }
     });
 
-    it('should include all default sections', () => {
-      const result = Core.Config.getAll();
-
-      expect(result.behavior).toBeDefined();
-      expect(result.editor).toBeDefined();
-      expect(result.files).toBeDefined();
-      expect(result.overlay).toBeDefined();
-      expect(result.performance).toBeDefined();
-      expect(result.appearance).toBeDefined();
-      expect(result.advanced).toBeDefined();
-    });
+    expect(manager.get('editor.fontSize')).toBe(20);
+    expect(manager.getSource('editor.fontSize')).toBe('embed');
   });
 
-  describe('setUserSetting', () => {
-    it('should set user preference value', () => {
-      const result = Core.Config.setUserSetting('editor.fontSize', 16);
-
-      expect(result).toBe(true);
-      expect(Core.Config.get('editor.fontSize')).toBe(16);
+  it('blocks writes when an embed config locks the setting', async () => {
+    const manager = await createManager({
+      embedConfig: { 'editor.theme': 'vs-dark' }
     });
 
-    it('should save to localStorage', () => {
-      Core.Config.setUserSetting('editor.fontSize', 16);
+    const result = await manager.setUserSetting('editor.theme', 'vs-light');
 
-      expect(mockLocalStorage.setItem).toHaveBeenCalled();
-      const callArgs = mockLocalStorage.setItem.mock.calls[0];
-      expect(callArgs[0]).toContain('config');
-    });
-
-    it('should handle nested path setting', () => {
-      const result = Core.Config.setUserSetting('behavior.formatOnSave', false);
-
-      expect(result).toBe(true);
-      expect(Core.Config.get('behavior.formatOnSave')).toBe(false);
-    });
-
-    it('should update effective config after setting', () => {
-      const before = Core.Config.get('editor.tabSize');
-      Core.Config.setUserSetting('editor.tabSize', 4);
-      const after = Core.Config.get('editor.tabSize');
-
-      expect(after).not.toBe(before);
-      expect(after).toBe(4);
-    });
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/locked/i);
+    expect(manager.get('editor.theme')).toBe('vs-dark');
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  describe('getDefault', () => {
-    it('should return default value for a path', () => {
-      // Set a user setting first
-      Core.Config.setUserSetting('editor.fontSize', 20);
+  it('skips Properties API sync when serverSafe is false', async () => {
+    const manager = await createManager({ userId: 'user-123' });
 
-      // Default should still be the original default
-      const defaultValue = Core.Config.getDefault('editor.fontSize');
+    const result = await manager.setUserSetting('advanced.cdnUrls.monaco', 'https://example.com/cdn');
 
-      expect(defaultValue).toBe(14); // Default is 14 per DEFAULT_CONFIG
-    });
-
-    it('should return default for nested paths', () => {
-      const defaultValue = Core.Config.getDefault('behavior.autoSaveInterval');
-
-      expect(defaultValue).toBe(30000); // Default is 30000ms
-    });
+    expect(result.success).toBe(true);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(manager.get('advanced.cdnUrls.monaco')).toBe('https://example.com/cdn');
+    expect(manager.getSource('advanced.cdnUrls.monaco')).toBe('local');
   });
 
-  describe('isUserModified', () => {
-    it('should return false for unmodified settings', () => {
-      const result = Core.Config.isUserModified('editor.fontSize');
+  it('persists anonymous changes to localStorage and uses them when offline', async () => {
+    const manager = await createManager();
 
-      expect(result).toBe(false);
-    });
+    const result = await manager.setUserSetting('behavior.formatOnSave', false);
 
-    it('should return true after user modifies setting', () => {
-      Core.Config.setUserSetting('editor.fontSize', 16);
-      const result = Core.Config.isUserModified('editor.fontSize');
-
-      expect(result).toBe(true);
-    });
+    expect(result.success).toBe(true);
+    expect(storage.setItem).toHaveBeenCalled();
+    expect(manager.get('behavior.formatOnSave')).toBe(false);
+    expect(manager.getSource('behavior.formatOnSave')).toBe('local');
   });
 
-  describe('isEmbedOverridden', () => {
-    it('should return false for non-overridden settings', () => {
-      const result = Core.Config.isEmbedOverridden('editor.fontSize');
-
-      expect(result).toBe(false);
-    });
-  });
-
-  describe('getSource', () => {
-    it('should return "default" for unmodified settings', () => {
-      const result = Core.Config.getSource('editor.fontSize');
-
-      expect(result).toBe('default');
+  it('exports full hierarchy with source metadata', async () => {
+    const manager = await createManager({
+      userId: 'u-123',
+      siteProperties: { 'editor.fontSize': 15 },
+      userProperties: { 'editor.fontSize': 17 }
     });
 
-    it('should return "user" for user-modified settings', () => {
-      Core.Config.setUserSetting('editor.fontSize', 16);
-      const result = Core.Config.getSource('editor.fontSize');
+    const exportData = manager.exportConfig();
 
-      expect(result).toBe('user');
-    });
-  });
-
-  describe('resetUserSetting', () => {
-    it('should reset user setting to default', () => {
-      Core.Config.setUserSetting('editor.fontSize', 20);
-      expect(Core.Config.get('editor.fontSize')).toBe(20);
-
-      Core.Config.resetUserSetting('editor.fontSize');
-
-      expect(Core.Config.get('editor.fontSize')).toBe(14); // Default
-      expect(Core.Config.isUserModified('editor.fontSize')).toBe(false);
-    });
-
-    it('should update localStorage after reset', () => {
-      Core.Config.setUserSetting('editor.fontSize', 20);
-      mockLocalStorage.setItem.mockClear();
-
-      Core.Config.resetUserSetting('editor.fontSize');
-
-      expect(mockLocalStorage.setItem).toHaveBeenCalled();
-    });
-  });
-
-  describe('resetAllUserSettings', () => {
-    it('should reset all user settings', () => {
-      Core.Config.setUserSetting('editor.fontSize', 20);
-      Core.Config.setUserSetting('editor.tabSize', 4);
-      expect(Core.Config.isUserModified('editor.fontSize')).toBe(true);
-      expect(Core.Config.isUserModified('editor.tabSize')).toBe(true);
-
-      Core.Config.resetAllUserSettings();
-
-      expect(Core.Config.isUserModified('editor.fontSize')).toBe(false);
-      expect(Core.Config.isUserModified('editor.tabSize')).toBe(false);
-      expect(Core.Config.get('editor.fontSize')).toBe(14); // Default
-      expect(Core.Config.get('editor.tabSize')).toBe(2); // Default
-    });
-  });
-
-  describe('exportConfig', () => {
-    it('should export complete configuration hierarchy', () => {
-      const result = Core.Config.exportConfig();
-
-      expect(result).toHaveProperty('defaults');
-      expect(result).toHaveProperty('userSettings');
-      expect(result).toHaveProperty('embedConfig');
-      expect(result).toHaveProperty('effective');
-    });
-
-    it('should include all layers in export', () => {
-      Core.Config.setUserSetting('editor.fontSize', 18);
-      const result = Core.Config.exportConfig();
-
-      expect(result.defaults).toBeDefined();
-      expect(result.userSettings).toHaveProperty('editor');
-      expect(result.effective.editor.fontSize).toBe(18);
-    });
-  });
-
-  describe('configuration hierarchy', () => {
-    it('should use defaults when no overrides exist', () => {
-      const fontSize = Core.Config.get('editor.fontSize');
-
-      expect(fontSize).toBe(14); // Default value
-    });
-
-    it('should prioritize user settings over defaults', () => {
-      Core.Config.setUserSetting('editor.fontSize', 16);
-
-      const fontSize = Core.Config.get('editor.fontSize');
-
-      expect(fontSize).toBe(16);
-    });
-
-    it('should maintain hierarchy when multiple settings changed', () => {
-      Core.Config.setUserSetting('editor.fontSize', 16);
-      Core.Config.setUserSetting('behavior.formatOnSave', false);
-
-      expect(Core.Config.get('editor.fontSize')).toBe(16);
-      expect(Core.Config.get('behavior.formatOnSave')).toBe(false);
-      // Other settings should remain at defaults
-      expect(Core.Config.get('editor.tabSize')).toBe(2);
-    });
-  });
-
-  describe('error handling', () => {
-    it('should handle invalid paths gracefully', () => {
-      const result = Core.Config.get('invalid.deeply.nested.path.that.does.not.exist');
-
-      expect(result).toBeUndefined();
-    });
-
-    it('should handle setting deeply nested paths', () => {
-      const result = Core.Config.setUserSetting('new.deep.path', 'value');
-
-      expect(result).toBe(true);
-      expect(Core.Config.get('new.deep.path')).toBe('value');
-    });
+    expect(exportData).toHaveProperty('defaults');
+    expect(exportData).toHaveProperty('embedConfig');
+    expect(exportData).toHaveProperty('siteProperties');
+    expect(exportData).toHaveProperty('userProperties');
+    expect(exportData).toHaveProperty('localCache');
+    expect(exportData.resolved['editor.fontSize'].value).toBe(17);
+    expect(exportData.resolved['editor.fontSize'].source).toBe('user');
   });
 });
