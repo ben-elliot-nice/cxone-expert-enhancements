@@ -4,6 +4,13 @@ on:
   push:
     branches:
       - develop
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - .github/workflows/cleanup-feature.yml
+      - .github/workflows/feature-deploy.yml
+      - .github/workflows/test.yml
   workflow_dispatch:
 
 jobs:

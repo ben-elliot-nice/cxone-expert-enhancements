@@ -5,6 +5,9 @@ on:
     branches-ignore:
       - main
       - develop
+  pull_request:
+    branches:
+      - develop
   workflow_dispatch:
 
 jobs:
@@ -13,7 +16,7 @@ jobs:
     uses: ./.github/workflows/deploy-reusable.yml
     secrets: inherit
     with:
-      branch_name: ${{ github.ref_name }}
+      branch_name: ${{ github.head_ref || github.ref_name }}
 
   comment:
     name: Comment on PR
@@ -29,7 +32,9 @@ jobs:
           CDN_BASE_URL: ${{ vars.CDN_BASE_URL }}
         with:
           script: |
-            const branch = context.ref.replace('refs/heads/', '');
+            const branch = context.payload.pull_request
+              ? context.payload.pull_request.head.ref
+              : context.ref.replace('refs/heads/', '');
             const sanitizedBranch = branch.replace(/[^a-zA-Z0-9-_/]/g, '-').toLowerCase();
             const fallbackBase = `https://${process.env.DO_SPACES_BUCKET}.${process.env.DO_SPACES_ENDPOINT}/cxone-expert-enhancements`;
             const baseUrl = process.env.CDN_BASE_URL || fallbackBase;

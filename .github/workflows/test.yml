@@ -3,8 +3,7 @@ name: Test Suite
 on:
   push:
     branches:
-      - develop
-      - main
+      - '**'
   pull_request:
     branches:
       - develop
@@ -118,25 +117,54 @@ jobs:
           echo "DEPLOYMENT_BRANCH_SLUG=$SLUG" >> $GITHUB_ENV
           echo "DEPLOYMENT_BRANCH_SLUG=$SLUG"
 
-      - name: Wait for feature deploy (branch artifact)
-        if: github.event_name == 'pull_request'
+      - name: Wait for branch deploy (artifact for current SHA)
         env:
           GH_TOKEN: ${{ github.token }}
-          BRANCH: ${{ github.head_ref }}
-          TARGET_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
-          echo "Waiting for feature-deploy run on branch $BRANCH matching SHA $TARGET_SHA"
+          set -e
+          EVENT="${{ github.event_name }}"
+          BASE="${{ github.base_ref }}"
+          BRANCH="${{ github.head_ref || github.ref_name }}"
+          TARGET_SHA="${{ github.event.pull_request.head.sha || github.sha }}"
+
+          WORKFLOW=""
+          case "$EVENT" in
+            pull_request)
+              if [ "$BASE" = "develop" ]; then
+                WORKFLOW="feature-deploy.yml"
+              elif [ "$BASE" = "main" ]; then
+                WORKFLOW="develop-deploy.yml"
+              fi
+              ;;
+            push)
+              if [ "$BRANCH" = "develop" ]; then
+                WORKFLOW="develop-deploy.yml"
+              elif [ "$BRANCH" = "main" ]; then
+                WORKFLOW="release.yml"
+              else
+                WORKFLOW="feature-deploy.yml"
+              fi
+              ;;
+          esac
+
+          if [ -z "$WORKFLOW" ]; then
+            echo "No matching deploy workflow for event=$EVENT base=$BASE branch=$BRANCH"
+            exit 1
+          fi
+
+          echo "Waiting for $WORKFLOW on branch $BRANCH matching SHA $TARGET_SHA"
+
           for i in {1..30}; do
-            RUN=$(gh run list --workflow=feature-deploy.yml --branch="$BRANCH" --limit=1 --json headSha,status,conclusion,databaseId --jq '.[0]')
+            RUN=$(gh run list --workflow="$WORKFLOW" --branch="$BRANCH" --limit=1 --json headSha,status,conclusion,databaseId --jq '.[0]')
             STATUS=$(echo "$RUN" | jq -r '.status // ""')
             CONCLUSION=$(echo "$RUN" | jq -r '.conclusion // ""')
             HEAD_SHA=$(echo "$RUN" | jq -r '.headSha // ""')
             RUN_ID=$(echo "$RUN" | jq -r '.databaseId // ""')
 
-            echo "Latest deploy: status=$STATUS conclusion=$CONCLUSION head=$HEAD_SHA run_id=$RUN_ID"
+            echo "Latest $WORKFLOW: status=$STATUS conclusion=$CONCLUSION head=$HEAD_SHA run_id=$RUN_ID"
 
             if [ -z "$RUN_ID" ]; then
-              echo "No feature-deploy run found yet. Sleeping..."
+              echo "No $WORKFLOW run found yet. Sleeping..."
               sleep 10
               continue
             fi
@@ -161,7 +189,7 @@ jobs:
             sleep 10
           done
 
-          echo "Timed out waiting for feature-deploy for SHA $TARGET_SHA"
+          echo "Timed out waiting for $WORKFLOW for SHA $TARGET_SHA"
           exit 1
 
       - name: Install Playwright browsers
