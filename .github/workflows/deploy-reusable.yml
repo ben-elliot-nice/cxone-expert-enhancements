@@ -74,9 +74,11 @@ jobs:
         env:
           DO_SPACES_BUCKET: ${{ vars.DO_SPACES_BUCKET }}
           DO_SPACES_ENDPOINT: ${{ vars.DO_SPACES_ENDPOINT }}
+          CDN_BASE_URL: ${{ vars.CDN_BASE_URL }}
         run: |
           SLUG="${{ steps.slug.outputs.branch_slug }}"
-          BASE_URL="https://${DO_SPACES_BUCKET}.${DO_SPACES_ENDPOINT}/cxone-expert-enhancements"
+          FALLBACK_BASE="https://${DO_SPACES_BUCKET}.${DO_SPACES_ENDPOINT}/cxone-expert-enhancements"
+          BASE_URL="${CDN_BASE_URL:-$FALLBACK_BASE}"
           DEPLOYMENT_URL="${BASE_URL}/${SLUG}/embed.js"
           echo "deployment_url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
 

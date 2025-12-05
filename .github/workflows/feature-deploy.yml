@@ -22,11 +22,16 @@ jobs:
     steps:
       - name: Post deployment comment
         uses: actions/github-script@v7
+        env:
+          DO_SPACES_BUCKET: ${{ vars.DO_SPACES_BUCKET }}
+          DO_SPACES_ENDPOINT: ${{ vars.DO_SPACES_ENDPOINT }}
+          CDN_BASE_URL: ${{ vars.CDN_BASE_URL }}
         with:
           script: |
             const branch = context.ref.replace('refs/heads/', '');
             const sanitizedBranch = branch.replace(/[^a-zA-Z0-9-_/]/g, '-').toLowerCase();
-            const baseUrl = 'https://${{ vars.DO_SPACES_BUCKET }}.${{ vars.DO_SPACES_ENDPOINT }}/cxone-expert-enhancements';
+            const fallbackBase = `https://${process.env.DO_SPACES_BUCKET}.${process.env.DO_SPACES_ENDPOINT}/cxone-expert-enhancements`;
+            const baseUrl = process.env.CDN_BASE_URL || fallbackBase;
             const embedUrl = `${baseUrl}/${sanitizedBranch}/embed.js`;
 
             const comment = `## 🚀 Branch Deployment Successful
