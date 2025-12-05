@@ -17,6 +17,7 @@ on:
       changed:
         description: "true if the version differs between head and base"
         value: ${{ jobs.check-version.outputs.changed }}
+  workflow_dispatch:
 
 jobs:
   check-version:

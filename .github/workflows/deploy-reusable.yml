@@ -20,6 +20,7 @@ on:
       deployment_url:
         description: "Public URL to the embed.js for this deployment"
         value: ${{ jobs.deploy.outputs.deployment_url }}
+  workflow_dispatch:
 
 concurrency:
   group: deploy-${{ inputs.deployment_path || inputs.branch_name }}

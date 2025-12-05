@@ -7,6 +7,7 @@ on:
       - develop
       - main
   delete:
+  workflow_dispatch:
 
 jobs:
   cleanup:

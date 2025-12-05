@@ -5,6 +5,7 @@ on:
     branches-ignore:
       - main
       - develop
+  workflow_dispatch:
 
 jobs:
   deploy:
