@@ -1,0 +1,5 @@
+{
+  "role": "all-roles",
+  "css": "body { font-family: Arial, sans-serif; color: #333; }",
+  "csrfToken": "mock-csrf-token-12345"
+}

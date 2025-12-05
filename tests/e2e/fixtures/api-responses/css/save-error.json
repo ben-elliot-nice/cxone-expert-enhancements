@@ -1,0 +1,5 @@
+{
+  "success": false,
+  "error": "Invalid CSRF token",
+  "code": "CSRF_INVALID"
+}

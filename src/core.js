@@ -383,7 +383,14 @@ console.log('[Enhancements Core] Configuration system initialized');
          * Build multipart form body
          */
         buildMultipartBody(data) {
-            const boundary = '----WebKitFormBoundary' + Math.random().toString(36).substring(2, 15);
+            const boundary =
+                '----WebKitFormBoundary' +
+                (
+                    (typeof globalThis.crypto !== 'undefined' &&
+                        typeof globalThis.crypto.randomUUID === 'function')
+                        ? globalThis.crypto.randomUUID().replace(/-/g, '').slice(0, 16)
+                        : Math.random().toString(36).substring(2, 18)
+                );
             let body = '';
 
             Object.entries(data).forEach(([name, value]) => {
@@ -2674,6 +2681,13 @@ console.log('[Enhancements Core] Configuration system initialized');
             }
         }
     };
+
+    // Expose test API for E2E tests (same reasoning as AppManager exposure)
+    if (typeof window !== 'undefined') {
+        window.__ENHANCEMENTS_OVERLAY_TEST_API__ = {
+            applyPresetSize: (preset) => Overlay.applyPresetSize(preset)
+        };
+    }
 
     // ============================================================================
     // File Import Module

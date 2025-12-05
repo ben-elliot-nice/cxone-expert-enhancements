@@ -17,8 +17,15 @@ dist/
 docs/local/
 docs/plans/
 
-# Tests (working files, not for commit)
-tests/
+# Test artifacts (output files, not source)
+test-results/
+playwright-report/
+coverage/
+.nyc_output/
+/html/
+
+# Monaco local copy for integration tests
+tests/integration/helpers/monaco/
 
 # Scripts (local utility scripts, not for commit)
 scripts/

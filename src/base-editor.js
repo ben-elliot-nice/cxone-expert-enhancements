@@ -1149,6 +1149,11 @@ export class BaseEditor {
      * Setup keyboard shortcuts for save and format operations
      */
     setupKeyboardShortcuts() {
+        // Remove old listener if exists (prevent duplicate event handlers)
+        if (this.keyboardHandler) {
+            document.removeEventListener('keydown', this.keyboardHandler);
+        }
+
         this.keyboardHandler = (e) => {
             // Ctrl+S or Cmd+S - Save active editor
             if ((e.ctrlKey || e.metaKey) && e.code === 'KeyS' && !e.shiftKey) {
@@ -1536,8 +1541,9 @@ export class BaseEditor {
                 'Content-Type': `multipart/form-data; boundary=${boundary}`
             },
             credentials: 'include',
-            body: body,
-            redirect: 'follow'
+            body: body
+            // Note: Default redirect: 'follow' allows POST-Redirect-GET pattern
+            // Tests mock this to return 200 directly to avoid page navigation
         });
 
         return response;

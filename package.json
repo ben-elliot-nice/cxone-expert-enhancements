@@ -7,8 +7,19 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "npm run build && node deploy/deploy-v2.js",
-    "cleanup": "node deploy/cleanup-feature.js"
+    "deploy": "npm run build && node deploy/deploy-artifact.js",
+    "cleanup": "node deploy/cleanup-feature.js",
+    "test": "npm run test:unit && npm run test:integration && npm run test:e2e",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "test:unit:ui": "vitest --ui",
+    "test:integration": "vitest run --config vitest.integration.config.js",
+    "test:integration:watch": "vitest --config vitest.integration.config.js",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:coverage": "vitest run --coverage",
+    "clean:local": "node -e \"const fs=require('fs');const path=require('path');const targets=['.vite','dist','coverage','test-results','playwright-report','html','.nyc_output'];for (const t of targets){const full=path.join(process.cwd(),t);if(fs.existsSync(full)){fs.rmSync(full,{recursive:true,force:true});console.log('Removed',t);}}\""
   },
   "keywords": [
     "cxone",
@@ -34,6 +45,13 @@
     "dotenv": "^16.0.0"
   },
   "devDependencies": {
-    "vite": "^7.1.12"
+    "@playwright/test": "^1.56.1",
+    "@vitest/coverage-v8": "^4.0.9",
+    "@vitest/ui": "^4.0.9",
+    "happy-dom": "^20.0.10",
+    "http-server": "^14.1.1",
+    "prettier": "^3.6.2",
+    "vite": "^7.1.12",
+    "vitest": "^4.0.9"
   }
 }

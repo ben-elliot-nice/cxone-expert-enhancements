@@ -54,11 +54,16 @@ import './html-editor.js';  // Depends on: settings
 
 console.log('[Expert Enhancements] All modules loaded successfully');
 
+// Expose AppManager to window for E2E tests and debugging
+// This is intentional - real security happens at the API level, not client obfuscation
+window.AppManager = AppManager;
+
 if (import.meta.env.DEV) {
     console.log('%c[Expert Enhancements] Development Mode', 'color: #4CAF50; font-weight: bold');
     console.log('✅ Vite dev server running');
     console.log('✅ HMR enabled - changes will reload automatically');
     console.log('✅ Source maps enabled - debug original source in DevTools');
+    console.log('✅ AppManager exposed to window for testing');
 }
 
 // ============================================================================

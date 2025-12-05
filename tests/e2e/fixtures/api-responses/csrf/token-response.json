@@ -1,0 +1,5 @@
+{
+  "success": true,
+  "token": "mock-csrf-token-abcdef123456",
+  "expiresAt": "2025-11-15T13:00:00Z"
+}

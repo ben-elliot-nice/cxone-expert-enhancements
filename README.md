@@ -1,6 +1,6 @@
 # CXone Expert Enhancements
 
-Extensible developer toolkit for CXone Expert with CSS/HTML editors, live preview, and more.
+A comprehensive developer toolkit for CXone Expert featuring CSS/HTML editors, live preview, and more.
 
 ## 🚀 Quick Start
 
@@ -55,6 +55,7 @@ Once loaded, a floating toggle button appears in the top-right corner. Click it 
 - **Export** - Download individual or all CSS files
 - **Multiple Editors** - Toggle between CSS and HTML editors
 - **Split View** - Show up to 3 editors simultaneously
+- **Configurable** - Colors, toggle button position, timeouts, and editor defaults controlled via embed `data-config` (see `docs/CONFIGURATION.md`)
 
 ### 🔒 Security & Reliability
 - **CSRF Protection** - Automatic security token handling
@@ -184,7 +185,7 @@ A: No. The editor requires internet connection to load Monaco Editor from CDN.
 A: Chrome 90+, Firefox 88+, Safari 14+, Edge 90+. Modern browsers only.
 
 **Q: Can I customize the colors or position?**
-A: Not yet, but configurable options are planned (#48). For now, you can drag/resize the overlay.
+A: Yes. Use the embed `data-config` to set colors, toggle button placement, timeouts, and more. See `docs/CONFIGURATION.md`.
 
 **Q: Where is my CSS actually saved?**
 A: Two places: (1) CXone Expert's database when you click "Save All", (2) Your browser's localStorage as a backup.
@@ -204,6 +205,29 @@ We welcome contributions! To get started:
 - [Git Workflow](docs/GIT_WORKFLOW.md) - Branching and release process
 - [Deployment Guide](docs/DEPLOYMENT.md) - CI/CD and deployments
 - [Architecture](docs/ARCHITECTURE.md) - Technical architecture
+
+## Testing
+
+This project uses comprehensive three-layer testing:
+
+- **Unit Tests** - Vitest for fast, isolated tests
+- **Integration Tests** - Monaco wrapper and core systems
+- **E2E Tests** - Playwright for full user journeys
+
+### Running Tests
+
+```bash
+npm test                    # All tests
+npm run test:unit          # Unit tests only
+npm run test:e2e           # E2E tests
+npm run test:coverage      # Coverage report
+```
+
+See [tests/README.md](tests/README.md) for detailed testing documentation.
+
+### CI/CD
+
+All tests run automatically on push. PRs must pass all tests before merging.
 
 ## 📄 License
 

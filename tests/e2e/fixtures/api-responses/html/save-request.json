@@ -1,0 +1,5 @@
+{
+  "field": "body",
+  "html": "<div class=\"custom-header\">Updated Header</div>",
+  "csrfToken": "mock-csrf-token-12345"
+}

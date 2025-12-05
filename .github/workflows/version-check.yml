@@ -1,52 +1,69 @@
 name: Version Check
 
 on:
-  pull_request:
-    branches:
-      - main
+  workflow_call:
+    inputs:
+      base_ref:
+        required: true
+        type: string
+      head_ref:
+        required: true
+        type: string
+      fail_on_match:
+        required: false
+        type: boolean
+        default: true
+    outputs:
+      changed:
+        description: "true if the version differs between head and base"
+        value: ${{ jobs.check-version.outputs.changed }}
+  workflow_dispatch:
 
 jobs:
   check-version:
     runs-on: ubuntu-latest
-    # Only run version check for PRs from develop to main
-    if: github.head_ref == 'develop'
+    outputs:
+      changed: ${{ steps.compare.outputs.changed }}
 
     steps:
-      - name: Checkout PR branch
+      - name: Checkout source branch
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.head_ref }}
           fetch-depth: 0
 
-      - name: Get PR branch version
-        id: pr_version
+      - name: Determine head version
+        id: head_version
         run: |
-          PR_VERSION=$(node -p "require('./package.json').version")
-          echo "version=$PR_VERSION" >> $GITHUB_OUTPUT
-          echo "PR branch (source) version: $PR_VERSION"
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Head version: $VERSION"
 
-      - name: Get target branch version
-        id: target_version
+      - name: Determine base version
+        id: base_version
         run: |
-          TARGET_BRANCH="${{ github.base_ref }}"
-          echo "Target branch: $TARGET_BRANCH"
-          git checkout origin/$TARGET_BRANCH
-          TARGET_VERSION=$(node -p "require('./package.json').version")
-          echo "version=$TARGET_VERSION" >> $GITHUB_OUTPUT
-          echo "Target branch ($TARGET_BRANCH) version: $TARGET_VERSION"
+          git checkout ${{ inputs.base_ref }}
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Base version: $VERSION"
 
       - name: Compare versions
+        id: compare
         run: |
-          TARGET_BRANCH="${{ github.base_ref }}"
-          if [ "${{ steps.pr_version.outputs.version }}" == "${{ steps.target_version.outputs.version }}" ]; then
-            echo "❌ Version has not been bumped in package.json"
-            echo "Current $TARGET_BRANCH version: ${{ steps.target_version.outputs.version }}"
-            echo "PR branch version: ${{ steps.pr_version.outputs.version }}"
-            echo ""
-            echo "Please bump the version using one of:"
-            echo "  npm version patch  (for bug fixes)"
-            echo "  npm version minor  (for new features)"
-            echo "  npm version major  (for breaking changes)"
-            exit 1
+          HEAD_VERSION="${{ steps.head_version.outputs.version }}"
+          BASE_VERSION="${{ steps.base_version.outputs.version }}"
+          echo "Head: $HEAD_VERSION"
+          echo "Base: $BASE_VERSION"
+
+          if [ "$HEAD_VERSION" = "$BASE_VERSION" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            if [ "${{ inputs.fail_on_match }}" = "true" ]; then
+              echo "❌ Version has not been bumped (still $HEAD_VERSION)"
+              exit 1
+            else
+              echo "⚠️ Version unchanged; continuing (non-blocking)"
+            fi
           else
-            echo "✅ Version bumped from ${{ steps.target_version.outputs.version }} to ${{ steps.pr_version.outputs.version }}"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "✅ Version bumped from $BASE_VERSION to $HEAD_VERSION"
           fi

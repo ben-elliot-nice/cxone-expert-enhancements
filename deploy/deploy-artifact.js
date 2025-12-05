@@ -143,7 +143,7 @@ async function uploadFile(s3Client, localPath, remotePath, contentType, cacheCon
 async function deploy() {
   log('');
   log('================================================================================');
-  log('CXone Expert Enhancements - Deployment v2');
+  log('CXone Expert Enhancements - Artifact Deployment');
   log('================================================================================');
   log('');
 
@@ -168,14 +168,14 @@ async function deploy() {
   });
 
   // Get deployment configuration
-  const { branch, version, targets } = getDeploymentConfig();
+  const { targets } = getDeploymentConfig();
   log('');
   log('Deployment Targets:');
   targets.forEach(t => log(`  - ${CONFIG.basePrefix}/${t.path}/ (${t.desc})`));
   log('');
 
   // Deploy to each target
-  const deployedUrls = [];
+  const uploadedArtifacts = [];
 
   for (const target of targets) {
     log(`Deploying to: ${target.desc}`);
@@ -195,11 +195,11 @@ async function deploy() {
           cacheControl
         );
 
-        if (file.remote === 'expert-enhancements-embed.js') {
-          deployedUrls.push({ desc: `${target.desc} (Unified)`, url });
-        } else if (file.remote === 'css-editor-embed.js' || file.remote === 'html-editor-embed.js') {
-          deployedUrls.push({ desc: `${target.desc} (Legacy)`, url });
-        }
+        uploadedArtifacts.push({
+          target: target.desc,
+          file: file.remote,
+          url
+        });
       } catch (err) {
         error(`Upload failed for ${file.local}: ${err.message}`);
         throw err;
@@ -214,19 +214,14 @@ async function deploy() {
   log('Deployment Complete!');
   log('================================================================================');
   log('');
-  log('Embed Script URLs:');
-  deployedUrls.forEach(({ desc, url }) => {
-    log(`  ${desc}:`);
-    log(`    <script src="${url}"></script>`);
-    log('');
-  });
-
-  // GitHub Actions output
-  if (process.env.GITHUB_ACTIONS === 'true') {
-    const primaryUrl = deployedUrls[0]?.url || '';
-    log(`::set-output name=deploy_url::${primaryUrl}`);
-    log(`::set-output name=branch::${branch}`);
-    log(`::set-output name=version::${version}`);
+  if (uploadedArtifacts.length) {
+    log('Artifacts Uploaded:');
+    uploadedArtifacts.forEach(({ target, file, url }) => {
+      log(`  ${target} - ${file}`);
+      log(`    ${url}`);
+    });
+  } else {
+    log('No artifacts were uploaded (check configuration).');
   }
 }
 

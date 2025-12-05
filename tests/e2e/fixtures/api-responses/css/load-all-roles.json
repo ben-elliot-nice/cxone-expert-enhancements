@@ -1,0 +1,11 @@
+{
+  "success": true,
+  "data": {
+    "all-roles": "/* All Roles CSS */\nbody { font-family: Arial, sans-serif; }",
+    "anonymous": "/* Anonymous CSS */\n.user-anonymous { display: block; }",
+    "community-member": "/* Community Member CSS */\n.user-viewer { display: block; }",
+    "pro-member": "/* Pro Member CSS */\n.user-seated { display: block; }",
+    "admin": "/* Admin CSS */\n.user-admin { display: block; }",
+    "legacy-browser": "/* Legacy Browser CSS */\n.ie-fallback { display: block; }"
+  }
+}

@@ -1,0 +1,49 @@
+import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './tests/e2e',
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  // CI runners have 2 cores; keep a single worker per browser job for stability
+  workers: process.env.CI ? 1 : undefined,
+  reporter: process.env.CI ? [['github'], ['list']] : 'list',
+
+  use: {
+    baseURL: process.env.CI
+      ? 'http://localhost:8080/test-page.html'
+      : 'http://127.0.0.1:5173',
+    trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure'
+  },
+
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] }
+    },
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] }
+    },
+    {
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] }
+    }
+  ],
+
+  webServer: process.env.CI
+    ? {
+        command: 'npx http-server tests/e2e/fixtures -p 8080',
+        url: 'http://localhost:8080/test-page.html',
+        reuseExistingServer: false,
+        timeout: 30000
+      }
+    : {
+        command: 'npm run dev -- --host 127.0.0.1 --port 5173',
+        url: 'http://127.0.0.1:5173',
+        reuseExistingServer: !process.env.CI,
+        timeout: 120000
+      }
+});
