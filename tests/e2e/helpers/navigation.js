@@ -29,8 +29,6 @@ export async function navigateToTestPage(page) {
       () => document.querySelector('#expert-enhancements-toggle') !== null,
       { timeout: 5000 }
     );
-
-    console.log('CI mode: Loading test page with deployed script:', embedUrl);
   } else {
     // Local dev: Vite dev server serves everything
     const baseURL = process.env.BASE_URL || 'http://localhost:5173';
@@ -41,7 +39,5 @@ export async function navigateToTestPage(page) {
       () => document.querySelector('#expert-enhancements-toggle') !== null,
       { timeout: 5000 }
     );
-
-    console.log('Dev mode: Loading from vite dev server:', baseURL);
   }
 }

@@ -7,7 +7,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   // CI runners have 2 cores; keep a single worker per browser job for stability
   workers: process.env.CI ? 1 : undefined,
-  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'html',
+  reporter: process.env.CI ? [['github'], ['list']] : 'list',
 
   use: {
     baseURL: process.env.CI
