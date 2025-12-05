@@ -36,22 +36,55 @@ describe('CSS Editor', () => {
   });
 
   describe('Role Configuration', () => {
-    it('should define 6 CSS roles with correct IDs', () => {
-      // Access the ROLE_CONFIG through the initialization
-      // We'll verify this through the editor state after init
-      expect(CSSEditorApp).toBeDefined();
-      // Role IDs are: all, anonymous, viewer, seated, admin, grape
+    it('should define 6 CSS roles with correct IDs and labels', async () => {
+      const mockContext = {
+        Monaco: { init: vi.fn().mockResolvedValue(true) },
+        Storage: { getAppState: vi.fn(() => null) },
+        Config: { get: vi.fn() }
+      };
+
+      await CSSEditorApp.init(mockContext);
+
+      const roles = CSSEditorApp._baseEditor.config.itemsConfig;
+      const ids = roles.map(r => r.id);
+      const labels = roles.map(r => r.label);
+
+      expect(ids).toEqual(['all', 'anonymous', 'viewer', 'seated', 'admin', 'grape']);
+      expect(labels).toEqual([
+        'All Roles',
+        'Anonymous',
+        'Community Member',
+        'Pro Member',
+        'Admin',
+        'Legacy Browser'
+      ]);
+      expect(Object.keys(CSSEditorApp._baseEditor.editorState)).toEqual(ids);
     });
 
-    it('should map roles to correct labels', () => {
-      // Verify role labels match expected values
-      // all -> All Roles
-      // anonymous -> Anonymous
-      // viewer -> Community Member
-      // seated -> Pro Member
-      // admin -> Admin
-      // grape -> Legacy Browser
-      expect(CSSEditorApp).toBeDefined();
+    it('should keep state scaffolding intact when saved state omits roles', async () => {
+      const mockContext = {
+        Monaco: { init: vi.fn().mockResolvedValue(true) },
+        Storage: { getAppState: vi.fn(() => null) },
+        Config: { get: vi.fn() }
+      };
+
+      await CSSEditorApp.init(mockContext);
+
+      const savedState = {
+        activeRoles: ['all'],
+        content: { all: 'body {}', unknown: 'ignored' },
+        isDirty: { all: true, unknown: true },
+        originalContent: { all: 'body {}' }
+      };
+
+      CSSEditorApp.setState(savedState);
+
+      const state = CSSEditorApp._baseEditor.editorState;
+      expect(state.all.content).toBe('body {}');
+      expect(state.all.isDirty).toBe(true);
+      expect(state.admin.content).toBe(''); // untouched role stays default
+      expect(state.admin.isDirty).toBe(false);
+      expect(state.unknown).toBeUndefined();
     });
   });
 

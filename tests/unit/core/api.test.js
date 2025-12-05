@@ -132,10 +132,28 @@ describe('Core.API', () => {
       const result1 = Core.API.buildMultipartBody(data);
       const result2 = Core.API.buildMultipartBody(data);
 
-      // Boundaries should be different (probabilistically)
-      // We can't guarantee this 100% due to randomness, but it's very unlikely to match
       expect(result1.boundary).toBeTruthy();
       expect(result2.boundary).toBeTruthy();
+      expect(result1.boundary).not.toBe(result2.boundary);
+      expect(result1.body).not.toBe(result2.body);
+    });
+
+    it('should generate body sections for each field with correct framing', () => {
+      const data = { alpha: '1', beta: '2' };
+
+      const { body, boundary } = Core.API.buildMultipartBody(data);
+
+      const parts = body.split(`--${boundary}`);
+      // parts structure: ["", "\r\nContent-Disposition...", "\r\nContent-Disposition...", "\r\nContent-Disposition...submit", "--\r\n"]
+      const sections = parts.filter(p => p.includes('Content-Disposition'));
+
+      expect(sections.length).toBe(3); // alpha, beta, submit
+      expect(body).toContain(`name="alpha"`);
+      expect(body).toContain(`\r\n\r\n1\r\n`);
+      expect(body).toContain(`name="beta"`);
+      expect(body).toContain(`\r\n\r\n2\r\n`);
+      expect(body).toContain(`name="deki_buttons[submit][submit]"`);
+      expect(body.trim().endsWith(`--${boundary}--`)).toBe(true);
     });
   });
 

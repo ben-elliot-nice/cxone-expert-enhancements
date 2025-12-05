@@ -43,6 +43,58 @@ describe('Monaco Integration Tests', () => {
       expect(monacoInstance.editor.getModels).toBeDefined();
       expect(monacoInstance.editor.createModel).toBeDefined();
     });
+
+    it('should fire onReady callbacks after init', async () => {
+      let fired = 0;
+      Core.Monaco.onReady(() => { fired += 1; });
+
+      let configCalled = 0;
+      let loadCalled = 0;
+      const mockRequire = (deps, successCb) => {
+        loadCalled += 1;
+        successCb();
+      };
+      mockRequire.config = () => { configCalled += 1; };
+      global.window.monacoRequire = mockRequire;
+
+      await Core.Monaco.init();
+
+      expect(Core.Monaco.isReady()).toBe(true);
+      expect(fired).toBe(1);
+      expect(configCalled).toBe(1);
+      expect(loadCalled).toBe(1);
+    });
+
+    it('should run onReady callbacks immediately when already ready', async () => {
+      // Ensure ready state
+      const mockRequire = (deps, successCb) => successCb();
+      mockRequire.config = () => {};
+      global.window.monacoRequire = mockRequire;
+      await Core.Monaco.init();
+
+      let fired = 0;
+      Core.Monaco.onReady(() => { fired += 1; });
+
+      expect(fired).toBe(1);
+    });
+
+    it('init should be idempotent and not re-run loader', async () => {
+      let loadCalls = 0;
+      const mockRequire = (deps, successCb) => {
+        loadCalls += 1;
+        successCb();
+      };
+      mockRequire.config = () => {};
+      global.window.monacoRequire = mockRequire;
+
+      await Core.Monaco.init();
+      const afterFirst = loadCalls;
+      await Core.Monaco.init(); // second call should short-circuit
+
+      expect(loadCalls).toBe(afterFirst);
+      expect(loadCalls).toBeLessThanOrEqual(1);
+      expect(Core.Monaco.isReady()).toBe(true);
+    });
   });
 
   describe('Monaco Editor Creation', () => {
