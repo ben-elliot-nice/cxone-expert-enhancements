@@ -255,7 +255,7 @@ jobs:
     name: Test Summary
     runs-on: ubuntu-latest
     needs: [precheck, unit-tests, integration-tests, e2e-tests]
-    if: always()
+    if: always() && needs.precheck.outputs.skip != 'true'
 
     steps:
       - name: Check test results
@@ -277,7 +277,7 @@ jobs:
     name: PR Test Results Comment
     runs-on: ubuntu-latest
     needs: [precheck, unit-tests, integration-tests, e2e-tests]
-    if: github.event_name == 'pull_request' && always()
+    if: github.event_name == 'pull_request' && always() && needs.precheck.outputs.skip != 'true'
 
     steps:
       - name: Create test results comment
